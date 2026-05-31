@@ -1,4 +1,14 @@
-import type { CaptureInfo, CompilerInfo, Metrics, PassTrace, StageArtifacts, TargetInfo, TraceStage } from '../types';
+import type {
+  CaptureInfo,
+  CompilerInfo,
+  MetricProfile,
+  MetricProfiles,
+  Metrics,
+  PassTrace,
+  StageArtifacts,
+  TargetInfo,
+  TraceStage
+} from '../types';
 
 export function normalizeTrace(raw: unknown): PassTrace {
   if (!isRecord(raw)) {
@@ -15,6 +25,7 @@ export function normalizeTrace(raw: unknown): PassTrace {
     target: readTargetInfo(raw.target),
     inputHash: readString(raw.inputHash),
     capture: readCaptureInfo(raw.capture),
+    metricProfiles: readMetricProfiles(raw.metricProfiles),
     tool: readString(raw.tool),
     input: readString(raw.input),
     pipeline: readString(raw.pipeline),
@@ -134,6 +145,40 @@ function readCaptureInfo(raw: unknown): CaptureInfo | undefined {
     capture.timing = raw.timing;
   }
   return Object.keys(capture).length > 0 ? capture : undefined;
+}
+
+function readMetricProfiles(raw: unknown): MetricProfiles | undefined {
+  if (!isRecord(raw)) {
+    return undefined;
+  }
+
+  const profiles: MetricProfiles = {};
+  for (const [name, value] of Object.entries(raw)) {
+    const profile = readMetricProfile(value);
+    if (profile) {
+      profiles[name] = profile;
+    }
+  }
+  return Object.keys(profiles).length > 0 ? profiles : undefined;
+}
+
+function readMetricProfile(raw: unknown): MetricProfile | undefined {
+  if (!isRecord(raw)) {
+    return undefined;
+  }
+
+  const critical = Array.isArray(raw.critical)
+    ? raw.critical.filter((entry): entry is string => typeof entry === 'string')
+    : undefined;
+  const budgets = readMetrics(raw.budgets);
+  const profile: MetricProfile = {};
+  if (critical && critical.length > 0) {
+    profile.critical = critical;
+  }
+  if (budgets && Object.keys(budgets).length > 0) {
+    profile.budgets = budgets;
+  }
+  return Object.keys(profile).length > 0 ? profile : undefined;
 }
 
 function readArtifacts(raw: unknown): StageArtifacts | undefined {

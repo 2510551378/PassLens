@@ -85,3 +85,68 @@ test('computeTraceAnomalies sorts warnings before info', () => {
   assert.equal(anomalies[0].stageIndex, 1);
   assert.equal(anomalies[1].severity, 'info');
 });
+
+test('computeTraceAnomalies applies built-in AscendC budget profile', () => {
+  const anomalies = computeTraceAnomalies({
+    schemaVersion: 1,
+    target: {
+      backend: 'ascendc'
+    },
+    stages: [
+      {
+        index: 7,
+        pass: 'plan-scratch-queue',
+        changed: true,
+        metricsBefore: {
+          'ub.live.slots.max': 3
+        },
+        metricsAfter: {
+          'ub.live.slots.max': 5
+        }
+      }
+    ]
+  });
+
+  assert.equal(anomalies.length, 1);
+  assert.equal(anomalies[0].kind, 'budget');
+  assert.equal(anomalies[0].budget, 4);
+  assert.match(anomalies[0].message, /exceeding budget 4/);
+});
+
+test('computeTraceAnomalies applies custom metric profile overrides', () => {
+  const anomalies = computeTraceAnomalies({
+    schemaVersion: 1,
+    target: {
+      backend: 'ascendc'
+    },
+    metricProfiles: {
+      ascendc: {
+        budgets: {
+          'ub.live.slots.max': 8
+        },
+        critical: [
+          'ac.local.alloc'
+        ]
+      }
+    },
+    stages: [
+      {
+        index: 8,
+        pass: 'lower-to-ac',
+        changed: true,
+        metricsBefore: {
+          'ub.live.slots.max': 3,
+          'ac.local.alloc': 0
+        },
+        metricsAfter: {
+          'ub.live.slots.max': 5,
+          'ac.local.alloc': 1
+        }
+      }
+    ]
+  });
+
+  assert.equal(anomalies.length, 1);
+  assert.equal(anomalies[0].kind, 'critical');
+  assert.equal(anomalies[0].metric, 'ac.local.alloc');
+});

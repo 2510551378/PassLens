@@ -23,6 +23,19 @@ instrumentation callbacks, or temporary wrappers.
     "metrics": true,
     "timing": true
   },
+  "metricProfiles": {
+    "ascendc": {
+      "critical": [
+        "strict.violations",
+        "fallback.count",
+        "unproven.tile_size"
+      ],
+      "budgets": {
+        "ub.live.slots.max": 4,
+        "queue.depth": 4
+      }
+    }
+  },
   "tool": "mlir-opt",
   "input": "input.mlir",
   "pipeline": "builtin.module(func.func(canonicalize,cse))",
@@ -75,6 +88,11 @@ instrumentation callbacks, or temporary wrappers.
 - `capture`: trace-level capture mode. `ir` is `inline`, `artifact`, or
   `omitted`; `metrics` and `timing` describe whether those signals are
   intentionally recorded.
+- `metricProfiles`: optional domain-specific anomaly profile. Profiles can mark
+  metrics as `critical` or set numeric `budgets`; matching profile names are
+  selected from `target.backend`, with `default` as a fallback. Pass Lens also
+  includes a conservative built-in `ascendc` profile for strict violations,
+  fallback counts, unproven tile evidence, UB live slot budget, and queue depth.
 - `tool`: collector or driver name.
 - `input`: user-facing input name.
 - `pipeline`: pass pipeline string when available.

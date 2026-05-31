@@ -70,8 +70,11 @@ missing optional context.
   remain a replaceable adapter.
 - Impact bars are heuristics derived from metric deltas. They are navigation
   aids, not semantic proof that a pass is important.
-- Metric anomalies are heuristics derived from absolute and relative metric
-  deltas. They are triage hints, not proof that a pass is incorrect.
+- Metric anomalies are heuristics derived from absolute deltas, relative
+  deltas, and optional domain profiles. Built-in profiles must stay
+  conservative: they should flag contract-style signals such as fallback,
+  legality, evidence, or resource-budget violations, not every normal lowering
+  artifact.
 - Repro bundles are intentionally Markdown instead of a custom archive format
   for v0.1. They optimize for GitHub issues, PR comments, and human review.
 - The default selected pass is the verifier failure if present, otherwise the

@@ -18,6 +18,13 @@ export interface CaptureInfo {
   timing?: boolean;
 }
 
+export interface MetricProfile {
+  critical?: string[];
+  budgets?: Record<string, number>;
+}
+
+export type MetricProfiles = Record<string, MetricProfile>;
+
 export interface StageArtifacts {
   beforePath?: string;
   afterPath?: string;
@@ -52,6 +59,7 @@ export interface PassTrace {
   target?: TargetInfo;
   inputHash?: string;
   capture?: CaptureInfo;
+  metricProfiles?: MetricProfiles;
   tool?: string;
   input?: string;
   pipeline?: string;
@@ -74,6 +82,7 @@ export type MetricAnomalySeverity = 'warning' | 'info';
 
 export interface MetricAnomaly {
   severity: MetricAnomalySeverity;
+  kind?: 'delta' | 'budget' | 'critical';
   stageIndex: number;
   pass: string;
   metric: string;
@@ -81,5 +90,6 @@ export interface MetricAnomaly {
   after: number;
   delta: number;
   ratio?: number;
+  budget?: number;
   message: string;
 }

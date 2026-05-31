@@ -1,9 +1,10 @@
-import type { MetricAnomaly, PassTrace, TraceStage } from '../types';
+import type { MetricAnomaly, MetricProfile, PassTrace, TraceStage } from '../types';
 
 interface AnomalyOptions {
   minAbsoluteDelta: number;
   infoAbsoluteDelta: number;
   warningRelativeDelta: number;
+  metricProfile?: MetricProfile;
 }
 
 const defaultOptions: AnomalyOptions = {
@@ -12,9 +13,27 @@ const defaultOptions: AnomalyOptions = {
   warningRelativeDelta: 1
 };
 
+const builtinMetricProfiles: Record<string, MetricProfile> = {
+  ascendc: {
+    critical: [
+      'strict.violations',
+      'fallback.count',
+      'unproven.tile_size'
+    ],
+    budgets: {
+      'strict.violations': 0,
+      'fallback.count': 0,
+      'unproven.tile_size': 0,
+      'ub.live.slots.max': 4,
+      'queue.depth': 4
+    }
+  }
+};
+
 export function computeTraceAnomalies(trace: PassTrace): MetricAnomaly[] {
+  const metricProfile = resolveMetricProfile(trace);
   return trace.stages
-    .flatMap((stage) => computeStageAnomalies(stage))
+    .flatMap((stage) => computeStageAnomalies(stage, metricProfile ? { metricProfile } : {}))
     .sort(compareAnomalies);
 }
 
@@ -23,6 +42,8 @@ export function computeStageAnomalies(
   options: Partial<AnomalyOptions> = {}
 ): MetricAnomaly[] {
   const resolved = { ...defaultOptions, ...options };
+  const criticalMetrics = new Set(resolved.metricProfile?.critical ?? []);
+  const budgets = resolved.metricProfile?.budgets ?? {};
   const before = stage.metricsBefore ?? {};
   const after = stage.metricsAfter ?? {};
   const metrics = Array.from(new Set([...Object.keys(before), ...Object.keys(after)]));
@@ -33,6 +54,34 @@ export function computeStageAnomalies(
       const afterValue = after[metric] ?? 0;
       const delta = afterValue - beforeValue;
       const absDelta = Math.abs(delta);
+      const budget = budgets[metric];
+      if (budget !== undefined && afterValue > budget) {
+        return makeAnomaly({
+          kind: 'budget',
+          stage,
+          metric,
+          before: beforeValue,
+          after: afterValue,
+          delta,
+          budget,
+          severity: 'warning',
+          message: `${metric} is ${formatNumber(afterValue)}, exceeding budget ${formatNumber(budget)}.`
+        });
+      }
+
+      if (criticalMetrics.has(metric) && afterValue > beforeValue && afterValue > 0) {
+        return makeAnomaly({
+          kind: 'critical',
+          stage,
+          metric,
+          before: beforeValue,
+          after: afterValue,
+          delta,
+          severity: 'warning',
+          message: `${metric} is a critical metric and increased from ${formatNumber(beforeValue)} to ${formatNumber(afterValue)}.`
+        });
+      }
+
       if (absDelta < resolved.minAbsoluteDelta) {
         return undefined;
       }
@@ -47,26 +96,76 @@ export function computeStageAnomalies(
         return undefined;
       }
 
-      const anomaly: MetricAnomaly = {
-        severity: isWarning ? 'warning' : 'info',
-        stageIndex: stage.index,
-        pass: stage.pass,
+      return makeAnomaly({
+        kind: 'delta',
+        stage,
         metric,
         before: beforeValue,
         after: afterValue,
         delta,
-        message: describeAnomaly(metric, beforeValue, afterValue, delta, relativeDelta)
-      };
-      if (ratio !== undefined) {
-        anomaly.ratio = ratio;
-      }
-      return anomaly;
+        ratio,
+        severity: isWarning ? 'warning' : 'info',
+        message: describeDeltaAnomaly(metric, beforeValue, afterValue, delta, relativeDelta)
+      });
     })
     .filter((entry): entry is MetricAnomaly => entry !== undefined)
     .sort(compareAnomalies);
 }
 
-function describeAnomaly(
+function resolveMetricProfile(trace: PassTrace): MetricProfile | undefined {
+  const profileName = trace.target?.backend?.toLowerCase();
+  const builtin = profileName ? builtinMetricProfiles[profileName] : undefined;
+  const custom = profileName
+    ? trace.metricProfiles?.[profileName] ?? trace.metricProfiles?.default
+    : trace.metricProfiles?.default;
+  if (!builtin) {
+    return custom;
+  }
+  if (!custom) {
+    return builtin;
+  }
+  return {
+    critical: Array.from(new Set([...(builtin.critical ?? []), ...(custom.critical ?? [])])),
+    budgets: {
+      ...(builtin.budgets ?? {}),
+      ...(custom.budgets ?? {})
+    }
+  };
+}
+
+function makeAnomaly(args: {
+  kind: NonNullable<MetricAnomaly['kind']>;
+  stage: TraceStage;
+  metric: string;
+  before: number;
+  after: number;
+  delta: number;
+  severity: MetricAnomaly['severity'];
+  message: string;
+  ratio?: number;
+  budget?: number;
+}): MetricAnomaly {
+  const anomaly: MetricAnomaly = {
+    kind: args.kind,
+    severity: args.severity,
+    stageIndex: args.stage.index,
+    pass: args.stage.pass,
+    metric: args.metric,
+    before: args.before,
+    after: args.after,
+    delta: args.delta,
+    message: args.message
+  };
+  if (args.ratio !== undefined) {
+    anomaly.ratio = args.ratio;
+  }
+  if (args.budget !== undefined) {
+    anomaly.budget = args.budget;
+  }
+  return anomaly;
+}
+
+function describeDeltaAnomaly(
   metric: string,
   before: number,
   after: number,

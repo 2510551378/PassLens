@@ -24,6 +24,14 @@ test('normalizeTrace fills defaults and preserves extension metadata', () => {
       metrics: true,
       timing: true
     },
+    metricProfiles: {
+      ascendc: {
+        critical: ['fallback.count'],
+        budgets: {
+          'ub.live.slots.max': 4
+        }
+      }
+    },
     inputHash: 'sha256:deadbeef',
     stages: []
   });
@@ -43,6 +51,14 @@ test('normalizeTrace fills defaults and preserves extension metadata', () => {
     ir: 'omitted',
     metrics: true,
     timing: true
+  });
+  assert.deepEqual(trace.metricProfiles, {
+    ascendc: {
+      critical: ['fallback.count'],
+      budgets: {
+        'ub.live.slots.max': 4
+      }
+    }
   });
   assert.equal(trace.inputHash, 'sha256:deadbeef');
 });
