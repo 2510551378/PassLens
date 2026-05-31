@@ -56,9 +56,9 @@ export async function collectMlirTrace(options: CollectMlirOptions): Promise<Pas
     });
   }
 
-  if (stages.length > 0) {
-    stages[stages.length - 1].durationMs = stages[stages.length - 1].durationMs ?? elapsedMs;
-  }
+  const diagnostics = result.exitCode === 0
+    ? trimDiagnostics(result.stderr)
+    : trimDiagnostics(`${result.stderr}\n${result.stdout}`);
 
   return {
     schemaVersion: 1,
@@ -67,7 +67,12 @@ export async function collectMlirTrace(options: CollectMlirOptions): Promise<Pas
     pipeline: options.pipeline,
     command: formatCommand(options.mlirOptPath, args),
     exitCode: result.exitCode,
-    diagnostics: result.exitCode === 0 ? trimDiagnostics(result.stderr) : trimDiagnostics(`${result.stderr}\n${result.stdout}`),
+    diagnostics: appendCollectorNote(
+      diagnostics,
+      stages.length > 1
+        ? 'Textual mlir-opt dump collection does not provide reliable per-pass duration. Use the structured pass-lens-mlir-opt collector for timing.'
+        : undefined
+    ),
     stages
   };
 }
@@ -200,6 +205,13 @@ function trimDiagnostics(text: string): string | undefined {
     .join('\n')
     .trim();
   return trimmed.length > 0 ? trimmed.slice(0, 8000) : undefined;
+}
+
+function appendCollectorNote(diagnostics: string | undefined, note: string | undefined): string | undefined {
+  if (!note) {
+    return diagnostics;
+  }
+  return diagnostics ? `${diagnostics}\n\nPass Lens note: ${note}` : `Pass Lens note: ${note}`;
 }
 
 function runProcess(command: string, args: string[]): Promise<{ exitCode: number; stdout: string; stderr: string }> {

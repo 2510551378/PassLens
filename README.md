@@ -52,10 +52,14 @@ builtin.module(func.func(canonicalize,cse))
 
 It writes `<input>.pass-lens.json` next to the input file and opens the viewer.
 Set `passLens.mlirOptPath` if `mlir-opt` is not on `PATH`.
+This fallback path does not provide reliable per-pass duration because MLIR
+textual IR dumps do not encode timing.
 
 `Run Structured MLIR Trace` uses the C++ collector driver
 `pass-lens-mlir-opt` instead of parsing textual `mlir-opt` dumps. Set
 `passLens.mlirDriverPath` if the driver is not on `PATH`.
+Use this path when timing, verifier failure attribution, or structured metrics
+matter.
 
 `Check MLIR Collector Setup` runs `scripts/check-mlir-collector.ps1` and shows
 the result in the `Pass Lens Collector Setup` output channel.

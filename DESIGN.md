@@ -27,6 +27,10 @@ iterated independently.
 - `Check MLIR Collector Setup`: invokes the PowerShell build check and routes
   its output to a VSCode output channel.
 
+The textual `mlir-opt` path is a compatibility fallback. It should not invent
+per-pass timing from whole-process runtime; the structured collector is the
+source of truth for duration and failure attribution.
+
 ## Positioning
 
 Pass Lens should be treated as a compiler pass pipeline observability tool, not

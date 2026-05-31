@@ -77,3 +77,6 @@ The extension already has a text-dump parser for quick prototyping. This
 collector is the path toward reliable structured data: exact pass callbacks,
 duration, failure status, and operation-level metrics without reverse-parsing
 terminal output.
+
+The text-dump parser should be treated as a fallback. It cannot provide
+reliable per-pass timing because MLIR IR dump markers do not encode duration.
