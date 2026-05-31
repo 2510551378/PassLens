@@ -62,3 +62,17 @@ export interface TraceIssue {
   stageIndex?: number;
   field?: string;
 }
+
+export type MetricAnomalySeverity = 'warning' | 'info';
+
+export interface MetricAnomaly {
+  severity: MetricAnomalySeverity;
+  stageIndex: number;
+  pass: string;
+  metric: string;
+  before: number;
+  after: number;
+  delta: number;
+  ratio?: number;
+  message: string;
+}

@@ -14,6 +14,8 @@ pipeline timeline.
 - Scan a visual pipeline map where taller colored segments mean larger impact.
 - Filter long pipelines by pass name, scope, metric name, or changed-only.
 - Jump directly to first signal, previous/next changed pass, or slowest pass.
+- Jump directly to suspicious metric anomalies such as zero-to-positive
+  allocations or large relative op-count changes.
 - Compare metric deltas before and after each pass.
 - View side-by-side IR diffs.
 - Copy the generated repro command from the viewer.

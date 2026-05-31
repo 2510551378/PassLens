@@ -13,6 +13,8 @@ iterated independently.
   and webview rendering.
 - `src/mlirCollector.ts`: `mlir-opt` wrapper that enables MLIR pass IR dumps,
   parses dump blocks, derives simple metrics, and writes the trace schema.
+- `src/trace/anomalies.ts`: metric anomaly heuristics used by the viewer to
+  highlight unexpectedly large per-pass metric deltas.
 - `collectors/mlir-pass-lens`: C++ MLIR `PassInstrumentation` scaffold for
   structured traces from a custom MLIR driver.
 - `docs/trace-schema.md`: the JSON contract shared by the viewer and collectors.
@@ -55,7 +57,7 @@ missing optional context.
   look first?" instead of raw trace browsing.
 - Summary cards and pass cockpit buttons are navigational controls. They encode
   the common debug loop: first signal, adjacent changed pass, slowest pass,
-  copied repro command.
+  suspicious metric anomaly, copied repro command.
 
 ## Invariants
 
@@ -68,6 +70,8 @@ missing optional context.
   remain a replaceable adapter.
 - Impact bars are heuristics derived from metric deltas. They are navigation
   aids, not semantic proof that a pass is important.
+- Metric anomalies are heuristics derived from absolute and relative metric
+  deltas. They are triage hints, not proof that a pass is incorrect.
 - The default selected pass is the verifier failure if present, otherwise the
   first changed pass. This makes sample and real traces open on the likely
   first debug target.

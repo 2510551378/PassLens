@@ -4,9 +4,10 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { collectMlirTrace } from './mlirCollector';
+import { computeTraceAnomalies } from './trace/anomalies';
 import { normalizeTrace } from './trace/schema';
 import { summarizeTraceIssues, validateTrace } from './trace/validation';
-import type { PassTrace, TraceIssue } from './types';
+import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
 
 interface SampleTraceEntry {
   label: string;
@@ -296,6 +297,7 @@ async function pathExists(filePath: string): Promise<boolean> {
 interface LoadedTrace {
   trace: PassTrace;
   issues: TraceIssue[];
+  anomalies: MetricAnomaly[];
 }
 
 async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
@@ -304,7 +306,8 @@ async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
     const trace = normalizeTrace(JSON.parse(content));
     return {
       trace,
-      issues: validateTrace(trace)
+      issues: validateTrace(trace),
+      anomalies: computeTraceAnomalies(trace)
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -315,7 +318,8 @@ async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
 function toLoadedTrace(trace: PassTrace): LoadedTrace {
   return {
     trace,
-    issues: validateTrace(trace)
+    issues: validateTrace(trace),
+    anomalies: computeTraceAnomalies(trace)
   };
 }
 
@@ -359,7 +363,7 @@ function trimOutput(text: string): string | undefined {
 }
 
 function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, sourceUri: vscode.Uri): void {
-  const { trace, issues } = loaded;
+  const { trace, issues, anomalies } = loaded;
   const panel = vscode.window.createWebviewPanel(
     'passLens.trace',
     `Pass Lens: ${trace.input ?? sourceUri.path.split('/').pop() ?? 'trace'}`,
@@ -383,12 +387,19 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     }
   });
 
-  panel.webview.html = getWebviewHtml(trace, issues, sourceUri.fsPath, getNonce());
+  panel.webview.html = getWebviewHtml(trace, issues, anomalies, sourceUri.fsPath, getNonce());
 }
 
-function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: string, nonce: string): string {
+function getWebviewHtml(
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  sourcePath: string,
+  nonce: string
+): string {
   const encodedTrace = JSON.stringify(trace).replace(/</g, '\\u003c');
   const encodedIssues = JSON.stringify(issues).replace(/</g, '\\u003c');
+  const encodedAnomalies = JSON.stringify(anomalies).replace(/</g, '\\u003c');
   const encodedIssueSummary = JSON.stringify(summarizeTraceIssues(issues)).replace(/</g, '\\u003c');
   const encodedSourcePath = JSON.stringify(sourcePath).replace(/</g, '\\u003c');
   const title = escapeHtml(trace.input ?? 'Pass Trace');
@@ -448,7 +459,7 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
 
     .summary {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 8px;
       margin-top: 12px;
     }
@@ -736,6 +747,7 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
 
     .pill.changed { color: var(--changed); border-color: color-mix(in srgb, var(--changed) 45%, var(--border)); }
     .pill.failed { color: var(--failed); border-color: color-mix(in srgb, var(--failed) 45%, var(--border)); }
+    .pill.warning { color: var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground)); }
 
     .action-row {
       display: flex;
@@ -791,6 +803,47 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
       text-overflow: ellipsis;
       white-space: nowrap;
       font-weight: 600;
+    }
+
+    .anomaly-panel {
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground));
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground)) 8%, transparent);
+      padding: 8px 10px;
+      margin-bottom: 14px;
+    }
+
+    .anomaly-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .anomaly-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 8px;
+      align-items: baseline;
+      min-width: 0;
+    }
+
+    .anomaly-severity {
+      color: var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground));
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .anomaly-message {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .anomaly-delta {
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
 
     table.metrics {
@@ -959,6 +1012,7 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
     const vscode = acquireVsCodeApi();
     const trace = ${encodedTrace};
     const traceIssues = ${encodedIssues};
+    const traceAnomalies = ${encodedAnomalies};
     const traceIssueSummary = ${encodedIssueSummary};
     const sourcePath = ${encodedSourcePath};
     let selectedIndex = initialSelectedIndex();
@@ -1076,6 +1130,18 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
       return bestIndex;
     }
 
+    function firstAnomalyIndex() {
+      if (!traceAnomalies.length) {
+        return -1;
+      }
+      const stageIndex = traceAnomalies[0].stageIndex;
+      return trace.stages.findIndex((stage) => stage.index === stageIndex);
+    }
+
+    function anomaliesForStage(stageIndex) {
+      return traceAnomalies.filter((entry) => entry.stageIndex === stageIndex);
+    }
+
     function nextChangedIndex(direction) {
       if (!trace.stages.length) {
         return -1;
@@ -1101,6 +1167,8 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
     function jumpTo(target) {
       if (target === 'first-signal') {
         selectIndex(firstSignalIndex());
+      } else if (target === 'first-anomaly') {
+        selectIndex(firstAnomalyIndex());
       } else if (target === 'slowest') {
         selectIndex(slowestIndex());
       } else if (target === 'first') {
@@ -1131,10 +1199,12 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
         .filter((stage) => typeof stage.durationMs === 'number')
         .sort((a, b) => b.durationMs - a.durationMs)[0];
       const firstChanged = changed[0];
+      const firstAnomaly = traceAnomalies[0];
       document.getElementById('summary').innerHTML =
         summaryCard('Stages', String(trace.stages.length), 'first') +
         summaryCard('Changed', changed.length + ' / ' + trace.stages.length, firstChanged ? 'first-signal' : undefined) +
         summaryCard('First signal', failed ? 'verifier failed at #' + failed.index : firstChanged ? 'first change at #' + firstChanged.index : 'no IR changes', failed || firstChanged ? 'first-signal' : undefined) +
+        summaryCard('Anomalies', traceAnomalies.length ? traceAnomalies.length + ' suspicious metric delta(s)' : 'none', firstAnomaly ? 'first-anomaly' : undefined) +
         summaryCard('Slowest', slowest ? slowest.pass + ' (' + fmtNumber(slowest.durationMs) + ' ms)' : 'not recorded', slowest ? 'slowest' : undefined);
       document.getElementById('stage-count').textContent = trace.stages.length + ' stages';
       document.getElementById('changed-count').textContent = changed.length + ' changed';
@@ -1209,6 +1279,8 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
           const statusClass = failed ? 'failed' : stage.changed ? 'changed' : 'unchanged';
           const statusText = failed ? 'failed' : stage.changed ? 'changed' : 'unchanged';
           const duration = typeof stage.durationMs === 'number' ? fmtNumber(stage.durationMs) + ' ms' : '';
+          const anomalies = anomaliesForStage(stage.index);
+          const anomalyText = anomalies.length ? anomalies.length + ' anomaly' + (anomalies.length === 1 ? '' : 'ies') : '';
           const impact = impactPercent(stage) + '%';
           const accent = stageAccent(stage);
           return '<button class="stage-card' + active + '" data-index="' + idx + '" style="--accent: ' + accent + '; --impact: ' + impact + '">' +
@@ -1220,7 +1292,7 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
             '<div class="stage-line">' +
               '<span></span>' +
               '<span class="scope">' + escapeHtml(stage.scope ?? '') + '</span>' +
-              '<span class="duration">' + escapeHtml(duration) + '</span>' +
+              '<span class="duration">' + escapeHtml(anomalyText || duration) + '</span>' +
             '</div>' +
           '</button>';
         }).join('') +
@@ -1261,6 +1333,7 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
           kv('Duration', typeof stage.durationMs === 'number' ? fmtNumber(stage.durationMs) + ' ms' : 'unknown') +
           kv('Verifier', stage.verifier ?? 'unknown') +
         '</div>' +
+        renderMetricAnomalies(stage.index) +
         '<h2>Metric Delta</h2>' +
         renderMetrics(stage.metricsBefore ?? {}, stage.metricsAfter ?? {}) +
         '<h2>IR Diff</h2>' +
@@ -1273,6 +1346,7 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
       const statusClass = failed ? 'failed' : stage.changed ? 'changed' : '';
       const statusText = failed ? 'verifier failed' : stage.changed ? 'changed IR' : 'no IR change';
       const impact = impactPercent(stage);
+      const anomalyCount = anomaliesForStage(stage.index).length;
       return '<div class="pass-hero" style="--accent: ' + stageAccent(stage) + '">' +
         '<div>' +
           '<h2>' + escapeHtml(stage.pass) + '</h2>' +
@@ -1282,6 +1356,7 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
         '<div class="badges">' +
           '<span class="pill ' + statusClass + '">' + escapeHtml(statusText) + '</span>' +
           '<span class="pill">impact ' + escapeHtml(impact) + '%</span>' +
+          (anomalyCount ? '<span class="pill warning">' + escapeHtml(anomalyCount + ' anomaly' + (anomalyCount === 1 ? '' : 'ies')) + '</span>' : '') +
           '<span class="pill">#' + escapeHtml(stage.index) + '</span>' +
         '</div>' +
       '</div>';
@@ -1311,6 +1386,23 @@ function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: stri
         return '<div class="insight">Main visible metric change: ' + escapeHtml(top.key) + ' ' + sign + escapeHtml(fmtNumber(top.delta)) + '.</div>';
       }
       return '<div class="insight">This pass changed the IR. The diff below shows the recorded before/after text.</div>';
+    }
+
+    function renderMetricAnomalies(stageIndex) {
+      const entries = anomaliesForStage(stageIndex).slice(0, 5);
+      if (!entries.length) {
+        return '';
+      }
+      return '<h2>Metric Anomalies</h2><div class="anomaly-panel"><div class="anomaly-list">' +
+        entries.map((entry) => {
+          const delta = entry.delta > 0 ? '+' + fmtNumber(entry.delta) : String(fmtNumber(entry.delta));
+          return '<div class="anomaly-item">' +
+            '<span class="anomaly-severity">' + escapeHtml(entry.severity) + '</span>' +
+            '<span class="anomaly-message" title="' + escapeHtml(entry.message) + '">' + escapeHtml(entry.message) + '</span>' +
+            '<span class="anomaly-delta">' + escapeHtml(entry.metric + ' ' + delta) + '</span>' +
+          '</div>';
+        }).join('') +
+      '</div></div>';
     }
 
     function kv(label, value) {
