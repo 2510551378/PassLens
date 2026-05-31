@@ -1,8 +1,9 @@
 # Pass Lens
 
-Pass Lens is a VSCode extension for inspecting compiler pass traces. It helps
-compiler developers understand where an IR changes, which pass failed
-verification, and which passes dominate the pipeline timeline.
+Pass Lens is a postmortem debugger for compiler pass pipelines. It helps
+compiler developers identify where an IR first changes, which pass introduced
+invalid IR, which metrics changed abnormally, and which passes dominate the
+pipeline timeline.
 
 ## Features
 
@@ -75,7 +76,18 @@ See `docs/trace-schema.md` for the full viewer contract.
 ```json
 {
   "schemaVersion": 1,
+  "collectorVersion": "0.1.0",
   "tool": "mlir-opt",
+  "compiler": {
+    "name": "mlir-opt",
+    "version": "21.0.0",
+    "gitSha": "..."
+  },
+  "target": {
+    "backend": "mlir",
+    "platform": "host"
+  },
+  "inputHash": "sha256:...",
   "input": "example.mlir",
   "pipeline": "builtin.module(func.func(canonicalize,cse))",
   "command": "mlir-opt example.mlir ...",
@@ -83,7 +95,10 @@ See `docs/trace-schema.md` for the full viewer contract.
     {
       "index": 0,
       "pass": "canonicalize",
+      "argument": "canonicalize",
+      "opName": "func.func",
       "scope": "func.func",
+      "status": "changed",
       "changed": true,
       "durationMs": 1.7,
       "verifier": "ok",
@@ -120,6 +135,14 @@ The helper prints `ENVIRONMENT_MISSING` when the local LLVM/MLIR build
 environment is missing or misconfigured. A direct PowerShell invocation exits
 with code `2` in that case; `npm run` may normalize the process failure.
 Other failures are configure/build failures worth inspecting.
+
+## Roadmap
+
+- Stabilize schema v1 with validation diagnostics.
+- Keep the structured MLIR collector as the primary path and the textual
+  `mlir-opt` dump parser as a fallback.
+- Add external IR artifacts for large traces.
+- Add domain-specific metric examples for downstream MLIR compilers.
 
 ## License
 

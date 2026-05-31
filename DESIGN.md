@@ -26,6 +26,13 @@ iterated independently.
   uses `PassInstrumentation` and emits structured trace JSON directly.
 - `Check MLIR Collector Setup`: invokes the PowerShell build check and routes
   its output to a VSCode output channel.
+
+## Positioning
+
+Pass Lens should be treated as a compiler pass pipeline observability tool, not
+only a trace viewer. The core workflow is postmortem debugging: find the first
+meaningful IR change, first invalid IR, suspicious metric delta, slowest pass,
+and repro command.
 - `sample-traces/mlir-toy.json`: small MLIR-like trace used for smoke testing.
 - `sample-traces/mlir-long-pipeline.json`: long mixed-impact trace for UI
   validation.

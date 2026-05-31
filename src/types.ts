@@ -1,12 +1,38 @@
 export type Metrics = Record<string, number>;
 
+export interface CompilerInfo {
+  name?: string;
+  version?: string;
+  gitSha?: string;
+}
+
+export interface TargetInfo {
+  backend?: string;
+  platform?: string;
+  triple?: string;
+}
+
+export interface StageArtifacts {
+  beforePath?: string;
+  afterPath?: string;
+  diagnosticsPath?: string;
+}
+
 export interface TraceStage {
   index: number;
   pass: string;
+  argument?: string;
+  opName?: string;
+  symbol?: string;
+  nestingDepth?: number;
   scope?: string;
   changed: boolean;
+  status?: string;
   durationMs?: number;
   verifier?: string;
+  diagnostics?: string;
+  location?: string;
+  artifacts?: StageArtifacts;
   metricsBefore?: Metrics;
   metricsAfter?: Metrics;
   irBefore?: string;
@@ -15,6 +41,10 @@ export interface TraceStage {
 
 export interface PassTrace {
   schemaVersion: number;
+  collectorVersion?: string;
+  compiler?: CompilerInfo;
+  target?: TargetInfo;
+  inputHash?: string;
   tool?: string;
   input?: string;
   pipeline?: string;

@@ -4,7 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { collectMlirTrace } from './mlirCollector';
-import type { Metrics, PassTrace, TraceStage } from './types';
+import { normalizeTrace } from './trace/schema';
+import type { PassTrace } from './types';
 
 interface SampleTraceEntry {
   label: string;
@@ -299,74 +300,6 @@ async function readTrace(uri: vscode.Uri): Promise<PassTrace> {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Could not read Pass Lens trace ${uri.fsPath}: ${message}`);
   }
-}
-
-function normalizeTrace(raw: unknown): PassTrace {
-  if (!isRecord(raw)) {
-    throw new Error('Trace root must be a JSON object.');
-  }
-  if (!Array.isArray(raw.stages)) {
-    throw new Error('Trace must contain a stages array.');
-  }
-
-  return {
-    schemaVersion: readNumber(raw.schemaVersion, 1),
-    tool: readString(raw.tool),
-    input: readString(raw.input),
-    pipeline: readString(raw.pipeline),
-    command: readString(raw.command),
-    exitCode: readOptionalNumber(raw.exitCode),
-    diagnostics: readString(raw.diagnostics),
-    stages: raw.stages.map((stage, index) => normalizeStage(stage, index))
-  };
-}
-
-function normalizeStage(raw: unknown, fallbackIndex: number): TraceStage {
-  if (!isRecord(raw)) {
-    throw new Error(`Stage ${fallbackIndex} must be a JSON object.`);
-  }
-
-  const irBefore = readString(raw.irBefore) ?? '';
-  const irAfter = readString(raw.irAfter) ?? '';
-
-  return {
-    index: readNumber(raw.index, fallbackIndex),
-    pass: readString(raw.pass) ?? `pass-${fallbackIndex}`,
-    scope: readString(raw.scope),
-    changed: typeof raw.changed === 'boolean' ? raw.changed : irBefore !== irAfter,
-    durationMs: readOptionalNumber(raw.durationMs),
-    verifier: readString(raw.verifier),
-    metricsBefore: readMetrics(raw.metricsBefore),
-    metricsAfter: readMetrics(raw.metricsAfter),
-    irBefore,
-    irAfter
-  };
-}
-
-function readMetrics(raw: unknown): Metrics | undefined {
-  if (!isRecord(raw)) {
-    return undefined;
-  }
-
-  const metrics: Metrics = {};
-  for (const [key, value] of Object.entries(raw)) {
-    if (typeof value === 'number' && Number.isFinite(value)) {
-      metrics[key] = value;
-    }
-  }
-  return metrics;
-}
-
-function readString(raw: unknown): string | undefined {
-  return typeof raw === 'string' ? raw : undefined;
-}
-
-function readNumber(raw: unknown, fallback: number): number {
-  return typeof raw === 'number' && Number.isFinite(raw) ? raw : fallback;
-}
-
-function readOptionalNumber(raw: unknown): number | undefined {
-  return typeof raw === 'number' && Number.isFinite(raw) ? raw : undefined;
 }
 
 function isRecord(raw: unknown): raw is Record<string, unknown> {
@@ -1027,7 +960,7 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
     }
 
     function initialSelectedIndex() {
-      const failedIndex = trace.stages.findIndex((stage) => String(stage.verifier ?? '').toLowerCase() === 'failed');
+      const failedIndex = trace.stages.findIndex((stage) => isFailedStage(stage));
       if (failedIndex >= 0) {
         return failedIndex;
       }
@@ -1036,7 +969,7 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
     }
 
     function stageAccent(stage) {
-      if (String(stage.verifier ?? '').toLowerCase() === 'failed') {
+      if (isFailedStage(stage)) {
         return 'var(--failed)';
       }
       if (stage.changed) {
@@ -1060,11 +993,17 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
     }
 
     function firstSignalIndex() {
-      const failedIndex = trace.stages.findIndex((stage) => String(stage.verifier ?? '').toLowerCase() === 'failed');
+      const failedIndex = trace.stages.findIndex((stage) => isFailedStage(stage));
       if (failedIndex >= 0) {
         return failedIndex;
       }
       return trace.stages.findIndex((stage) => stage.changed);
+    }
+
+    function isFailedStage(stage) {
+      return stage.status === 'verifier_failed' ||
+        stage.status === 'pass_failed' ||
+        String(stage.verifier ?? '').toLowerCase() === 'failed';
     }
 
     function slowestIndex() {
@@ -1129,7 +1068,7 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
 
     function renderSummary() {
       const changed = trace.stages.filter((stage) => stage.changed);
-      const failed = trace.stages.find((stage) => String(stage.verifier ?? '').toLowerCase() === 'failed');
+      const failed = trace.stages.find((stage) => isFailedStage(stage));
       const slowest = trace.stages
         .filter((stage) => typeof stage.durationMs === 'number')
         .sort((a, b) => b.durationMs - a.durationMs)[0];
@@ -1184,7 +1123,7 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
       timeline.innerHTML = '<div class="stage-list">' +
         visibleStages.map(({ stage, idx }) => {
           const active = idx === selectedIndex ? ' active' : '';
-          const failed = String(stage.verifier ?? '').toLowerCase() === 'failed';
+          const failed = isFailedStage(stage);
           const statusClass = failed ? 'failed' : stage.changed ? 'changed' : 'unchanged';
           const statusText = failed ? 'failed' : stage.changed ? 'changed' : 'unchanged';
           const duration = typeof stage.durationMs === 'number' ? fmtNumber(stage.durationMs) + ' ms' : '';
@@ -1248,7 +1187,7 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
     }
 
     function renderPassHero(stage) {
-      const failed = String(stage.verifier ?? '').toLowerCase() === 'failed';
+      const failed = isFailedStage(stage);
       const statusClass = failed ? 'failed' : stage.changed ? 'changed' : '';
       const statusText = failed ? 'verifier failed' : stage.changed ? 'changed IR' : 'no IR change';
       const impact = impactPercent(stage);
@@ -1277,7 +1216,7 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
     }
 
     function renderInsight(stage) {
-      const failed = String(stage.verifier ?? '').toLowerCase() === 'failed';
+      const failed = isFailedStage(stage);
       if (failed) {
         return '<div class="insight">Verifier failed after this pass. This is the first place to inspect before debugging later changes.</div>';
       }
