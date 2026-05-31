@@ -57,7 +57,7 @@ missing optional context.
   look first?" instead of raw trace browsing.
 - Summary cards and pass cockpit buttons are navigational controls. They encode
   the common debug loop: first signal, adjacent changed pass, slowest pass,
-  suspicious metric anomaly, copied repro command.
+  suspicious metric anomaly, exported repro bundle, copied repro command.
 
 ## Invariants
 
@@ -72,6 +72,8 @@ missing optional context.
   aids, not semantic proof that a pass is important.
 - Metric anomalies are heuristics derived from absolute and relative metric
   deltas. They are triage hints, not proof that a pass is incorrect.
+- Repro bundles are intentionally Markdown instead of a custom archive format
+  for v0.1. They optimize for GitHub issues, PR comments, and human review.
 - The default selected pass is the verifier failure if present, otherwise the
   first changed pass. This makes sample and real traces open on the likely
   first debug target.

@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { collectMlirTrace } from './mlirCollector';
+import { createReproBundle } from './reproBundle';
 import { computeTraceAnomalies } from './trace/anomalies';
 import { normalizeTrace } from './trace/schema';
 import { summarizeTraceIssues, validateTrace } from './trace/validation';
@@ -385,9 +386,45 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     if (message.type === 'openTrace') {
       await vscode.window.showTextDocument(sourceUri, { preview: false });
     }
+    if (message.type === 'exportBundle') {
+      await exportReproBundle(sourceUri, trace, issues, anomalies, message.selectedStageIndex);
+    }
   });
 
   panel.webview.html = getWebviewHtml(trace, issues, anomalies, sourceUri.fsPath, getNonce());
+}
+
+async function exportReproBundle(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+): Promise<void> {
+  const parsed = path.parse(sourceUri.fsPath);
+  const defaultUri = vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-repro.md`));
+  const target = await vscode.window.showSaveDialog({
+    defaultUri,
+    filters: {
+      Markdown: ['md'],
+      'All files': ['*']
+    },
+    saveLabel: 'Export Repro Bundle',
+    title: 'Export Pass Lens repro bundle'
+  });
+  if (!target) {
+    return;
+  }
+
+  const content = createReproBundle(trace, issues, anomalies, {
+    sourcePath: sourceUri.fsPath,
+    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
+  });
+  await fs.writeFile(target.fsPath, content, 'utf8');
+  const open = await vscode.window.showInformationMessage('Pass Lens exported repro bundle.', 'Open');
+  if (open === 'Open') {
+    await vscode.window.showTextDocument(target, { preview: false });
+  }
 }
 
 function getWebviewHtml(
@@ -1189,6 +1226,9 @@ function getWebviewHtml(
         vscode.postMessage({ type: 'copy', text: trace.command });
       } else if (action === 'open-trace') {
         vscode.postMessage({ type: 'openTrace' });
+      } else if (action === 'export-bundle') {
+        const stage = trace.stages[selectedIndex];
+        vscode.postMessage({ type: 'exportBundle', selectedStageIndex: stage?.index });
       }
     }
 
@@ -1368,6 +1408,7 @@ function getWebviewHtml(
         '<button class="action-button" data-action="prev-changed">Prev changed</button>' +
         '<button class="action-button" data-action="next-changed">Next changed</button>' +
         '<button class="action-button" data-action="slowest">Slowest</button>' +
+        '<button class="action-button" data-action="export-bundle">Export repro bundle</button>' +
         '<button class="action-button" data-action="open-trace">Open trace JSON</button>' +
       '</div>';
     }
