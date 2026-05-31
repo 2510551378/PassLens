@@ -33,6 +33,14 @@ Pass Lens should be treated as a compiler pass pipeline observability tool, not
 only a trace viewer. The core workflow is postmortem debugging: find the first
 meaningful IR change, first invalid IR, suspicious metric delta, slowest pass,
 and repro command.
+
+## Validation
+
+Trace validation is intentionally non-blocking. Collectors under development
+often emit partial traces, so Pass Lens should surface quality problems without
+preventing inspection. Errors mean the trace is structurally suspicious;
+warnings identify likely collector or scale issues; info messages point out
+missing optional context.
 - `sample-traces/mlir-toy.json`: small MLIR-like trace used for smoke testing.
 - `sample-traces/mlir-long-pipeline.json`: long mixed-impact trace for UI
   validation.

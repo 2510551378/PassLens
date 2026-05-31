@@ -5,7 +5,8 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { collectMlirTrace } from './mlirCollector';
 import { normalizeTrace } from './trace/schema';
-import type { PassTrace } from './types';
+import { summarizeTraceIssues, validateTrace } from './trace/validation';
+import type { PassTrace, TraceIssue } from './types';
 
 interface SampleTraceEntry {
   label: string;
@@ -47,8 +48,8 @@ export function activate(context: vscode.ExtensionContext): void {
       }
 
       const sampleUri = vscode.Uri.joinPath(context.extensionUri, 'sample-traces', picked.file);
-      const trace = await readTrace(sampleUri);
-      openTracePanel(context, trace, sampleUri);
+      const loaded = await readTrace(sampleUri);
+      openTracePanel(context, loaded, sampleUri);
     }),
     vscode.commands.registerCommand('passLens.openTraceFile', async () => {
       const selected = await vscode.window.showOpenDialog({
@@ -65,8 +66,8 @@ export function activate(context: vscode.ExtensionContext): void {
         return;
       }
 
-      const trace = await readTrace(selected[0]);
-      openTracePanel(context, trace, selected[0]);
+      const loaded = await readTrace(selected[0]);
+      openTracePanel(context, loaded, selected[0]);
     }),
     vscode.commands.registerCommand('passLens.runMlirOptTrace', async () => {
       await runMlirOptTraceCommand(context);
@@ -134,7 +135,7 @@ async function runMlirOptTraceCommand(context: vscode.ExtensionContext): Promise
 
     await fs.writeFile(outputUri.fsPath, `${JSON.stringify(trace, null, 2)}\n`, 'utf8');
     vscode.window.showInformationMessage(`Pass Lens trace saved: ${outputUri.fsPath}`);
-    openTracePanel(context, trace, outputUri);
+    openTracePanel(context, toLoadedTrace(trace), outputUri);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const action = await vscode.window.showErrorMessage(
@@ -206,21 +207,21 @@ async function runStructuredMlirTraceCommand(context: vscode.ExtensionContext): 
     await fs.rm(outputPath, { force: true }).catch(() => undefined);
     if (result.exitCode !== 0) {
       if (await pathExists(traceUri.fsPath)) {
-        const trace = await readTrace(traceUri);
-        trace.command = trace.command ?? command;
-        trace.exitCode = trace.exitCode ?? result.exitCode;
-        trace.diagnostics = trace.diagnostics ?? trimOutput(`${result.stderr}\n${result.stdout}`);
-        openTracePanel(context, trace, traceUri);
+        const loaded = await readTrace(traceUri);
+        loaded.trace.command = loaded.trace.command ?? command;
+        loaded.trace.exitCode = loaded.trace.exitCode ?? result.exitCode;
+        loaded.trace.diagnostics = loaded.trace.diagnostics ?? trimOutput(`${result.stderr}\n${result.stdout}`);
+        openTracePanel(context, toLoadedTrace(loaded.trace), traceUri);
       }
       throw new Error(trimOutput(result.stderr || result.stdout || `collector exited with code ${result.exitCode}`));
     }
 
-    const trace = await readTrace(traceUri);
-    trace.command = trace.command ?? command;
-    trace.exitCode = trace.exitCode ?? result.exitCode;
-    trace.diagnostics = trace.diagnostics ?? trimOutput(result.stderr);
+    const loaded = await readTrace(traceUri);
+    loaded.trace.command = loaded.trace.command ?? command;
+    loaded.trace.exitCode = loaded.trace.exitCode ?? result.exitCode;
+    loaded.trace.diagnostics = loaded.trace.diagnostics ?? trimOutput(result.stderr);
     vscode.window.showInformationMessage(`Pass Lens structured trace saved: ${traceUri.fsPath}`);
-    openTracePanel(context, trace, traceUri);
+    openTracePanel(context, toLoadedTrace(loaded.trace), traceUri);
   } catch (error) {
     await fs.rm(outputPath, { force: true }).catch(() => undefined);
     const message = error instanceof Error ? error.message : String(error);
@@ -292,14 +293,30 @@ async function pathExists(filePath: string): Promise<boolean> {
   }
 }
 
-async function readTrace(uri: vscode.Uri): Promise<PassTrace> {
+interface LoadedTrace {
+  trace: PassTrace;
+  issues: TraceIssue[];
+}
+
+async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
   try {
     const content = await fs.readFile(uri.fsPath, 'utf8');
-    return normalizeTrace(JSON.parse(content));
+    const trace = normalizeTrace(JSON.parse(content));
+    return {
+      trace,
+      issues: validateTrace(trace)
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new Error(`Could not read Pass Lens trace ${uri.fsPath}: ${message}`);
   }
+}
+
+function toLoadedTrace(trace: PassTrace): LoadedTrace {
+  return {
+    trace,
+    issues: validateTrace(trace)
+  };
 }
 
 function isRecord(raw: unknown): raw is Record<string, unknown> {
@@ -341,7 +358,8 @@ function trimOutput(text: string): string | undefined {
   return trimmed.length > 0 ? trimmed.slice(0, 8000) : undefined;
 }
 
-function openTracePanel(context: vscode.ExtensionContext, trace: PassTrace, sourceUri: vscode.Uri): void {
+function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, sourceUri: vscode.Uri): void {
+  const { trace, issues } = loaded;
   const panel = vscode.window.createWebviewPanel(
     'passLens.trace',
     `Pass Lens: ${trace.input ?? sourceUri.path.split('/').pop() ?? 'trace'}`,
@@ -365,11 +383,13 @@ function openTracePanel(context: vscode.ExtensionContext, trace: PassTrace, sour
     }
   });
 
-  panel.webview.html = getWebviewHtml(trace, sourceUri.fsPath, getNonce());
+  panel.webview.html = getWebviewHtml(trace, issues, sourceUri.fsPath, getNonce());
 }
 
-function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): string {
+function getWebviewHtml(trace: PassTrace, issues: TraceIssue[], sourcePath: string, nonce: string): string {
   const encodedTrace = JSON.stringify(trace).replace(/</g, '\\u003c');
+  const encodedIssues = JSON.stringify(issues).replace(/</g, '\\u003c');
+  const encodedIssueSummary = JSON.stringify(summarizeTraceIssues(issues)).replace(/</g, '\\u003c');
   const encodedSourcePath = JSON.stringify(sourcePath).replace(/</g, '\\u003c');
   const title = escapeHtml(trace.input ?? 'Pass Trace');
 
@@ -467,6 +487,40 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
       white-space: nowrap;
       font-size: 17px;
       font-weight: 600;
+    }
+
+    .issue-panel {
+      display: none;
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground));
+      border-radius: 6px;
+      background: color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground)) 8%, transparent);
+      padding: 9px 10px;
+    }
+
+    .issue-panel.visible {
+      display: block;
+    }
+
+    .issue-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .issue-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+    }
+
+    .issue-list li {
+      margin: 3px 0;
+    }
+
+    .issue-severity {
+      font-weight: 600;
+      color: var(--vscode-foreground);
     }
 
     main {
@@ -884,6 +938,7 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
       <span id="source"></span>
     </div>
     <div id="summary" class="summary"></div>
+    <div id="issue-panel" class="issue-panel"></div>
   </header>
   <main>
     <aside>
@@ -903,6 +958,8 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
   <script nonce="${nonce}">
     const vscode = acquireVsCodeApi();
     const trace = ${encodedTrace};
+    const traceIssues = ${encodedIssues};
+    const traceIssueSummary = ${encodedIssueSummary};
     const sourcePath = ${encodedSourcePath};
     let selectedIndex = initialSelectedIndex();
     let filterText = '';
@@ -918,6 +975,7 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
     document.getElementById('pipeline').textContent = trace.pipeline ? 'pipeline: ' + trace.pipeline : 'pipeline: unknown';
     document.getElementById('source').textContent = 'trace: ' + sourcePath;
     renderSummary();
+    renderIssuePanel();
 
     document.getElementById('summary').addEventListener('click', (event) => {
       const card = event.target.closest('[data-jump]');
@@ -1080,6 +1138,30 @@ function getWebviewHtml(trace: PassTrace, sourcePath: string, nonce: string): st
         summaryCard('Slowest', slowest ? slowest.pass + ' (' + fmtNumber(slowest.durationMs) + ' ms)' : 'not recorded', slowest ? 'slowest' : undefined);
       document.getElementById('stage-count').textContent = trace.stages.length + ' stages';
       document.getElementById('changed-count').textContent = changed.length + ' changed';
+    }
+
+    function renderIssuePanel() {
+      const panel = document.getElementById('issue-panel');
+      if (!traceIssues.length) {
+        panel.classList.remove('visible');
+        panel.innerHTML = '';
+        return;
+      }
+      const visibleIssues = traceIssues.slice(0, 6);
+      const more = traceIssues.length > visibleIssues.length
+        ? '<li>' + escapeHtml(traceIssues.length - visibleIssues.length) + ' more issue(s) omitted.</li>'
+        : '';
+      panel.classList.add('visible');
+      panel.innerHTML =
+        '<div class="issue-title">Trace validation: ' + escapeHtml(traceIssueSummary) + '</div>' +
+        '<ul class="issue-list">' +
+        visibleIssues.map((entry) => {
+          const stage = typeof entry.stageIndex === 'number' ? ' stage #' + entry.stageIndex + ':' : '';
+          return '<li><span class="issue-severity">' + escapeHtml(entry.severity) + '</span>' +
+            escapeHtml(stage + ' ' + entry.message) + '</li>';
+        }).join('') +
+        more +
+        '</ul>';
     }
 
     function summaryCard(label, value, jump) {

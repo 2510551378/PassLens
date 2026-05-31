@@ -53,3 +53,12 @@ export interface PassTrace {
   diagnostics?: string;
   stages: TraceStage[];
 }
+
+export type TraceIssueSeverity = 'error' | 'warning' | 'info';
+
+export interface TraceIssue {
+  severity: TraceIssueSeverity;
+  message: string;
+  stageIndex?: number;
+  field?: string;
+}

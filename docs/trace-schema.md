@@ -96,3 +96,20 @@ instrumentation callbacks, or temporary wrappers.
 
 Collectors may omit expensive fields such as IR snapshots. The viewer should
 degrade gracefully when fields are absent.
+
+## Validation
+
+Pass Lens treats validation as non-blocking diagnostics. A trace can still open
+when validation finds issues, but the viewer will show a warning panel.
+
+Current validation checks include:
+
+- unsupported `schemaVersion`;
+- empty `stages`;
+- unstable or missing pass names;
+- duplicate or non-position stage indexes;
+- unknown `status` values;
+- negative durations;
+- non-finite metrics;
+- very large inline IR snapshots that should use `artifacts`;
+- stages with neither inline IR nor artifact references.

@@ -17,6 +17,7 @@ pipeline timeline.
 - Compare metric deltas before and after each pass.
 - View side-by-side IR diffs.
 - Copy the generated repro command from the viewer.
+- Show non-blocking trace validation diagnostics for suspicious traces.
 - Use a sample gallery with toy, long-pipeline, and verifier-failure traces.
 
 ## Development
