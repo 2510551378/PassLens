@@ -19,6 +19,11 @@ test('normalizeTrace fills defaults and preserves extension metadata', () => {
       backend: 'ascendc',
       platform: 'ascend-910b2'
     },
+    capture: {
+      ir: 'omitted',
+      metrics: true,
+      timing: true
+    },
     inputHash: 'sha256:deadbeef',
     stages: []
   });
@@ -33,6 +38,11 @@ test('normalizeTrace fills defaults and preserves extension metadata', () => {
   assert.deepEqual(trace.target, {
     backend: 'ascendc',
     platform: 'ascend-910b2'
+  });
+  assert.deepEqual(trace.capture, {
+    ir: 'omitted',
+    metrics: true,
+    timing: true
   });
   assert.equal(trace.inputHash, 'sha256:deadbeef');
 });

@@ -15,6 +15,8 @@ class PassManager;
 
 namespace passlens {
 
+inline constexpr const char *kPassLensCollectorVersion = "0.1.0";
+
 struct PassLensOptions {
   std::string outputPath;
   std::string tool = "pass-lens-mlir";
@@ -45,4 +47,3 @@ void addPassLensInstrumentation(mlir::PassManager &pm,
 } // namespace passlens
 
 #endif // PASS_LENS_INSTRUMENTATION_H
-

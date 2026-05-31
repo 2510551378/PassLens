@@ -41,6 +41,27 @@ test('validateTrace warns about large inline IR snapshots', () => {
   assert.ok(issues.some((entry) => entry.message.includes('Prefer artifacts.beforePath/afterPath')));
 });
 
+test('validateTrace does not report missing IR for omitted IR capture mode', () => {
+  const trace = normalizeTrace({
+    capture: {
+      ir: 'omitted',
+      metrics: true,
+      timing: true
+    },
+    stages: [
+      {
+        pass: 'metrics-only',
+        metricsBefore: { ops: 4 },
+        metricsAfter: { ops: 4 }
+      }
+    ]
+  });
+  const issues = validateTrace(trace);
+
+  assert.ok(!issues.some((entry) => entry.message.includes('no before IR snapshot')));
+  assert.ok(!issues.some((entry) => entry.message.includes('no after IR snapshot')));
+});
+
 test('summarizeTraceIssues creates compact counts', () => {
   const summary = summarizeTraceIssues([
     { severity: 'error', message: 'bad' },

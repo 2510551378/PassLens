@@ -1,6 +1,7 @@
 #include "PassLens/PassLensInstrumentation.h"
 
 #include "mlir/IR/BuiltinAttributes.h"
+#include "mlir/IR/Location.h"
 #include "mlir/IR/Operation.h"
 #include "mlir/IR/OperationSupport.h"
 #include "mlir/IR/SymbolTable.h"
@@ -34,7 +35,11 @@ struct Metrics {
 struct ActivePass {
   int64_t index = 0;
   std::string passName;
+  std::string argument;
+  std::string opName;
+  std::string symbol;
   std::string scope;
+  std::string location;
   std::string irBefore;
   Metrics metricsBefore;
   Clock::time_point startedAt;
@@ -43,10 +48,15 @@ struct ActivePass {
 struct Stage {
   int64_t index = 0;
   std::string passName;
+  std::string argument;
+  std::string opName;
+  std::string symbol;
   std::string scope;
+  std::string status = "ok";
   bool changed = false;
   double durationMs = 0.0;
   std::string verifier = "ok";
+  std::string location;
   Metrics metricsBefore;
   Metrics metricsAfter;
   std::string irBefore;
@@ -152,9 +162,34 @@ std::string getScope(mlir::Operation *op) {
   return scope;
 }
 
+std::string getSymbol(mlir::Operation *op) {
+  if (auto symbolName = mlir::SymbolTable::getSymbolName(op)) {
+    std::string symbol = "@";
+    symbol += symbolName.getValue().str();
+    return symbol;
+  }
+  return "";
+}
+
+std::string getOperationName(mlir::Operation *op) {
+  return op->getName().getStringRef().str();
+}
+
+std::string getLocation(mlir::Operation *op) {
+  std::string text;
+  llvm::raw_string_ostream os(text);
+  op->getLoc().print(os);
+  return os.str();
+}
+
 std::string getPassName(mlir::Pass *pass) {
   llvm::StringRef name = pass->getName();
   return name.empty() ? "<anonymous-pass>" : name.str();
+}
+
+std::string getPassArgument(mlir::Pass *pass) {
+  llvm::StringRef argument = pass->getArgument();
+  return argument.empty() ? getPassName(pass) : argument.str();
 }
 
 void writeMetrics(llvm::raw_ostream &os, const Metrics &metrics,
@@ -176,11 +211,17 @@ void writeStage(llvm::raw_ostream &os, const Stage &stage,
   os << pad << "{\n";
   os << pad << "  \"index\": " << stage.index << ",\n";
   os << pad << "  \"pass\": " << jsonString(stage.passName) << ",\n";
+  os << pad << "  \"argument\": " << jsonString(stage.argument) << ",\n";
+  os << pad << "  \"opName\": " << jsonString(stage.opName) << ",\n";
+  if (!stage.symbol.empty())
+    os << pad << "  \"symbol\": " << jsonString(stage.symbol) << ",\n";
   os << pad << "  \"scope\": " << jsonString(stage.scope) << ",\n";
+  os << pad << "  \"status\": " << jsonString(stage.status) << ",\n";
   os << pad << "  \"changed\": " << (stage.changed ? "true" : "false")
      << ",\n";
   os << pad << "  \"durationMs\": " << stage.durationMs << ",\n";
   os << pad << "  \"verifier\": " << jsonString(stage.verifier) << ",\n";
+  os << pad << "  \"location\": " << jsonString(stage.location) << ",\n";
   os << pad << "  \"metricsBefore\": ";
   writeMetrics(os, stage.metricsBefore, indent + 2);
   os << ",\n";
@@ -227,7 +268,11 @@ void PassLensInstrumentation::runBeforePass(mlir::Pass *pass,
   ActivePass active;
   active.index = impl->nextIndex++;
   active.passName = getPassName(pass);
+  active.argument = getPassArgument(pass);
+  active.opName = getOperationName(op);
+  active.symbol = getSymbol(op);
   active.scope = getScope(op);
+  active.location = getLocation(op);
   active.irBefore = ir;
   active.metricsBefore = collectMetrics(op, ir);
   active.startedAt = Clock::now();
@@ -246,14 +291,19 @@ void PassLensInstrumentation::runAfterPass(mlir::Pass *pass,
   Stage stage;
   stage.index = it->second.index;
   stage.passName = it->second.passName;
+  stage.argument = it->second.argument;
+  stage.opName = it->second.opName;
+  stage.symbol = it->second.symbol;
   stage.scope = it->second.scope;
   stage.durationMs = elapsedMs(it->second.startedAt);
   stage.verifier = "ok";
+  stage.location = it->second.location;
   stage.metricsBefore = std::move(it->second.metricsBefore);
   stage.metricsAfter = collectMetrics(op, irAfter);
   stage.irBefore = std::move(it->second.irBefore);
   stage.irAfter = std::move(irAfter);
   stage.changed = stage.irBefore != stage.irAfter;
+  stage.status = stage.changed ? "changed" : "ok";
   impl->stages.push_back(std::move(stage));
   impl->active.erase(it);
 }
@@ -270,9 +320,14 @@ void PassLensInstrumentation::runAfterPassFailed(mlir::Pass *pass,
   Stage stage;
   stage.index = it->second.index;
   stage.passName = it->second.passName;
+  stage.argument = it->second.argument;
+  stage.opName = it->second.opName;
+  stage.symbol = it->second.symbol;
   stage.scope = it->second.scope;
   stage.durationMs = elapsedMs(it->second.startedAt);
+  stage.status = "pass_failed";
   stage.verifier = "failed";
+  stage.location = it->second.location;
   stage.metricsBefore = std::move(it->second.metricsBefore);
   stage.metricsAfter = collectMetrics(op, irAfter);
   stage.irBefore = std::move(it->second.irBefore);
@@ -299,7 +354,15 @@ void PassLensInstrumentation::writeTrace() {
 
   os << "{\n";
   os << "  \"schemaVersion\": 1,\n";
+  os << "  \"collectorVersion\": "
+     << jsonString(kPassLensCollectorVersion) << ",\n";
   os << "  \"tool\": " << jsonString(impl->options.tool) << ",\n";
+  os << "  \"capture\": {\n";
+  os << "    \"ir\": "
+     << jsonString(impl->options.includeIr ? "inline" : "omitted") << ",\n";
+  os << "    \"metrics\": true,\n";
+  os << "    \"timing\": true\n";
+  os << "  },\n";
   if (!impl->options.input.empty())
     os << "  \"input\": " << jsonString(impl->options.input) << ",\n";
   if (!impl->options.pipeline.empty())

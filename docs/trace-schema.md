@@ -18,6 +18,11 @@ instrumentation callbacks, or temporary wrappers.
     "platform": "ascend-910b2"
   },
   "inputHash": "sha256:...",
+  "capture": {
+    "ir": "inline",
+    "metrics": true,
+    "timing": true
+  },
   "tool": "mlir-opt",
   "input": "input.mlir",
   "pipeline": "builtin.module(func.func(canonicalize,cse))",
@@ -67,6 +72,9 @@ instrumentation callbacks, or temporary wrappers.
 - `compiler`: compiler binary name, version, and source revision when known.
 - `target`: backend/platform/triple metadata for downstream compiler pipelines.
 - `inputHash`: stable hash of the input module or source.
+- `capture`: trace-level capture mode. `ir` is `inline`, `artifact`, or
+  `omitted`; `metrics` and `timing` describe whether those signals are
+  intentionally recorded.
 - `tool`: collector or driver name.
 - `input`: user-facing input name.
 - `pipeline`: pass pipeline string when available.
@@ -112,4 +120,5 @@ Current validation checks include:
 - negative durations;
 - non-finite metrics;
 - very large inline IR snapshots that should use `artifacts`;
-- stages with neither inline IR nor artifact references.
+- stages with neither inline IR nor artifact references, unless
+  `capture.ir = "omitted"`.

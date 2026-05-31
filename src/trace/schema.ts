@@ -1,4 +1,4 @@
-import type { CompilerInfo, Metrics, PassTrace, StageArtifacts, TargetInfo, TraceStage } from '../types';
+import type { CaptureInfo, CompilerInfo, Metrics, PassTrace, StageArtifacts, TargetInfo, TraceStage } from '../types';
 
 export function normalizeTrace(raw: unknown): PassTrace {
   if (!isRecord(raw)) {
@@ -14,6 +14,7 @@ export function normalizeTrace(raw: unknown): PassTrace {
     compiler: readCompilerInfo(raw.compiler),
     target: readTargetInfo(raw.target),
     inputHash: readString(raw.inputHash),
+    capture: readCaptureInfo(raw.capture),
     tool: readString(raw.tool),
     input: readString(raw.input),
     pipeline: readString(raw.pipeline),
@@ -115,6 +116,24 @@ function readTargetInfo(raw: unknown): TargetInfo | undefined {
     platform: readString(raw.platform),
     triple: readString(raw.triple)
   });
+}
+
+function readCaptureInfo(raw: unknown): CaptureInfo | undefined {
+  if (!isRecord(raw)) {
+    return undefined;
+  }
+  const ir = readString(raw.ir);
+  const capture: CaptureInfo = {};
+  if (ir === 'inline' || ir === 'artifact' || ir === 'omitted') {
+    capture.ir = ir;
+  }
+  if (typeof raw.metrics === 'boolean') {
+    capture.metrics = raw.metrics;
+  }
+  if (typeof raw.timing === 'boolean') {
+    capture.timing = raw.timing;
+  }
+  return Object.keys(capture).length > 0 ? capture : undefined;
 }
 
 function readArtifacts(raw: unknown): StageArtifacts | undefined {

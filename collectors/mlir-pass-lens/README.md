@@ -5,6 +5,10 @@ MLIR `PassInstrumentation` implementation that records pass-before/pass-after
 IR snapshots, coarse metrics, duration, and verifier failure status into the
 same JSON schema consumed by the VSCode extension.
 
+The collector emits the v1 schema fields that the viewer relies on for
+postmortem debugging, including `collectorVersion`, `capture`, `status`,
+`argument`, `opName`, `symbol`, and `location`.
+
 ## Important Boundary
 
 MLIR pass plugins register passes. They do not automatically inject
@@ -66,6 +70,9 @@ Open `input.pass-lens.json` with `Pass Lens: Open Trace File`.
 
 - The scaffold is meant to be integrated into a custom MLIR driver first.
 - It records operation text snapshots, so traces can be large.
+- Use `--pass-lens-no-ir` for metrics/timing-only traces. The collector marks
+  these traces with `capture.ir = "omitted"` so the viewer does not report
+  missing IR snapshots for every stage.
 - For deterministic stage ordering, start with MLIR threading disabled in the
   driver while validating the integration.
 - The metrics are intentionally simple: non-empty line count, total operation

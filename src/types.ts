@@ -12,6 +12,12 @@ export interface TargetInfo {
   triple?: string;
 }
 
+export interface CaptureInfo {
+  ir?: 'inline' | 'artifact' | 'omitted';
+  metrics?: boolean;
+  timing?: boolean;
+}
+
 export interface StageArtifacts {
   beforePath?: string;
   afterPath?: string;
@@ -45,6 +51,7 @@ export interface PassTrace {
   compiler?: CompilerInfo;
   target?: TargetInfo;
   inputHash?: string;
+  capture?: CaptureInfo;
   tool?: string;
   input?: string;
   pipeline?: string;

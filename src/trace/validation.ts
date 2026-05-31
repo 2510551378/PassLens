@@ -17,7 +17,7 @@ export function validateTrace(trace: PassTrace): TraceIssue[] {
 
   const seenIndexes = new Set<number>();
   for (const [position, stage] of trace.stages.entries()) {
-    validateStage(stage, position, seenIndexes, issues);
+    validateStage(stage, position, trace.capture?.ir, seenIndexes, issues);
   }
 
   return issues;
@@ -40,7 +40,13 @@ export function summarizeTraceIssues(issues: TraceIssue[]): string {
   return parts.length > 0 ? parts.join(', ') : 'no issues';
 }
 
-function validateStage(stage: TraceStage, position: number, seenIndexes: Set<number>, issues: TraceIssue[]): void {
+function validateStage(
+  stage: TraceStage,
+  position: number,
+  captureIr: string | undefined,
+  seenIndexes: Set<number>,
+  issues: TraceIssue[]
+): void {
   if (!stage.pass || stage.pass.startsWith('pass-')) {
     issues.push(issue('warning', `Stage ${position} does not provide a stable pass name.`, position, 'pass'));
   }
@@ -75,10 +81,10 @@ function validateStage(stage: TraceStage, position: number, seenIndexes: Set<num
     ));
   }
 
-  if (!stage.irBefore && stage.artifacts?.beforePath === undefined) {
+  if (captureIr !== 'omitted' && !stage.irBefore && stage.artifacts?.beforePath === undefined) {
     issues.push(issue('info', 'Stage has no before IR snapshot or before artifact.', position, 'irBefore'));
   }
-  if (!stage.irAfter && stage.artifacts?.afterPath === undefined) {
+  if (captureIr !== 'omitted' && !stage.irAfter && stage.artifacts?.afterPath === undefined) {
     issues.push(issue('info', 'Stage has no after IR snapshot or after artifact.', position, 'irAfter'));
   }
 }
