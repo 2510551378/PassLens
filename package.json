@@ -1,0 +1,102 @@
+{
+  "name": "pass-lens",
+  "displayName": "Pass Lens",
+  "description": "Inspect compiler pass timelines, metric deltas, and IR diffs from structured pass traces.",
+  "version": "0.0.1",
+  "publisher": "2510551378",
+  "author": "2510551378",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/2510551378/PassLens.git"
+  },
+  "bugs": {
+    "url": "https://github.com/2510551378/PassLens/issues"
+  },
+  "homepage": "https://github.com/2510551378/PassLens#readme",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:passLens.openTraceFile",
+    "onCommand:passLens.openSampleTrace",
+    "onCommand:passLens.runMlirOptTrace",
+    "onCommand:passLens.runStructuredMlirTrace",
+    "onCommand:passLens.checkMlirCollectorSetup"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "passLens.openTraceFile",
+        "title": "Pass Lens: Open Trace File"
+      },
+      {
+        "command": "passLens.openSampleTrace",
+        "title": "Pass Lens: Open Sample Trace"
+      },
+      {
+        "command": "passLens.runMlirOptTrace",
+        "title": "Pass Lens: Run mlir-opt Trace"
+      },
+      {
+        "command": "passLens.runStructuredMlirTrace",
+        "title": "Pass Lens: Run Structured MLIR Trace"
+      },
+      {
+        "command": "passLens.checkMlirCollectorSetup",
+        "title": "Pass Lens: Check MLIR Collector Setup"
+      }
+    ],
+    "configuration": {
+      "title": "Pass Lens",
+      "properties": {
+        "passLens.mlirOptPath": {
+          "type": "string",
+          "default": "mlir-opt",
+          "description": "Path to the mlir-opt executable used by Pass Lens: Run mlir-opt Trace."
+        },
+        "passLens.mlirDriverPath": {
+          "type": "string",
+          "default": "pass-lens-mlir-opt",
+          "description": "Path to the structured pass-lens-mlir-opt collector driver."
+        }
+      }
+    },
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "passLens.openTraceFile"
+        },
+        {
+          "command": "passLens.openSampleTrace"
+        },
+        {
+          "command": "passLens.runMlirOptTrace"
+        },
+        {
+          "command": "passLens.runStructuredMlirTrace"
+        },
+        {
+          "command": "passLens.checkMlirCollectorSetup"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "check:mlir-collector": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-mlir-collector.ps1",
+    "package": "vsce package --allow-missing-repository --skip-license",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.9.1",
+    "@types/node": "^24.0.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.9.0"
+  }
+}

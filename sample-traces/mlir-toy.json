@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "tool": "mlir-opt",
+  "input": "toy.mlir",
+  "pipeline": "builtin.module(func.func(canonicalize,cse),convert-func-to-llvm)",
+  "command": "mlir-opt toy.mlir --pass-pipeline=builtin.module(func.func(canonicalize,cse),convert-func-to-llvm) --mlir-disable-threading --mlir-print-ir-before-all --mlir-print-ir-after-all --verify-each",
+  "exitCode": 0,
+  "stages": [
+    {
+      "index": 0,
+      "pass": "canonicalize",
+      "scope": "func.func @main",
+      "changed": true,
+      "durationMs": 1.24,
+      "verifier": "ok",
+      "metricsBefore": {
+        "ops": 12,
+        "arith.constant": 3,
+        "arith.addi": 2,
+        "func.return": 1
+      },
+      "metricsAfter": {
+        "ops": 10,
+        "arith.constant": 2,
+        "arith.addi": 1,
+        "func.return": 1
+      },
+      "irBefore": "module {\n  func.func @main(%arg0: i32) -> i32 {\n    %c0 = arith.constant 0 : i32\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c0 : i32\n    %1 = arith.addi %0, %c1 : i32\n    return %1 : i32\n  }\n}",
+      "irAfter": "module {\n  func.func @main(%arg0: i32) -> i32 {\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c1 : i32\n    return %0 : i32\n  }\n}"
+    },
+    {
+      "index": 1,
+      "pass": "cse",
+      "scope": "builtin.module",
+      "changed": false,
+      "durationMs": 0.41,
+      "verifier": "ok",
+      "metricsBefore": {
+        "ops": 10,
+        "arith.constant": 2,
+        "arith.addi": 1,
+        "func.return": 1
+      },
+      "metricsAfter": {
+        "ops": 10,
+        "arith.constant": 2,
+        "arith.addi": 1,
+        "func.return": 1
+      },
+      "irBefore": "module {\n  func.func @main(%arg0: i32) -> i32 {\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c1 : i32\n    return %0 : i32\n  }\n}",
+      "irAfter": "module {\n  func.func @main(%arg0: i32) -> i32 {\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c1 : i32\n    return %0 : i32\n  }\n}"
+    },
+    {
+      "index": 2,
+      "pass": "convert-func-to-llvm",
+      "scope": "builtin.module",
+      "changed": true,
+      "durationMs": 3.88,
+      "verifier": "ok",
+      "metricsBefore": {
+        "ops": 10,
+        "func.func": 1,
+        "func.return": 1,
+        "llvm.func": 0
+      },
+      "metricsAfter": {
+        "ops": 11,
+        "func.func": 0,
+        "func.return": 0,
+        "llvm.func": 1,
+        "llvm.return": 1
+      },
+      "irBefore": "module {\n  func.func @main(%arg0: i32) -> i32 {\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c1 : i32\n    return %0 : i32\n  }\n}",
+      "irAfter": "module {\n  llvm.func @main(%arg0: i32) -> i32 {\n    %0 = llvm.mlir.constant(1 : i32) : i32\n    %1 = llvm.add %arg0, %0 : i32\n    llvm.return %1 : i32\n  }\n}"
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "tool": "mlir-opt",
+  "input": "broken-lowering.mlir",
+  "pipeline": "builtin.module(func.func(canonicalize,cse),convert-scf-to-cf,convert-func-to-llvm,reconcile-unrealized-casts)",
+  "command": "mlir-opt broken-lowering.mlir --pass-pipeline=builtin.module(func.func(canonicalize,cse),convert-scf-to-cf,convert-func-to-llvm,reconcile-unrealized-casts) --verify-each",
+  "exitCode": 1,
+  "diagnostics": "broken-lowering.mlir:7:12: error: failed to legalize operation 'func.return' that was explicitly marked illegal\nnote: verifier failed after convert-func-to-llvm",
+  "stages": [
+    {
+      "index": 0,
+      "pass": "canonicalize",
+      "scope": "func.func @kernel",
+      "changed": true,
+      "durationMs": 0.82,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 10,
+        "ops": 9,
+        "arith.constant": 3,
+        "arith.addi": 2,
+        "func.return": 1
+      },
+      "metricsAfter": {
+        "lines": 8,
+        "ops": 7,
+        "arith.constant": 2,
+        "arith.addi": 1,
+        "func.return": 1
+      },
+      "irBefore": "module {\n  func.func @kernel(%arg0: i32) -> i32 {\n    %c0 = arith.constant 0 : i32\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c0 : i32\n    %1 = arith.addi %0, %c1 : i32\n    return %1 : i32\n  }\n}",
+      "irAfter": "module {\n  func.func @kernel(%arg0: i32) -> i32 {\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c1 : i32\n    return %0 : i32\n  }\n}"
+    },
+    {
+      "index": 1,
+      "pass": "cse",
+      "scope": "builtin.module",
+      "changed": false,
+      "durationMs": 0.31,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 8,
+        "ops": 7,
+        "arith.constant": 2,
+        "arith.addi": 1,
+        "func.return": 1
+      },
+      "metricsAfter": {
+        "lines": 8,
+        "ops": 7,
+        "arith.constant": 2,
+        "arith.addi": 1,
+        "func.return": 1
+      },
+      "irBefore": "module {\n  func.func @kernel(%arg0: i32) -> i32 {\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c1 : i32\n    return %0 : i32\n  }\n}",
+      "irAfter": "module {\n  func.func @kernel(%arg0: i32) -> i32 {\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c1 : i32\n    return %0 : i32\n  }\n}"
+    },
+    {
+      "index": 2,
+      "pass": "convert-scf-to-cf",
+      "scope": "builtin.module",
+      "changed": false,
+      "durationMs": 0.57,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 8,
+        "ops": 7,
+        "func.return": 1
+      },
+      "metricsAfter": {
+        "lines": 8,
+        "ops": 7,
+        "func.return": 1
+      },
+      "irBefore": "module {\n  func.func @kernel(%arg0: i32) -> i32 {\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c1 : i32\n    return %0 : i32\n  }\n}",
+      "irAfter": "module {\n  func.func @kernel(%arg0: i32) -> i32 {\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c1 : i32\n    return %0 : i32\n  }\n}"
+    },
+    {
+      "index": 3,
+      "pass": "convert-func-to-llvm",
+      "scope": "builtin.module",
+      "changed": true,
+      "durationMs": 2.94,
+      "verifier": "failed",
+      "metricsBefore": {
+        "lines": 8,
+        "ops": 7,
+        "func.func": 1,
+        "func.return": 1,
+        "llvm.func": 0
+      },
+      "metricsAfter": {
+        "lines": 8,
+        "ops": 8,
+        "func.func": 0,
+        "func.return": 1,
+        "llvm.func": 1
+      },
+      "irBefore": "module {\n  func.func @kernel(%arg0: i32) -> i32 {\n    %c1 = arith.constant 1 : i32\n    %0 = arith.addi %arg0, %c1 : i32\n    return %0 : i32\n  }\n}",
+      "irAfter": "module {\n  llvm.func @kernel(%arg0: i32) -> i32 {\n    %0 = llvm.mlir.constant(1 : i32) : i32\n    %1 = llvm.add %arg0, %0 : i32\n    func.return %1 : i32\n  }\n}"
+    }
+  ]
+}

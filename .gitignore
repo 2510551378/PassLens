@@ -1,0 +1,8 @@
+node_modules/
+out/
+build/
+*.vsix
+*.pass-lens.json
+*.log
+.DS_Store
+Thumbs.db

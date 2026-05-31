@@ -1,0 +1,312 @@
+{
+  "schemaVersion": 1,
+  "tool": "mlir-opt",
+  "input": "long-pipeline.mlir",
+  "pipeline": "builtin.module(symbol-dce,func.func(canonicalize,cse,licm),convert-linalg-to-loops,lower-affine,convert-scf-to-cf,convert-arith-to-llvm,convert-func-to-llvm,reconcile-unrealized-casts)",
+  "command": "mlir-opt long-pipeline.mlir --pass-pipeline=builtin.module(symbol-dce,func.func(canonicalize,cse,licm),convert-linalg-to-loops,lower-affine,convert-scf-to-cf,convert-arith-to-llvm,convert-func-to-llvm,reconcile-unrealized-casts) --mlir-disable-threading --mlir-print-ir-before-all --mlir-print-ir-after-all --verify-each",
+  "exitCode": 0,
+  "stages": [
+    {
+      "index": 0,
+      "pass": "symbol-dce",
+      "scope": "builtin.module",
+      "changed": true,
+      "durationMs": 0.91,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 42,
+        "ops": 38,
+        "func.func": 4,
+        "memref.alloc": 3
+      },
+      "metricsAfter": {
+        "lines": 35,
+        "ops": 31,
+        "func.func": 3,
+        "memref.alloc": 3
+      },
+      "irBefore": "module {\n  func.func private @unused(%arg0: memref<16xf32>)\n  func.func @init(%arg0: memref<16xf32>) { return }\n  func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) { return }\n  func.func @main() { return }\n}",
+      "irAfter": "module {\n  func.func @init(%arg0: memref<16xf32>) { return }\n  func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) { return }\n  func.func @main() { return }\n}"
+    },
+    {
+      "index": 1,
+      "pass": "canonicalize",
+      "scope": "func.func @kernel",
+      "changed": true,
+      "durationMs": 1.36,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 35,
+        "ops": 31,
+        "arith.constant": 8,
+        "arith.addi": 4
+      },
+      "metricsAfter": {
+        "lines": 31,
+        "ops": 27,
+        "arith.constant": 5,
+        "arith.addi": 2
+      },
+      "irBefore": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c0 = arith.constant 0 : index\n  %c1 = arith.constant 1 : index\n  %0 = arith.addi %c0, %c1 : index\n  linalg.fill ins(%c0 : index) outs(%arg0 : memref<16xf32>)\n  return\n}",
+      "irAfter": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c1 = arith.constant 1 : index\n  linalg.fill ins(%c1 : index) outs(%arg0 : memref<16xf32>)\n  return\n}"
+    },
+    {
+      "index": 2,
+      "pass": "cse",
+      "scope": "func.func @kernel",
+      "changed": true,
+      "durationMs": 0.66,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 31,
+        "ops": 27,
+        "arith.constant": 5,
+        "linalg.fill": 2
+      },
+      "metricsAfter": {
+        "lines": 29,
+        "ops": 25,
+        "arith.constant": 3,
+        "linalg.fill": 2
+      },
+      "irBefore": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c1 = arith.constant 1 : index\n  %c1_0 = arith.constant 1 : index\n  linalg.fill ins(%c1 : index) outs(%arg0 : memref<16xf32>)\n  linalg.fill ins(%c1_0 : index) outs(%arg1 : memref<16xf32>)\n  return\n}",
+      "irAfter": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c1 = arith.constant 1 : index\n  linalg.fill ins(%c1 : index) outs(%arg0 : memref<16xf32>)\n  linalg.fill ins(%c1 : index) outs(%arg1 : memref<16xf32>)\n  return\n}"
+    },
+    {
+      "index": 3,
+      "pass": "licm",
+      "scope": "func.func @kernel",
+      "changed": false,
+      "durationMs": 0.48,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 29,
+        "ops": 25,
+        "scf.for": 0
+      },
+      "metricsAfter": {
+        "lines": 29,
+        "ops": 25,
+        "scf.for": 0
+      },
+      "irBefore": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c1 = arith.constant 1 : index\n  linalg.fill ins(%c1 : index) outs(%arg0 : memref<16xf32>)\n  linalg.fill ins(%c1 : index) outs(%arg1 : memref<16xf32>)\n  return\n}",
+      "irAfter": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c1 = arith.constant 1 : index\n  linalg.fill ins(%c1 : index) outs(%arg0 : memref<16xf32>)\n  linalg.fill ins(%c1 : index) outs(%arg1 : memref<16xf32>)\n  return\n}"
+    },
+    {
+      "index": 4,
+      "pass": "convert-linalg-to-loops",
+      "scope": "builtin.module",
+      "changed": true,
+      "durationMs": 6.12,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 29,
+        "ops": 25,
+        "linalg.fill": 2,
+        "scf.for": 0,
+        "memref.store": 0
+      },
+      "metricsAfter": {
+        "lines": 53,
+        "ops": 49,
+        "linalg.fill": 0,
+        "scf.for": 2,
+        "memref.store": 2
+      },
+      "irBefore": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c1 = arith.constant 1 : index\n  linalg.fill ins(%c1 : index) outs(%arg0 : memref<16xf32>)\n  linalg.fill ins(%c1 : index) outs(%arg1 : memref<16xf32>)\n  return\n}",
+      "irAfter": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c0 = arith.constant 0 : index\n  %c16 = arith.constant 16 : index\n  %c1 = arith.constant 1 : index\n  scf.for %i = %c0 to %c16 step %c1 {\n    memref.store %c1, %arg0[%i] : memref<16xf32>\n  }\n  scf.for %i = %c0 to %c16 step %c1 {\n    memref.store %c1, %arg1[%i] : memref<16xf32>\n  }\n  return\n}"
+    },
+    {
+      "index": 5,
+      "pass": "canonicalize",
+      "scope": "builtin.module",
+      "changed": false,
+      "durationMs": 0.73,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 53,
+        "ops": 49,
+        "scf.for": 2,
+        "memref.store": 2
+      },
+      "metricsAfter": {
+        "lines": 53,
+        "ops": 49,
+        "scf.for": 2,
+        "memref.store": 2
+      },
+      "irBefore": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c0 = arith.constant 0 : index\n  %c16 = arith.constant 16 : index\n  %c1 = arith.constant 1 : index\n  scf.for %i = %c0 to %c16 step %c1 {\n    memref.store %c1, %arg0[%i] : memref<16xf32>\n  }\n  scf.for %i = %c0 to %c16 step %c1 {\n    memref.store %c1, %arg1[%i] : memref<16xf32>\n  }\n  return\n}",
+      "irAfter": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c0 = arith.constant 0 : index\n  %c16 = arith.constant 16 : index\n  %c1 = arith.constant 1 : index\n  scf.for %i = %c0 to %c16 step %c1 {\n    memref.store %c1, %arg0[%i] : memref<16xf32>\n  }\n  scf.for %i = %c0 to %c16 step %c1 {\n    memref.store %c1, %arg1[%i] : memref<16xf32>\n  }\n  return\n}"
+    },
+    {
+      "index": 6,
+      "pass": "lower-affine",
+      "scope": "builtin.module",
+      "changed": false,
+      "durationMs": 0.58,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 53,
+        "ops": 49,
+        "affine.for": 0
+      },
+      "metricsAfter": {
+        "lines": 53,
+        "ops": 49,
+        "affine.for": 0
+      },
+      "irBefore": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c0 = arith.constant 0 : index\n  %c16 = arith.constant 16 : index\n  %c1 = arith.constant 1 : index\n  scf.for %i = %c0 to %c16 step %c1 {\n    memref.store %c1, %arg0[%i] : memref<16xf32>\n  }\n  return\n}",
+      "irAfter": "func.func @kernel(%arg0: memref<16xf32>, %arg1: memref<16xf32>) {\n  %c0 = arith.constant 0 : index\n  %c16 = arith.constant 16 : index\n  %c1 = arith.constant 1 : index\n  scf.for %i = %c0 to %c16 step %c1 {\n    memref.store %c1, %arg0[%i] : memref<16xf32>\n  }\n  return\n}"
+    },
+    {
+      "index": 7,
+      "pass": "convert-scf-to-cf",
+      "scope": "builtin.module",
+      "changed": true,
+      "durationMs": 4.07,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 53,
+        "ops": 49,
+        "scf.for": 2,
+        "cf.br": 0,
+        "cf.cond_br": 0
+      },
+      "metricsAfter": {
+        "lines": 71,
+        "ops": 63,
+        "scf.for": 0,
+        "cf.br": 4,
+        "cf.cond_br": 2
+      },
+      "irBefore": "func.func @kernel(%arg0: memref<16xf32>) {\n  scf.for %i = %c0 to %c16 step %c1 {\n    memref.store %c1, %arg0[%i] : memref<16xf32>\n  }\n  return\n}",
+      "irAfter": "func.func @kernel(%arg0: memref<16xf32>) {\n  cf.br ^bb1(%c0 : index)\n^bb1(%i: index):\n  %cmp = arith.cmpi slt, %i, %c16 : index\n  cf.cond_br %cmp, ^bb2, ^bb3\n^bb2:\n  memref.store %c1, %arg0[%i] : memref<16xf32>\n  %next = arith.addi %i, %c1 : index\n  cf.br ^bb1(%next : index)\n^bb3:\n  return\n}"
+    },
+    {
+      "index": 8,
+      "pass": "cse",
+      "scope": "builtin.module",
+      "changed": false,
+      "durationMs": 0.69,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 71,
+        "ops": 63
+      },
+      "metricsAfter": {
+        "lines": 71,
+        "ops": 63
+      },
+      "irBefore": "module {\n  func.func @kernel(%arg0: memref<16xf32>) {\n    cf.br ^bb1(%c0 : index)\n  }\n}",
+      "irAfter": "module {\n  func.func @kernel(%arg0: memref<16xf32>) {\n    cf.br ^bb1(%c0 : index)\n  }\n}"
+    },
+    {
+      "index": 9,
+      "pass": "convert-arith-to-llvm",
+      "scope": "builtin.module",
+      "changed": true,
+      "durationMs": 2.83,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 71,
+        "ops": 63,
+        "arith.constant": 6,
+        "arith.addi": 2,
+        "llvm.add": 0
+      },
+      "metricsAfter": {
+        "lines": 75,
+        "ops": 65,
+        "arith.constant": 0,
+        "arith.addi": 0,
+        "llvm.mlir.constant": 6,
+        "llvm.add": 2
+      },
+      "irBefore": "func.func @kernel(%arg0: memref<16xf32>) {\n  %c1 = arith.constant 1 : index\n  %next = arith.addi %i, %c1 : index\n  return\n}",
+      "irAfter": "func.func @kernel(%arg0: memref<16xf32>) {\n  %c1 = llvm.mlir.constant(1 : index) : i64\n  %next = llvm.add %i, %c1 : i64\n  return\n}"
+    },
+    {
+      "index": 10,
+      "pass": "convert-func-to-llvm",
+      "scope": "builtin.module",
+      "changed": true,
+      "durationMs": 5.34,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 75,
+        "ops": 65,
+        "func.func": 3,
+        "func.return": 3,
+        "llvm.func": 0
+      },
+      "metricsAfter": {
+        "lines": 78,
+        "ops": 68,
+        "func.func": 0,
+        "func.return": 0,
+        "llvm.func": 3,
+        "llvm.return": 3
+      },
+      "irBefore": "module {\n  func.func @kernel(%arg0: memref<16xf32>) {\n    return\n  }\n}",
+      "irAfter": "module {\n  llvm.func @kernel(%arg0: !llvm.ptr) {\n    llvm.return\n  }\n}"
+    },
+    {
+      "index": 11,
+      "pass": "reconcile-unrealized-casts",
+      "scope": "builtin.module",
+      "changed": true,
+      "durationMs": 0.88,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 78,
+        "ops": 68,
+        "builtin.unrealized_conversion_cast": 4
+      },
+      "metricsAfter": {
+        "lines": 74,
+        "ops": 64,
+        "builtin.unrealized_conversion_cast": 0
+      },
+      "irBefore": "module {\n  %0 = builtin.unrealized_conversion_cast %arg0 : memref<16xf32> to !llvm.ptr\n  llvm.call @kernel(%0) : (!llvm.ptr) -> ()\n}",
+      "irAfter": "module {\n  llvm.call @kernel(%arg0) : (!llvm.ptr) -> ()\n}"
+    },
+    {
+      "index": 12,
+      "pass": "canonicalize",
+      "scope": "builtin.module",
+      "changed": true,
+      "durationMs": 1.17,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 74,
+        "ops": 64,
+        "llvm.mlir.constant": 6
+      },
+      "metricsAfter": {
+        "lines": 72,
+        "ops": 62,
+        "llvm.mlir.constant": 4
+      },
+      "irBefore": "llvm.func @kernel(%arg0: !llvm.ptr) {\n  %0 = llvm.mlir.constant(0 : i64) : i64\n  %1 = llvm.mlir.constant(0 : i64) : i64\n  llvm.return\n}",
+      "irAfter": "llvm.func @kernel(%arg0: !llvm.ptr) {\n  %0 = llvm.mlir.constant(0 : i64) : i64\n  llvm.return\n}"
+    },
+    {
+      "index": 13,
+      "pass": "cse",
+      "scope": "builtin.module",
+      "changed": false,
+      "durationMs": 0.52,
+      "verifier": "ok",
+      "metricsBefore": {
+        "lines": 72,
+        "ops": 62
+      },
+      "metricsAfter": {
+        "lines": 72,
+        "ops": 62
+      },
+      "irBefore": "module {\n  llvm.func @kernel(%arg0: !llvm.ptr) {\n    llvm.return\n  }\n}",
+      "irAfter": "module {\n  llvm.func @kernel(%arg0: !llvm.ptr) {\n    llvm.return\n  }\n}"
+    }
+  ]
+}
