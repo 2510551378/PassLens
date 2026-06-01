@@ -50,8 +50,7 @@ npm run check:mlir-collector
 ```
 
 The helper prints `ENVIRONMENT_MISSING` when the local LLVM/MLIR environment is
-missing or misconfigured. A direct PowerShell invocation exits with code `2` in
-that case; `npm run` may normalize the process failure. That is distinct from a
+missing or misconfigured and exits with code `2`. That is distinct from a
 collector source compile failure.
 
 ## Run Sketch

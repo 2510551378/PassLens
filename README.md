@@ -145,10 +145,9 @@ $env:LLVM_DIR="C:\path\to\llvm-build\lib\cmake\llvm"
 npm run check:mlir-collector
 ```
 
-The helper prints `ENVIRONMENT_MISSING` when the local LLVM/MLIR build
-environment is missing or misconfigured. A direct PowerShell invocation exits
-with code `2` in that case; `npm run` may normalize the process failure.
-Other failures are configure/build failures worth inspecting.
+The helper is cross-platform and prints `ENVIRONMENT_MISSING` when the local
+LLVM/MLIR build environment is missing or misconfigured. It exits with code `2`
+in that case. Other failures are configure/build failures worth inspecting.
 
 ## Roadmap
 

@@ -255,21 +255,17 @@ async function checkMlirCollectorSetupCommand(context: vscode.ExtensionContext):
   const output = vscode.window.createOutputChannel('Pass Lens Collector Setup');
   output.show(true);
 
-  const scriptPath = vscode.Uri.joinPath(context.extensionUri, 'scripts', 'check-mlir-collector.ps1').fsPath;
+  const scriptPath = vscode.Uri.joinPath(context.extensionUri, 'scripts', 'check-mlir-collector.js').fsPath;
   const result = await vscode.window.withProgress(
     {
       location: vscode.ProgressLocation.Notification,
       title: 'Pass Lens: checking MLIR collector setup',
       cancellable: false
     },
-    async () => runProcess(
-      'powershell',
-      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath],
-      context.extensionUri.fsPath
-    )
+    async () => runProcess('node', [scriptPath], context.extensionUri.fsPath)
   );
 
-  output.appendLine(`Command: ${formatCommand('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', scriptPath])}`);
+  output.appendLine(`Command: ${formatCommand('node', [scriptPath])}`);
   output.appendLine(`Exit code: ${result.exitCode}`);
   if (result.stdout.trim()) {
     output.appendLine('');
