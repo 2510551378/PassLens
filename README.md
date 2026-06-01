@@ -65,6 +65,8 @@ textual IR dumps do not encode timing.
 `passLens.mlirDriverPath` if the driver is not on `PATH`.
 Use this path when timing, verifier failure attribution, or structured metrics
 matter.
+The driver also supports `--pass-lens-artifact-dir=<dir>` for sidecar IR
+snapshots when trace JSON size matters.
 
 `Check MLIR Collector Setup` runs `scripts/check-mlir-collector.ps1` and shows
 the result in the `Pass Lens Collector Setup` output channel.

@@ -48,6 +48,12 @@ static cl::opt<bool>
            cl::desc("Record metrics only; omit before/after IR snapshots"),
            cl::init(false));
 
+static cl::opt<std::string>
+    artifactDir("pass-lens-artifact-dir",
+                cl::desc("Write before/after IR snapshots to this directory "
+                         "and store artifact paths in the trace"),
+                cl::value_desc("directory"), cl::init(""));
+
 static cl::opt<bool>
     allowUnregisteredDialects("allow-unregistered-dialect",
                               cl::desc("Allow parsing unregistered dialects"),
@@ -101,6 +107,7 @@ int main(int argc, char **argv) {
   traceOptions.tool = "pass-lens-mlir-opt";
   traceOptions.input = inputFilename;
   traceOptions.pipeline = passPipeline;
+  traceOptions.artifactDir = artifactDir;
   traceOptions.includeIr = !omitIr;
   passlens::addPassLensInstrumentation(pm, std::move(traceOptions));
 

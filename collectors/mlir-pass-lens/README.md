@@ -26,6 +26,7 @@ options.tool = "my-mlir-driver";
 options.input = "input.mlir";
 options.pipeline = pipelineText;
 options.includeIr = true;
+options.artifactDir = "artifacts"; // optional: sidecar IR files
 passlens::addPassLensInstrumentation(pm, std::move(options));
 ```
 
@@ -66,10 +67,26 @@ pass-lens-mlir-opt input.mlir `
 
 Open `input.pass-lens.json` with `Pass Lens: Open Trace File`.
 
+For larger traces, write before/after IR snapshots to sidecar artifacts instead
+of embedding them in the JSON:
+
+```powershell
+pass-lens-mlir-opt input.mlir `
+  --pass-pipeline="builtin.module(func.func(canonicalize,cse))" `
+  --pass-lens-trace=input.pass-lens.json `
+  --pass-lens-artifact-dir=input.pass-lens-artifacts `
+  -o output.mlir
+```
+
+Relative artifact directories are resolved next to the trace JSON file. The
+trace stores the same relative paths so the VS Code viewer can hydrate the IR
+when the trace is opened.
+
 ## Current Trade-Offs
 
 - The scaffold is meant to be integrated into a custom MLIR driver first.
-- It records operation text snapshots, so traces can be large.
+- Inline IR mode records operation text snapshots, so traces can be large. Use
+  `--pass-lens-artifact-dir` for sidecar IR artifacts when trace size matters.
 - Use `--pass-lens-no-ir` for metrics/timing-only traces. The collector marks
   these traces with `capture.ir = "omitted"` so the viewer does not report
   missing IR snapshots for every stage.

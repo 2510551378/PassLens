@@ -23,3 +23,6 @@ pass-lens-mlir-opt input.mlir `
   --pass-lens-trace=input.pass-lens.json `
   -o output.mlir
 ```
+
+Use `--pass-lens-artifact-dir=input.pass-lens-artifacts` to store before/after
+IR snapshots as sidecar `.mlir` files and keep the trace JSON compact.
