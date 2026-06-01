@@ -91,7 +91,7 @@
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node --test tests/*.test.js",
     "check:mlir-collector": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-mlir-collector.ps1",
-    "package": "vsce package --allow-missing-repository --skip-license",
+    "package": "vsce package",
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {

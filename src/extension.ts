@@ -10,6 +10,7 @@ import { hydrateTraceArtifacts } from './trace/artifacts';
 import { normalizeTrace } from './trace/schema';
 import { summarizeTraceIssues, validateTrace } from './trace/validation';
 import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
+import { parseTracePanelMessage } from './webview/messages';
 
 interface SampleTraceEntry {
   label: string;
@@ -332,10 +333,6 @@ function toLoadedTrace(trace: PassTrace): LoadedTrace {
   };
 }
 
-function isRecord(raw: unknown): raw is Record<string, unknown> {
-  return typeof raw === 'object' && raw !== null && !Array.isArray(raw);
-}
-
 function runProcess(command: string, args: string[], cwd?: string): Promise<{ exitCode: number; stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
@@ -384,18 +381,19 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
   );
 
   panel.webview.onDidReceiveMessage(async (message: unknown) => {
-    if (!isRecord(message)) {
+    const parsed = parseTracePanelMessage(message);
+    if (!parsed) {
       return;
     }
-    if (message.type === 'copy' && typeof message.text === 'string') {
-      await vscode.env.clipboard.writeText(message.text);
+    if (parsed.type === 'copy') {
+      await vscode.env.clipboard.writeText(parsed.text);
       vscode.window.showInformationMessage('Pass Lens copied repro command.');
     }
-    if (message.type === 'openTrace') {
+    if (parsed.type === 'openTrace') {
       await vscode.window.showTextDocument(sourceUri, { preview: false });
     }
-    if (message.type === 'exportBundle') {
-      await exportReproBundle(sourceUri, trace, issues, anomalies, message.selectedStageIndex);
+    if (parsed.type === 'exportBundle') {
+      await exportReproBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
   });
 
