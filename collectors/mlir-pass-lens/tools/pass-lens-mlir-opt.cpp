@@ -99,9 +99,6 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  mlir::PassManager pm(&context);
-  pm.enableVerifier(true);
-
   passlens::PassLensOptions traceOptions;
   traceOptions.outputPath = traceFilename;
   traceOptions.tool = "pass-lens-mlir-opt";
@@ -109,12 +106,21 @@ int main(int argc, char **argv) {
   traceOptions.pipeline = passPipeline;
   traceOptions.artifactDir = artifactDir;
   traceOptions.includeIr = !omitIr;
-  passlens::addPassLensInstrumentation(pm, std::move(traceOptions));
 
-  if (failed(mlir::parsePassPipeline(passPipeline, pm))) {
+  mlir::PassManager pm(&context, mlir::ModuleOp::getOperationName());
+
+  mlir::FailureOr<mlir::OpPassManager> rootPipeline =
+      mlir::parsePassPipeline(passPipeline, llvm::nulls());
+  if (succeeded(rootPipeline) &&
+      rootPipeline->getOpAnchorName() == mlir::ModuleOp::getOperationName()) {
+    static_cast<mlir::OpPassManager &>(pm) = std::move(*rootPipeline);
+  } else if (failed(mlir::parsePassPipeline(passPipeline, pm))) {
     llvm::errs() << "pass-lens: failed to parse pass pipeline\n";
     return 1;
   }
+
+  pm.enableVerifier(true);
+  passlens::addPassLensInstrumentation(pm, std::move(traceOptions));
 
   if (failed(pm.run(module.get()))) {
     llvm::errs() << "pass-lens: pass pipeline failed\n";

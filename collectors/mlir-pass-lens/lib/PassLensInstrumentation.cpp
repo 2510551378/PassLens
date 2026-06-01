@@ -12,6 +12,7 @@
 #include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cctype>
 #include <cstdint>
@@ -239,6 +240,10 @@ std::string getPassArgument(mlir::Pass *pass) {
   return argument.empty() ? getPassName(pass) : argument.str();
 }
 
+bool shouldRecordPass(mlir::Pass *pass) {
+  return getPassArgument(pass) != "mlir::detail::OpToOpPassAdaptor";
+}
+
 void writeMetrics(llvm::raw_ostream &os, const Metrics &metrics,
                   unsigned indent) {
   std::string pad(indent, ' ');
@@ -358,6 +363,9 @@ PassLensInstrumentation::~PassLensInstrumentation() { writeTrace(); }
 
 void PassLensInstrumentation::runBeforePass(mlir::Pass *pass,
                                             mlir::Operation *op) {
+  if (!shouldRecordPass(pass))
+    return;
+
   std::lock_guard<std::mutex> lock(impl->mutex);
   std::string ir = impl->options.includeIr ? printOperation(op) : "";
   ActivePass active;
@@ -376,6 +384,9 @@ void PassLensInstrumentation::runBeforePass(mlir::Pass *pass,
 
 void PassLensInstrumentation::runAfterPass(mlir::Pass *pass,
                                            mlir::Operation *op) {
+  if (!shouldRecordPass(pass))
+    return;
+
   std::lock_guard<std::mutex> lock(impl->mutex);
   auto key = makeKey(pass, op);
   auto it = impl->active.find(key);
@@ -406,6 +417,9 @@ void PassLensInstrumentation::runAfterPass(mlir::Pass *pass,
 
 void PassLensInstrumentation::runAfterPassFailed(mlir::Pass *pass,
                                                  mlir::Operation *op) {
+  if (!shouldRecordPass(pass))
+    return;
+
   std::lock_guard<std::mutex> lock(impl->mutex);
   auto key = makeKey(pass, op);
   auto it = impl->active.find(key);
@@ -448,6 +462,11 @@ void PassLensInstrumentation::writeTrace() {
                  << impl->options.outputPath << ": " << ec.message() << "\n";
     return;
   }
+
+  std::sort(impl->stages.begin(), impl->stages.end(),
+            [](const Stage &lhs, const Stage &rhs) {
+              return lhs.index < rhs.index;
+            });
 
   os << "{\n";
   os << "  \"schemaVersion\": 1,\n";
