@@ -116,7 +116,8 @@ instrumentation callbacks, or temporary wrappers.
 - `verifier`: `ok`, `failed`, or a collector-specific status string.
 - `diagnostics`: stage-local diagnostic text.
 - `location`: source or IR location associated with the stage.
-- `artifacts`: paths to external before/after/diagnostic artifacts.
+- `artifacts`: paths to external before/after/diagnostic artifacts. Relative
+  paths are resolved against the trace JSON file location.
 - `metricsBefore` / `metricsAfter`: numeric scalar metrics only.
 - `irBefore` / `irAfter`: optional textual IR snapshots.
 

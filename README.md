@@ -17,7 +17,8 @@ pipeline timeline.
 - Jump directly to suspicious metric anomalies such as zero-to-positive
   allocations, large relative op-count changes, or domain budget violations.
 - Compare metric deltas before and after each pass.
-- View side-by-side IR diffs.
+- View side-by-side IR diffs, including source markers for inline IR versus
+  external artifact files.
 - Copy the generated repro command from the viewer.
 - Export a Markdown repro bundle with trace summary, selected-pass IR,
   diagnostics, validation issues, and top metric anomalies.
@@ -77,6 +78,8 @@ the result in the `Pass Lens Collector Setup` output channel.
   changed-only filter, and slowest-pass navigation.
 - `Verifier failure`: failure-focused trace that opens directly at the first
   failing pass.
+- `External IR artifacts`: trace that loads before/after IR and diagnostics
+  from sidecar files.
 
 ## Trace Schema
 

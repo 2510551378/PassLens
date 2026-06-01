@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { collectMlirTrace } from './mlirCollector';
 import { createReproBundle } from './reproBundle';
 import { computeTraceAnomalies } from './trace/anomalies';
+import { hydrateTraceArtifacts } from './trace/artifacts';
 import { normalizeTrace } from './trace/schema';
 import { summarizeTraceIssues, validateTrace } from './trace/validation';
 import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
@@ -35,6 +36,12 @@ const sampleTraces: SampleTraceEntry[] = [
     description: 'First-signal failure case',
     detail: 'Trace with a verifier failure after a lowering pass.',
     file: 'mlir-verifier-failure.json'
+  },
+  {
+    label: 'External IR artifacts',
+    description: '2 passes, IR stored in sidecar files',
+    detail: 'Trace that resolves before/after IR and diagnostics from artifact paths.',
+    file: 'mlir-artifacts.json'
   }
 ];
 
@@ -305,9 +312,10 @@ async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
   try {
     const content = await fs.readFile(uri.fsPath, 'utf8');
     const trace = normalizeTrace(JSON.parse(content));
+    const artifactIssues = await hydrateTraceArtifacts(trace, uri.fsPath);
     return {
       trace,
-      issues: validateTrace(trace),
+      issues: [...validateTrace(trace), ...artifactIssues],
       anomalies: computeTraceAnomalies(trace)
     };
   } catch (error) {
@@ -933,10 +941,31 @@ function getWebviewHtml(
       grid-template-columns: 1fr 1fr;
       gap: 8px;
       margin: 0 0 6px 48px;
+    }
+
+    .diff-title {
       color: var(--muted);
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
+    }
+
+    .source-line {
+      min-width: 0;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    .source-path {
+      display: inline-block;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      vertical-align: bottom;
+      white-space: nowrap;
     }
 
     .diff {
@@ -1377,8 +1406,8 @@ function getWebviewHtml(
         '<h2>Metric Delta</h2>' +
         renderMetrics(stage.metricsBefore ?? {}, stage.metricsAfter ?? {}) +
         '<h2>IR Diff</h2>' +
-        renderDiff(stage.irBefore ?? '', stage.irAfter ?? '') +
-        renderCommandAndDiagnostics();
+        renderDiff(stage) +
+        renderCommandAndDiagnostics(stage);
     }
 
     function renderPassHero(stage) {
@@ -1387,6 +1416,7 @@ function getWebviewHtml(
       const statusText = failed ? 'verifier failed' : stage.changed ? 'changed IR' : 'no IR change';
       const impact = impactPercent(stage);
       const anomalyCount = anomaliesForStage(stage.index).length;
+      const irSource = stageIrSource(stage);
       return '<div class="pass-hero" style="--accent: ' + stageAccent(stage) + '">' +
         '<div>' +
           '<h2>' + escapeHtml(stage.pass) + '</h2>' +
@@ -1397,6 +1427,7 @@ function getWebviewHtml(
           '<span class="pill ' + statusClass + '">' + escapeHtml(statusText) + '</span>' +
           '<span class="pill">impact ' + escapeHtml(impact) + '%</span>' +
           (anomalyCount ? '<span class="pill warning">' + escapeHtml(anomalyCount + ' anomaly' + (anomalyCount === 1 ? '' : 'ies')) + '</span>' : '') +
+          '<span class="pill">' + escapeHtml(irSource) + '</span>' +
           '<span class="pill">#' + escapeHtml(stage.index) + '</span>' +
         '</div>' +
       '</div>';
@@ -1493,21 +1524,31 @@ function getWebviewHtml(
         .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
     }
 
-    function renderCommandAndDiagnostics() {
+    function renderCommandAndDiagnostics(stage) {
       const command = trace.command
         ? '<h2>Repro Command</h2><div class="action-row"><button class="action-button" data-action="copy-command">Copy command</button></div><pre class="diagnostics">' + escapeHtml(trace.command) + '</pre>'
         : '';
-      const diagnostics = trace.diagnostics ? '<h2>Diagnostics</h2><pre class="diagnostics">' + escapeHtml(trace.diagnostics) + '</pre>' : '';
-      return command + diagnostics;
+      const stageDiagnostics = stage.diagnostics
+        ? '<h2>Stage Diagnostics</h2>' + renderSourceLine('diagnostics', stage.artifacts?.diagnosticsPath, stage.diagnostics) +
+          '<pre class="diagnostics">' + escapeHtml(stage.diagnostics) + '</pre>'
+        : '';
+      const traceDiagnostics = trace.diagnostics ? '<h2>Trace Diagnostics</h2><pre class="diagnostics">' + escapeHtml(trace.diagnostics) + '</pre>' : '';
+      return command + stageDiagnostics + traceDiagnostics;
     }
 
-    function renderDiff(beforeText, afterText) {
+    function renderDiff(stage) {
+      const beforeText = stage.irBefore ?? '';
+      const afterText = stage.irAfter ?? '';
       const rows = diffLines(beforeText, afterText);
       if (!rows.length) {
         return '<div class="empty">No IR text recorded for this pass.</div>';
       }
 
-      return '<div class="diff-head"><span>Before pass</span><span>After pass</span></div>' +
+      return '<div class="diff-head"><div><div class="diff-title">Before pass</div>' +
+        renderSourceLine('before IR', stage.artifacts?.beforePath, beforeText) +
+        '</div><div><div class="diff-title">After pass</div>' +
+        renderSourceLine('after IR', stage.artifacts?.afterPath, afterText) +
+        '</div></div>' +
         '<table class="diff"><tbody>' +
         rows.map((row) => {
           return '<tr class="' + row.kind + '">' +
@@ -1518,6 +1559,29 @@ function getWebviewHtml(
           '</tr>';
         }).join('') +
         '</tbody></table>';
+    }
+
+    function renderSourceLine(label, artifactPath, text) {
+      const source = artifactPath
+        ? 'artifact: ' + artifactPath
+        : text ? 'inline ' + label : 'missing ' + label;
+      return '<div class="source-line"><span class="source-path" title="' + escapeHtml(source) + '">' +
+        escapeHtml(source) + '</span></div>';
+    }
+
+    function stageIrSource(stage) {
+      const hasBeforeArtifact = Boolean(stage.artifacts?.beforePath);
+      const hasAfterArtifact = Boolean(stage.artifacts?.afterPath);
+      if (hasBeforeArtifact && hasAfterArtifact) {
+        return 'artifact IR';
+      }
+      if (hasBeforeArtifact || hasAfterArtifact) {
+        return 'mixed IR';
+      }
+      if (stage.irBefore || stage.irAfter) {
+        return 'inline IR';
+      }
+      return 'IR missing';
     }
 
     function diffLines(beforeText, afterText) {

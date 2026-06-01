@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "collectorVersion": "0.1.0",
+  "tool": "pass-lens-mlir-opt",
+  "input": "artifact-toy.mlir",
+  "pipeline": "builtin.module(func.func(canonicalize),convert-func-to-llvm)",
+  "command": "pass-lens-mlir-opt artifact-toy.mlir --pass-pipeline=builtin.module(func.func(canonicalize),convert-func-to-llvm) --pass-lens-trace=mlir-artifacts.json",
+  "capture": {
+    "ir": "artifact",
+    "metrics": true,
+    "timing": true
+  },
+  "stages": [
+    {
+      "index": 0,
+      "pass": "canonicalize",
+      "scope": "func.func @kernel",
+      "status": "ok",
+      "durationMs": 1.16,
+      "verifier": "ok",
+      "artifacts": {
+        "beforePath": "artifacts/artifact-toy-0-before.mlir",
+        "afterPath": "artifacts/artifact-toy-0-after.mlir",
+        "diagnosticsPath": "artifacts/artifact-toy-0-diag.txt"
+      },
+      "metricsBefore": {
+        "ops": 9,
+        "arith.constant": 2,
+        "arith.addi": 2
+      },
+      "metricsAfter": {
+        "ops": 7,
+        "arith.constant": 1,
+        "arith.addi": 1
+      }
+    },
+    {
+      "index": 1,
+      "pass": "convert-func-to-llvm",
+      "scope": "builtin.module",
+      "status": "ok",
+      "durationMs": 2.84,
+      "verifier": "ok",
+      "artifacts": {
+        "beforePath": "artifacts/artifact-toy-1-before.mlir",
+        "afterPath": "artifacts/artifact-toy-1-after.mlir"
+      },
+      "metricsBefore": {
+        "ops": 7,
+        "func.func": 1,
+        "llvm.func": 0
+      },
+      "metricsAfter": {
+        "ops": 8,
+        "func.func": 0,
+        "llvm.func": 1
+      }
+    }
+  ]
+}
