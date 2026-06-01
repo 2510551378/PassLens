@@ -38,12 +38,15 @@
   
   search.addEventListener('input', () => {
     filterText = search.value.trim().toLowerCase();
+    ensureVisibleSelection();
     renderTimeline();
   });
   changedOnly.addEventListener('change', () => {
     showChangedOnly = changedOnly.checked;
+    ensureVisibleSelection();
     renderTimeline();
   });
+  document.addEventListener('keydown', handleKeydown);
   
   function escapeHtml(value) {
     return String(value ?? '')
@@ -130,6 +133,47 @@
   function anomaliesForStage(stageIndex) {
     return traceAnomalies.filter((entry) => entry.stageIndex === stageIndex);
   }
+
+  function visibleStageEntries() {
+    return trace.stages
+      .map((stage, idx) => ({ stage, idx }))
+      .filter(({ stage }) => !showChangedOnly || stage.changed)
+      .filter(({ stage }) => matchesFilter(stage));
+  }
+
+  function matchesFilter(stage) {
+    if (!filterText) {
+      return true;
+    }
+    const haystack = [
+      stage.pass,
+      stage.scope,
+      stage.verifier,
+      ...Object.keys(stage.metricsBefore ?? {}),
+      ...Object.keys(stage.metricsAfter ?? {})
+    ].join(' ').toLowerCase();
+    return haystack.includes(filterText);
+  }
+
+  function ensureVisibleSelection() {
+    const visibleStages = visibleStageEntries();
+    if (!visibleStages.length || visibleStages.some(({ idx }) => idx === selectedIndex)) {
+      return;
+    }
+    selectedIndex = visibleStages[0].idx;
+    renderDetails();
+  }
+
+  function selectVisibleOffset(direction) {
+    const visibleStages = visibleStageEntries();
+    if (!visibleStages.length) {
+      return;
+    }
+    const current = visibleStages.findIndex(({ idx }) => idx === selectedIndex);
+    const base = current >= 0 ? current : 0;
+    const next = (base + direction + visibleStages.length) % visibleStages.length;
+    selectIndex(visibleStages[next].idx, { scrollIntoView: true });
+  }
   
   function nextChangedIndex(direction) {
     if (!trace.stages.length) {
@@ -144,13 +188,18 @@
     return -1;
   }
   
-  function selectIndex(index) {
+  function selectIndex(index, options = {}) {
     if (index < 0 || index >= trace.stages.length) {
       return;
     }
     selectedIndex = index;
     renderTimeline();
     renderDetails();
+    if (options.scrollIntoView) {
+      requestAnimationFrame(() => {
+        timeline.querySelector('.stage-card.active')?.scrollIntoView({ block: 'nearest' });
+      });
+    }
   }
   
   function jumpTo(target) {
@@ -184,6 +233,63 @@
     } else if (action === 'open-artifact' && button?.dataset.artifactPath) {
       vscode.postMessage({ type: 'openArtifact', path: button.dataset.artifactPath });
     }
+  }
+
+  function handleKeydown(event) {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+    if (isTextInput(event.target)) {
+      if (event.key === 'Escape') {
+        event.target.blur();
+      }
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'j') {
+      event.preventDefault();
+      selectVisibleOffset(1);
+    } else if (event.key === 'ArrowUp' || event.key === 'k') {
+      event.preventDefault();
+      selectVisibleOffset(-1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      const first = visibleStageEntries()[0];
+      if (first) {
+        selectIndex(first.idx, { scrollIntoView: true });
+      }
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      const visibleStages = visibleStageEntries();
+      const last = visibleStages[visibleStages.length - 1];
+      if (last) {
+        selectIndex(last.idx, { scrollIntoView: true });
+      }
+    } else if (event.key === '/') {
+      event.preventDefault();
+      search.focus();
+      search.select();
+    } else if (event.key === 'f') {
+      event.preventDefault();
+      jumpTo('first-signal');
+    } else if (event.key === 'a') {
+      event.preventDefault();
+      jumpTo('first-anomaly');
+    } else if (event.key === 's') {
+      event.preventDefault();
+      jumpTo('slowest');
+    } else if (event.key === 'c') {
+      event.preventDefault();
+      changedOnly.checked = !changedOnly.checked;
+      showChangedOnly = changedOnly.checked;
+      ensureVisibleSelection();
+      renderTimeline();
+    }
+  }
+
+  function isTextInput(target) {
+    return target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target?.isContentEditable;
   }
   
   function renderSummary() {
@@ -243,22 +349,7 @@
       return;
     }
   
-    const visibleStages = trace.stages
-      .map((stage, idx) => ({ stage, idx }))
-      .filter(({ stage }) => !showChangedOnly || stage.changed)
-      .filter(({ stage }) => {
-        if (!filterText) {
-          return true;
-        }
-        const haystack = [
-          stage.pass,
-          stage.scope,
-          stage.verifier,
-          ...Object.keys(stage.metricsBefore ?? {}),
-          ...Object.keys(stage.metricsAfter ?? {})
-        ].join(' ').toLowerCase();
-        return haystack.includes(filterText);
-      });
+    const visibleStages = visibleStageEntries();
   
     if (!visibleStages.length) {
       timeline.innerHTML = '<div class="empty">No passes match the current filter.</div>';
@@ -278,7 +369,7 @@
         const anomalyText = anomalies.length ? anomalies.length + ' anomaly' + (anomalies.length === 1 ? '' : 'ies') : '';
         const impact = impactPercent(stage) + '%';
         const accent = stageAccent(stage);
-        return '<button class="stage-card ' + statusClass + active + '" data-index="' + idx + '" style="--accent: ' + accent + '; --impact: ' + impact + '">' +
+        return '<button class="stage-card ' + statusClass + active + '" data-index="' + idx + '" aria-current="' + (active ? 'true' : 'false') + '" style="--accent: ' + accent + '; --impact: ' + impact + '">' +
           '<div class="stage-line">' +
             '<span class="stage-index">#' + escapeHtml(stage.index) + '</span>' +
             '<span class="stage-pass">' + escapeHtml(stage.pass) + '</span>' +
@@ -303,7 +394,8 @@
   function renderOverview(visibleStages) {
     overview.innerHTML = visibleStages.map(({ stage, idx }) => {
       const active = idx === selectedIndex ? ' active' : '';
-      return '<button class="overview-segment' + active + '" data-index="' + idx + '" title="#' +
+      return '<button class="overview-segment' + active + '" data-index="' + idx + '" aria-label="Select pass #' +
+        escapeHtml(stage.index) + '" title="#' +
         escapeHtml(stage.index) + ' ' + escapeHtml(stage.pass) + '" style="--accent: ' +
         stageAccent(stage) + '; --impact: ' + impactPercent(stage) + '%"></button>';
     }).join('');
@@ -361,10 +453,10 @@
   
   function renderActionRow() {
     return '<div class="action-row">' +
-      '<button class="action-button primary" data-action="first-signal">First signal</button>' +
-      '<button class="action-button" data-action="prev-changed">Prev changed</button>' +
-      '<button class="action-button" data-action="next-changed">Next changed</button>' +
-      '<button class="action-button" data-action="slowest">Slowest</button>' +
+      '<button class="action-button primary" data-action="first-signal" title="Jump to first signal (f)">First signal</button>' +
+      '<button class="action-button" data-action="prev-changed" title="Previous changed pass">Prev changed</button>' +
+      '<button class="action-button" data-action="next-changed" title="Next changed pass">Next changed</button>' +
+      '<button class="action-button" data-action="slowest" title="Jump to slowest pass (s)">Slowest</button>' +
       '<button class="action-button" data-action="export-bundle">Export repro bundle</button>' +
       '<button class="action-button" data-action="open-trace">Open trace JSON</button>' +
     '</div>';

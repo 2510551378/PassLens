@@ -101,7 +101,6 @@ h1 {
 .summary-card.failed .summary-value { color: var(--failed); }
 .summary-card.warning .summary-value { color: var(--warning); }
 .summary-card.changed .summary-value { color: var(--changed); }
-}
 
 .summary-card[data-jump] {
   cursor: pointer;
@@ -111,6 +110,15 @@ h1 {
   border-color: var(--vscode-focusBorder, #3794ff);
   background: var(--row-hover);
   transform: translateY(-1px);
+}
+
+.summary-card:focus-visible,
+.stage-card:focus-visible,
+.overview-segment:focus-visible,
+.action-button:focus-visible,
+.artifact-open:focus-visible {
+  outline: 2px solid var(--vscode-focusBorder, #3794ff);
+  outline-offset: 2px;
 }
 
 .summary-label {
@@ -180,6 +188,7 @@ aside {
 section {
   min-width: 0;
   overflow: auto;
+  scroll-padding-top: 16px;
 }
 
 .toolbar {
@@ -735,6 +744,15 @@ pre.diagnostics {
 
   .badges {
     justify-content: flex-start;
+  }
+}
+
+@media (min-width: 901px) {
+  .pass-hero {
+    position: sticky;
+    top: 12px;
+    z-index: 4;
+    box-shadow: 0 14px 24px color-mix(in srgb, #000000 24%, transparent);
   }
 }
 
