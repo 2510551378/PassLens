@@ -378,6 +378,24 @@ section {
   padding: 18px 20px 32px;
 }
 
+.detail-section {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+}
+
+.detail-section.warning {
+  border-top-color: color-mix(in srgb, var(--warning) 44%, var(--border));
+}
+
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 9px;
+}
+
 .pass-hero {
   display: flex;
   flex-wrap: wrap;
@@ -405,14 +423,19 @@ section {
 }
 
 .details h2 {
-  margin: 22px 0 9px;
+  margin: 0;
   font-size: 16px;
   font-weight: 650;
   overflow-wrap: anywhere;
 }
 
-.details h2:first-child {
-  margin-top: 0;
+.section-hint {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .insight {
@@ -459,6 +482,10 @@ section {
   margin-top: 11px;
 }
 
+.action-row.compact {
+  margin: 0 0 6px;
+}
+
 .action-button {
   color: var(--vscode-button-secondaryForeground, var(--app-fg));
   background: var(--vscode-button-secondaryBackground, var(--panel-strong));
@@ -485,7 +512,7 @@ section {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 8px;
-  margin: 10px 0 16px;
+  margin: 12px 0 0;
 }
 
 .kv {
@@ -515,7 +542,7 @@ section {
   border-radius: 8px;
   background: color-mix(in srgb, var(--warning) 8%, transparent);
   padding: 10px 11px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
 }
 
 .anomaly-list {
@@ -553,7 +580,7 @@ section {
 table.metrics {
   width: 100%;
   border-collapse: collapse;
-  margin: 8px 0 16px;
+  margin: 0;
   font-variant-numeric: tabular-nums;
 }
 
@@ -721,6 +748,35 @@ pre.diagnostics {
   overflow-wrap: anywhere;
   font-family: var(--vscode-editor-font-family, Consolas, "Cascadia Mono", monospace);
   font-size: var(--vscode-editor-font-size, 13px);
+}
+
+.shortcut-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+kbd {
+  min-width: 18px;
+  border: 1px solid var(--border);
+  border-bottom-color: color-mix(in srgb, var(--border) 65%, #000000);
+  border-radius: 4px;
+  padding: 1px 5px;
+  background: color-mix(in srgb, var(--code-bg) 82%, var(--app-fg) 5%);
+  color: var(--app-fg);
+  font-family: var(--vscode-editor-font-family, Consolas, "Cascadia Mono", monospace);
+  font-size: 11px;
+  text-align: center;
 }
 
 @media (max-width: 900px) {

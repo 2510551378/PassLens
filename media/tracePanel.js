@@ -414,6 +414,7 @@
   
     details.innerHTML =
       renderPassHero(stage) +
+      renderShortcutStrip() +
       '<div class="details-grid">' +
         kv('Scope', stage.scope ?? 'unknown') +
         kv('Changed', stage.changed ? 'yes' : 'no') +
@@ -421,10 +422,12 @@
         kv('Verifier', stage.verifier ?? 'unknown') +
       '</div>' +
       renderMetricAnomalies(stage.index) +
-      '<h2>Metric Delta</h2>' +
-      renderMetrics(stage.metricsBefore ?? {}, stage.metricsAfter ?? {}) +
-      '<h2>IR Diff</h2>' +
-      renderDiff(stage) +
+      sectionBlock('Metric Delta', renderMetrics(stage.metricsBefore ?? {}, stage.metricsAfter ?? {}), {
+        hint: 'Before vs after counters for the selected pass.'
+      }) +
+      sectionBlock('IR Diff', renderDiff(stage), {
+        hint: stageIrSource(stage)
+      }) +
       renderCommandAndDiagnostics(stage);
   }
   
@@ -461,6 +464,20 @@
       '<button class="action-button" data-action="open-trace">Open trace JSON</button>' +
     '</div>';
   }
+
+  function renderShortcutStrip() {
+    return '<div class="shortcut-strip" aria-label="Keyboard shortcuts">' +
+      shortcutKey('j / ↓', 'next pass') +
+      shortcutKey('k / ↑', 'previous pass') +
+      shortcutKey('/', 'search') +
+      shortcutKey('c', 'changed only') +
+      shortcutKey('f', 'first signal') +
+    '</div>';
+  }
+
+  function shortcutKey(key, label) {
+    return '<span class="shortcut"><kbd>' + escapeHtml(key) + '</kbd>' + escapeHtml(label) + '</span>';
+  }
   
   function renderInsight(stage) {
     const failed = isFailedStage(stage);
@@ -483,7 +500,7 @@
     if (!entries.length) {
       return '';
     }
-    return '<h2>Metric Anomalies</h2><div class="anomaly-panel"><div class="anomaly-list">' +
+    const body = '<div class="anomaly-panel"><div class="anomaly-list">' +
       entries.map((entry) => {
         const delta = entry.delta > 0 ? '+' + fmtNumber(entry.delta) : String(fmtNumber(entry.delta));
         return '<div class="anomaly-item">' +
@@ -493,6 +510,22 @@
         '</div>';
       }).join('') +
     '</div></div>';
+    return sectionBlock('Metric Anomalies', body, {
+      tone: 'warning',
+      hint: entries.length + ' suspicious signal' + (entries.length === 1 ? '' : 's')
+    });
+  }
+
+  function sectionBlock(title, body, options = {}) {
+    if (!body) {
+      return '';
+    }
+    const tone = options.tone ? ' ' + escapeHtml(options.tone) : '';
+    const hint = options.hint ? '<span class="section-hint">' + escapeHtml(options.hint) + '</span>' : '';
+    return '<section class="detail-section' + tone + '">' +
+      '<div class="section-heading"><h2>' + escapeHtml(title) + '</h2>' + hint + '</div>' +
+      body +
+    '</section>';
   }
   
   function kv(label, value) {
@@ -544,13 +577,21 @@
   
   function renderCommandAndDiagnostics(stage) {
     const command = trace.command
-      ? '<h2>Repro Command</h2><div class="action-row"><button class="action-button" data-action="copy-command">Copy command</button></div><pre class="diagnostics">' + escapeHtml(trace.command) + '</pre>'
+      ? sectionBlock('Repro Command', '<div class="action-row compact"><button class="action-button" data-action="copy-command">Copy command</button></div><pre class="diagnostics">' + escapeHtml(trace.command) + '</pre>', {
+        hint: 'Copyable command context'
+      })
       : '';
     const stageDiagnostics = stage.diagnostics
-      ? '<h2>Stage Diagnostics</h2>' + renderSourceLine('diagnostics', stage.artifacts?.diagnosticsPath, stage.diagnostics) +
-        '<pre class="diagnostics">' + escapeHtml(stage.diagnostics) + '</pre>'
+      ? sectionBlock('Stage Diagnostics', renderSourceLine('diagnostics', stage.artifacts?.diagnosticsPath, stage.diagnostics) +
+        '<pre class="diagnostics">' + escapeHtml(stage.diagnostics) + '</pre>', {
+        hint: 'Selected pass output'
+      })
       : '';
-    const traceDiagnostics = trace.diagnostics ? '<h2>Trace Diagnostics</h2><pre class="diagnostics">' + escapeHtml(trace.diagnostics) + '</pre>' : '';
+    const traceDiagnostics = trace.diagnostics
+      ? sectionBlock('Trace Diagnostics', '<pre class="diagnostics">' + escapeHtml(trace.diagnostics) + '</pre>', {
+        hint: 'Collector-level context'
+      })
+      : '';
     return command + stageDiagnostics + traceDiagnostics;
   }
   
