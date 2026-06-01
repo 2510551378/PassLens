@@ -37,11 +37,5 @@ llvm_update_compile_flags(pass-lens-mlir-opt)
 target_link_libraries(pass-lens-mlir-opt
   PRIVATE
   PassLensMLIRInstrumentation
-  MLIRAllDialects
-  MLIRAllPasses
-  MLIRIR
-  MLIRParser
-  MLIRPass
-  MLIRSupport
-  LLVMSupport
+  MLIR
 )

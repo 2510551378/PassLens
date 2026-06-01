@@ -48,6 +48,12 @@ static cl::opt<bool>
            cl::desc("Record metrics only; omit before/after IR snapshots"),
            cl::init(false));
 
+static cl::opt<std::string>
+    artifactDir("pass-lens-artifact-dir",
+                cl::desc("Write before/after IR snapshots to this directory "
+                         "and store artifact paths in the trace"),
+                cl::value_desc("directory"), cl::init(""));
+
 static cl::opt<bool>
     allowUnregisteredDialects("allow-unregistered-dialect",
                               cl::desc("Allow parsing unregistered dialects"),
@@ -93,21 +99,28 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  mlir::PassManager pm(&context);
-  pm.enableVerifier(true);
-
   passlens::PassLensOptions traceOptions;
   traceOptions.outputPath = traceFilename;
   traceOptions.tool = "pass-lens-mlir-opt";
   traceOptions.input = inputFilename;
   traceOptions.pipeline = passPipeline;
+  traceOptions.artifactDir = artifactDir;
   traceOptions.includeIr = !omitIr;
-  passlens::addPassLensInstrumentation(pm, std::move(traceOptions));
 
-  if (failed(mlir::parsePassPipeline(passPipeline, pm))) {
+  mlir::PassManager pm(&context, mlir::ModuleOp::getOperationName());
+
+  mlir::FailureOr<mlir::OpPassManager> rootPipeline =
+      mlir::parsePassPipeline(passPipeline, llvm::nulls());
+  if (succeeded(rootPipeline) &&
+      rootPipeline->getOpAnchorName() == mlir::ModuleOp::getOperationName()) {
+    static_cast<mlir::OpPassManager &>(pm) = std::move(*rootPipeline);
+  } else if (failed(mlir::parsePassPipeline(passPipeline, pm))) {
     llvm::errs() << "pass-lens: failed to parse pass pipeline\n";
     return 1;
   }
+
+  pm.enableVerifier(true);
+  passlens::addPassLensInstrumentation(pm, std::move(traceOptions));
 
   if (failed(pm.run(module.get()))) {
     llvm::errs() << "pass-lens: pass pipeline failed\n";

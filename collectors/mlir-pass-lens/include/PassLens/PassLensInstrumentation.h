@@ -22,6 +22,7 @@ struct PassLensOptions {
   std::string tool = "pass-lens-mlir";
   std::string input;
   std::string pipeline;
+  std::string artifactDir;
   bool includeIr = true;
 };
 

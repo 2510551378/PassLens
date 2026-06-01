@@ -17,7 +17,8 @@ pipeline timeline.
 - Jump directly to suspicious metric anomalies such as zero-to-positive
   allocations, large relative op-count changes, or domain budget violations.
 - Compare metric deltas before and after each pass.
-- View side-by-side IR diffs.
+- View side-by-side IR diffs, including source markers for inline IR versus
+  external artifact files.
 - Copy the generated repro command from the viewer.
 - Export a Markdown repro bundle with trace summary, selected-pass IR,
   diagnostics, validation issues, and top metric anomalies.
@@ -64,6 +65,8 @@ textual IR dumps do not encode timing.
 `passLens.mlirDriverPath` if the driver is not on `PATH`.
 Use this path when timing, verifier failure attribution, or structured metrics
 matter.
+The driver also supports `--pass-lens-artifact-dir=<dir>` for sidecar IR
+snapshots when trace JSON size matters.
 
 `Check MLIR Collector Setup` runs `scripts/check-mlir-collector.ps1` and shows
 the result in the `Pass Lens Collector Setup` output channel.
@@ -77,6 +80,8 @@ the result in the `Pass Lens Collector Setup` output channel.
   changed-only filter, and slowest-pass navigation.
 - `Verifier failure`: failure-focused trace that opens directly at the first
   failing pass.
+- `External IR artifacts`: trace that loads before/after IR and diagnostics
+  from sidecar files.
 
 ## Trace Schema
 
@@ -140,10 +145,9 @@ $env:LLVM_DIR="C:\path\to\llvm-build\lib\cmake\llvm"
 npm run check:mlir-collector
 ```
 
-The helper prints `ENVIRONMENT_MISSING` when the local LLVM/MLIR build
-environment is missing or misconfigured. A direct PowerShell invocation exits
-with code `2` in that case; `npm run` may normalize the process failure.
-Other failures are configure/build failures worth inspecting.
+The helper is cross-platform and prints `ENVIRONMENT_MISSING` when the local
+LLVM/MLIR build environment is missing or misconfigured. It exits with code `2`
+in that case. Other failures are configure/build failures worth inspecting.
 
 ## Roadmap
 

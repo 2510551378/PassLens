@@ -7,9 +7,12 @@
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
+#include "llvm/ADT/SmallString.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/Support/Path.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cctype>
 #include <cstdint>
@@ -61,6 +64,8 @@ struct Stage {
   Metrics metricsAfter;
   std::string irBefore;
   std::string irAfter;
+  std::string beforeArtifactPath;
+  std::string afterArtifactPath;
 };
 
 std::string makeKey(mlir::Pass *pass, mlir::Operation *op) {
@@ -112,6 +117,49 @@ std::string escapeJson(llvm::StringRef value) {
 
 std::string jsonString(llvm::StringRef value) {
   return "\"" + escapeJson(value) + "\"";
+}
+
+std::string artifactFilename(int64_t stageIndex, llvm::StringRef suffix) {
+  char buffer[64];
+  std::snprintf(buffer, sizeof(buffer), "stage-%06lld.%s.mlir",
+                static_cast<long long>(stageIndex), suffix.str().c_str());
+  return buffer;
+}
+
+std::string joinJsonPath(llvm::StringRef dir, llvm::StringRef filename) {
+  if (dir.empty())
+    return filename.str();
+  std::string result = dir.str();
+  if (!result.empty() && result.back() != '/' && result.back() != '\\')
+    result += "/";
+  result += filename.str();
+  return result;
+}
+
+std::string resolveArtifactDirForWrite(const PassLensOptions &options) {
+  if (options.artifactDir.empty())
+    return "";
+  if (llvm::sys::path::is_absolute(options.artifactDir))
+    return options.artifactDir;
+
+  llvm::SmallString<256> base(options.outputPath);
+  llvm::sys::path::remove_filename(base);
+  if (base.empty())
+    return options.artifactDir;
+  llvm::sys::path::append(base, options.artifactDir);
+  return base.str().str();
+}
+
+bool writeArtifactFile(llvm::StringRef filePath, llvm::StringRef text) {
+  std::error_code ec;
+  llvm::raw_fd_ostream os(filePath, ec, llvm::sys::fs::OF_Text);
+  if (ec) {
+    llvm::errs() << "pass-lens: could not write artifact " << filePath
+                 << ": " << ec.message() << "\n";
+    return false;
+  }
+  os << text;
+  return true;
 }
 
 std::string printOperation(mlir::Operation *op) {
@@ -192,6 +240,10 @@ std::string getPassArgument(mlir::Pass *pass) {
   return argument.empty() ? getPassName(pass) : argument.str();
 }
 
+bool shouldRecordPass(mlir::Pass *pass) {
+  return getPassArgument(pass) != "mlir::detail::OpToOpPassAdaptor";
+}
+
 void writeMetrics(llvm::raw_ostream &os, const Metrics &metrics,
                   unsigned indent) {
   std::string pad(indent, ' ');
@@ -205,8 +257,20 @@ void writeMetrics(llvm::raw_ostream &os, const Metrics &metrics,
   os << "\n" << pad << "}";
 }
 
+void writeArtifacts(llvm::raw_ostream &os, const Stage &stage,
+                    unsigned indent) {
+  std::string pad(indent, ' ');
+  os << "{\n";
+  os << pad << "  \"beforePath\": " << jsonString(stage.beforeArtifactPath)
+     << ",\n";
+  os << pad << "  \"afterPath\": " << jsonString(stage.afterArtifactPath)
+     << "\n";
+  os << pad << "}";
+}
+
 void writeStage(llvm::raw_ostream &os, const Stage &stage,
-                bool includeIr, unsigned indent) {
+                bool includeInlineIr, bool includeArtifactIr,
+                unsigned indent) {
   std::string pad(indent, ' ');
   os << pad << "{\n";
   os << pad << "  \"index\": " << stage.index << ",\n";
@@ -227,7 +291,13 @@ void writeStage(llvm::raw_ostream &os, const Stage &stage,
   os << ",\n";
   os << pad << "  \"metricsAfter\": ";
   writeMetrics(os, stage.metricsAfter, indent + 2);
-  if (includeIr) {
+  if (includeArtifactIr && !stage.beforeArtifactPath.empty() &&
+      !stage.afterArtifactPath.empty()) {
+    os << ",\n";
+    os << pad << "  \"artifacts\": ";
+    writeArtifacts(os, stage, indent + 2);
+    os << "\n";
+  } else if (includeInlineIr) {
     os << ",\n";
     os << pad << "  \"irBefore\": " << jsonString(stage.irBefore) << ",\n";
     os << pad << "  \"irAfter\": " << jsonString(stage.irAfter) << "\n";
@@ -241,6 +311,36 @@ double elapsedMs(Clock::time_point startedAt) {
   auto elapsed = std::chrono::duration<double, std::milli>(
       Clock::now() - startedAt);
   return elapsed.count();
+}
+
+void materializeStageArtifacts(Stage &stage, const PassLensOptions &options) {
+  if (!options.includeIr || options.artifactDir.empty())
+    return;
+
+  const std::string writeDir = resolveArtifactDirForWrite(options);
+  std::error_code ec = llvm::sys::fs::create_directories(writeDir);
+  if (ec) {
+    llvm::errs() << "pass-lens: could not create artifact directory "
+                 << writeDir << ": " << ec.message() << "\n";
+    return;
+  }
+
+  const std::string beforeName = artifactFilename(stage.index, "before");
+  const std::string afterName = artifactFilename(stage.index, "after");
+
+  llvm::SmallString<256> beforePath(writeDir);
+  llvm::sys::path::append(beforePath, beforeName);
+  llvm::SmallString<256> afterPath(writeDir);
+  llvm::sys::path::append(afterPath, afterName);
+
+  if (!writeArtifactFile(beforePath, stage.irBefore) ||
+      !writeArtifactFile(afterPath, stage.irAfter))
+    return;
+
+  stage.beforeArtifactPath = joinJsonPath(options.artifactDir, beforeName);
+  stage.afterArtifactPath = joinJsonPath(options.artifactDir, afterName);
+  stage.irBefore.clear();
+  stage.irAfter.clear();
 }
 
 } // namespace
@@ -263,6 +363,9 @@ PassLensInstrumentation::~PassLensInstrumentation() { writeTrace(); }
 
 void PassLensInstrumentation::runBeforePass(mlir::Pass *pass,
                                             mlir::Operation *op) {
+  if (!shouldRecordPass(pass))
+    return;
+
   std::lock_guard<std::mutex> lock(impl->mutex);
   std::string ir = impl->options.includeIr ? printOperation(op) : "";
   ActivePass active;
@@ -281,6 +384,9 @@ void PassLensInstrumentation::runBeforePass(mlir::Pass *pass,
 
 void PassLensInstrumentation::runAfterPass(mlir::Pass *pass,
                                            mlir::Operation *op) {
+  if (!shouldRecordPass(pass))
+    return;
+
   std::lock_guard<std::mutex> lock(impl->mutex);
   auto key = makeKey(pass, op);
   auto it = impl->active.find(key);
@@ -304,12 +410,16 @@ void PassLensInstrumentation::runAfterPass(mlir::Pass *pass,
   stage.irAfter = std::move(irAfter);
   stage.changed = stage.irBefore != stage.irAfter;
   stage.status = stage.changed ? "changed" : "ok";
+  materializeStageArtifacts(stage, impl->options);
   impl->stages.push_back(std::move(stage));
   impl->active.erase(it);
 }
 
 void PassLensInstrumentation::runAfterPassFailed(mlir::Pass *pass,
                                                  mlir::Operation *op) {
+  if (!shouldRecordPass(pass))
+    return;
+
   std::lock_guard<std::mutex> lock(impl->mutex);
   auto key = makeKey(pass, op);
   auto it = impl->active.find(key);
@@ -333,6 +443,7 @@ void PassLensInstrumentation::runAfterPassFailed(mlir::Pass *pass,
   stage.irBefore = std::move(it->second.irBefore);
   stage.irAfter = std::move(irAfter);
   stage.changed = stage.irBefore != stage.irAfter;
+  materializeStageArtifacts(stage, impl->options);
   impl->stages.push_back(std::move(stage));
   impl->active.erase(it);
 }
@@ -352,14 +463,24 @@ void PassLensInstrumentation::writeTrace() {
     return;
   }
 
+  std::sort(impl->stages.begin(), impl->stages.end(),
+            [](const Stage &lhs, const Stage &rhs) {
+              return lhs.index < rhs.index;
+            });
+
   os << "{\n";
   os << "  \"schemaVersion\": 1,\n";
   os << "  \"collectorVersion\": "
      << jsonString(kPassLensCollectorVersion) << ",\n";
   os << "  \"tool\": " << jsonString(impl->options.tool) << ",\n";
   os << "  \"capture\": {\n";
+  const bool artifactIr =
+      impl->options.includeIr && !impl->options.artifactDir.empty();
   os << "    \"ir\": "
-     << jsonString(impl->options.includeIr ? "inline" : "omitted") << ",\n";
+     << jsonString(impl->options.includeIr
+                       ? (artifactIr ? "artifact" : "inline")
+                       : "omitted")
+     << ",\n";
   os << "    \"metrics\": true,\n";
   os << "    \"timing\": true\n";
   os << "  },\n";
@@ -369,7 +490,7 @@ void PassLensInstrumentation::writeTrace() {
     os << "  \"pipeline\": " << jsonString(impl->options.pipeline) << ",\n";
   os << "  \"stages\": [\n";
   for (size_t i = 0; i < impl->stages.size(); ++i) {
-    writeStage(os, impl->stages[i], impl->options.includeIr, 4);
+    writeStage(os, impl->stages[i], impl->options.includeIr, artifactIr, 4);
     if (i + 1 != impl->stages.size())
       os << ",";
     os << "\n";

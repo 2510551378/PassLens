@@ -1,0 +1,203 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/2510551378/PassLens/blob/main/docs/pass-lens.schema.json",
+  "title": "Pass Lens Trace Schema v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "stages"],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "collectorVersion": {
+      "type": "string"
+    },
+    "compiler": {
+      "$ref": "#/$defs/compiler"
+    },
+    "target": {
+      "$ref": "#/$defs/target"
+    },
+    "inputHash": {
+      "type": "string"
+    },
+    "capture": {
+      "$ref": "#/$defs/capture"
+    },
+    "metricProfiles": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/metricProfile"
+      }
+    },
+    "tool": {
+      "type": "string"
+    },
+    "input": {
+      "type": "string"
+    },
+    "pipeline": {
+      "type": "string"
+    },
+    "command": {
+      "type": "string"
+    },
+    "exitCode": {
+      "type": "number"
+    },
+    "diagnostics": {
+      "type": "string"
+    },
+    "stages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/stage"
+      }
+    }
+  },
+  "$defs": {
+    "compiler": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        },
+        "gitSha": {
+          "type": "string"
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "type": "string"
+        },
+        "platform": {
+          "type": "string"
+        },
+        "triple": {
+          "type": "string"
+        }
+      }
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ir": {
+          "enum": ["inline", "artifact", "omitted"]
+        },
+        "metrics": {
+          "type": "boolean"
+        },
+        "timing": {
+          "type": "boolean"
+        }
+      }
+    },
+    "metricProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "critical": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "budgets": {
+          "$ref": "#/$defs/metrics"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "number"
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "beforePath": {
+          "type": "string"
+        },
+        "afterPath": {
+          "type": "string"
+        },
+        "diagnosticsPath": {
+          "type": "string"
+        }
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["index", "pass"],
+      "properties": {
+        "index": {
+          "type": "number"
+        },
+        "pass": {
+          "type": "string"
+        },
+        "argument": {
+          "type": "string"
+        },
+        "opName": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "nestingDepth": {
+          "type": "number"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": ["ok", "changed", "verifier_failed", "pass_failed", "skipped"]
+        },
+        "durationMs": {
+          "type": "number",
+          "minimum": 0
+        },
+        "verifier": {
+          "type": "string"
+        },
+        "diagnostics": {
+          "type": "string"
+        },
+        "location": {
+          "type": "string"
+        },
+        "artifacts": {
+          "$ref": "#/$defs/artifacts"
+        },
+        "metricsBefore": {
+          "$ref": "#/$defs/metrics"
+        },
+        "metricsAfter": {
+          "$ref": "#/$defs/metrics"
+        },
+        "irBefore": {
+          "type": "string"
+        },
+        "irAfter": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

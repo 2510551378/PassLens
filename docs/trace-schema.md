@@ -1,5 +1,14 @@
 # Pass Lens Trace Schema
 
+Machine-readable schema: [`pass-lens.schema.json`](pass-lens.schema.json).
+
+Pass Lens uses two validation levels:
+
+- strict validation checks raw collector output against schema v1 and should be
+  used by collector tests and CI;
+- loose validation runs after viewer normalization and reports non-blocking
+  quality diagnostics in the webview.
+
 Pass Lens consumes a JSON object with a top-level `stages` array. The schema is
 intentionally small so collectors can be implemented by compiler drivers,
 instrumentation callbacks, or temporary wrappers.
@@ -116,7 +125,8 @@ instrumentation callbacks, or temporary wrappers.
 - `verifier`: `ok`, `failed`, or a collector-specific status string.
 - `diagnostics`: stage-local diagnostic text.
 - `location`: source or IR location associated with the stage.
-- `artifacts`: paths to external before/after/diagnostic artifacts.
+- `artifacts`: paths to external before/after/diagnostic artifacts. Relative
+  paths are resolved against the trace JSON file location.
 - `metricsBefore` / `metricsAfter`: numeric scalar metrics only.
 - `irBefore` / `irAfter`: optional textual IR snapshots.
 
