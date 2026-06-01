@@ -1,0 +1,404 @@
+{
+  "generated_sections": {
+    "kernel": {
+      "symbol": "fused_dual_residual_rmsnorm_kernel_rmsnorm_residual_cast"
+    },
+    "tiling": {
+      "symbol": "fused_dual_residual_rmsnorm_kernel_rmsnorm_residual_cast_tiling_data"
+    }
+  },
+  "kernel_name": "fused_dual_residual_rmsnorm_kernel_rmsnorm_residual_cast",
+  "pattern_name": "rmsnorm_residual_cast",
+  "source_anchors": {
+    "function": "fused_dual_residual_rmsnorm_kernel",
+    "match_mode": "reference_name",
+    "ops": [
+      {
+        "canonical_op": "constant",
+        "raw": "%cst = arith.constant 0.000000e+00 : f32",
+        "result": "%cst"
+      },
+      {
+        "canonical_op": "constant",
+        "raw": "%c1024_i32 = arith.constant 1024 : i32",
+        "result": "%c1024_i32"
+      },
+      {
+        "canonical_op": "constant",
+        "raw": "%cst_0 = arith.constant 1.024000e+03 : f32",
+        "result": "%cst_0"
+      },
+      {
+        "canonical_op": "constant",
+        "raw": "%c0 = arith.constant 0 : index",
+        "result": "%c0"
+      },
+      {
+        "canonical_op": "constant",
+        "raw": "%cst_1 = arith.constant 9.99999974E-6 : f32",
+        "result": "%cst_1"
+      },
+      {
+        "canonical_op": "empty",
+        "raw": "%0 = tensor.empty() : tensor<1xf32>",
+        "result": "%0"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%1 = linalg.fill ins(%cst_1 : f32) outs(%0 : tensor<1xf32>) -> tensor<1xf32>",
+        "result": "%1"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%2 = linalg.fill ins(%cst_0 : f32) outs(%0 : tensor<1xf32>) -> tensor<1xf32>",
+        "result": "%2"
+      },
+      {
+        "canonical_op": "muli",
+        "raw": "%3 = arith.muli %arg10, %c1024_i32 : i32",
+        "result": "%3"
+      },
+      {
+        "canonical_op": "index_cast",
+        "raw": "%4 = arith.index_cast %3 : i32 to index",
+        "result": "%4"
+      },
+      {
+        "canonical_op": "reinterpret_cast",
+        "raw": "%reinterpret_cast = memref.reinterpret_cast %arg3 to offset: [%4], sizes: [1024], strides: [1] : memref<?xf16> to memref<1024xf16, strided<[1], offset: ?>>",
+        "result": "%reinterpret_cast"
+      },
+      {
+        "canonical_op": "alloc",
+        "raw": "%alloc = memref.alloc() : memref<1024xf16>",
+        "result": "%alloc"
+      },
+      {
+        "canonical_op": "copy",
+        "raw": "memref.copy %reinterpret_cast, %alloc : memref<1024xf16, strided<[1], offset: ?>> to memref<1024xf16>",
+        "result": null
+      },
+      {
+        "canonical_op": "to_tensor",
+        "raw": "%5 = bufferization.to_tensor %alloc restrict writable : memref<1024xf16>",
+        "result": "%5"
+      },
+      {
+        "canonical_op": "cast",
+        "raw": "%6 = arith.extf %5 : tensor<1024xf16> to tensor<1024xf32>",
+        "result": "%6"
+      },
+      {
+        "canonical_op": "mulf",
+        "raw": "%7 = arith.mulf %6, %6 : tensor<1024xf32>",
+        "result": "%7"
+      },
+      {
+        "canonical_op": "alloc_tensor",
+        "raw": "%8 = bufferization.alloc_tensor() : tensor<f32>",
+        "result": "%8"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%9 = linalg.fill ins(%cst : f32) outs(%8 : tensor<f32>) -> tensor<f32>",
+        "result": "%9"
+      },
+      {
+        "canonical_op": "reduce",
+        "raw": "%reduced = linalg.reduce ins(%7 : tensor<1024xf32>) outs(%9 : tensor<f32>) dimensions = [0]",
+        "result": "%reduced"
+      },
+      {
+        "canonical_op": "add",
+        "raw": "%41 = arith.addf %in, %init : f32",
+        "result": "%41"
+      },
+      {
+        "canonical_op": "yield",
+        "raw": "linalg.yield %41 : f32",
+        "result": null
+      },
+      {
+        "canonical_op": "extract",
+        "raw": "%extracted = tensor.extract %reduced[] : tensor<f32>",
+        "result": "%extracted"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%10 = linalg.fill ins(%extracted : f32) outs(%0 : tensor<1xf32>) -> tensor<1xf32>",
+        "result": "%10"
+      },
+      {
+        "canonical_op": "divf",
+        "raw": "%11 = arith.divf %10, %2 : tensor<1xf32>",
+        "result": "%11"
+      },
+      {
+        "canonical_op": "extract",
+        "raw": "%extracted_2 = tensor.extract %11[%c0] : tensor<1xf32>",
+        "result": "%extracted_2"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%12 = linalg.fill ins(%extracted_2 : f32) outs(%0 : tensor<1xf32>) -> tensor<1xf32>",
+        "result": "%12"
+      },
+      {
+        "canonical_op": "add",
+        "raw": "%13 = arith.addf %12, %1 : tensor<1xf32>",
+        "result": "%13"
+      },
+      {
+        "canonical_op": "extract",
+        "raw": "%extracted_3 = tensor.extract %13[%c0] : tensor<1xf32>",
+        "result": "%extracted_3"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%14 = linalg.fill ins(%extracted_3 : f32) outs(%0 : tensor<1xf32>) -> tensor<1xf32>",
+        "result": "%14"
+      },
+      {
+        "canonical_op": "sqrt",
+        "raw": "%15 = math.sqrt %14 : tensor<1xf32>",
+        "result": "%15"
+      },
+      {
+        "canonical_op": "extract",
+        "raw": "%extracted_4 = tensor.extract %15[%c0] : tensor<1xf32>",
+        "result": "%extracted_4"
+      },
+      {
+        "canonical_op": "reinterpret_cast",
+        "raw": "%reinterpret_cast_5 = memref.reinterpret_cast %arg4 to offset: [%4], sizes: [1024], strides: [1] : memref<?xf16> to memref<1024xf16, strided<[1], offset: ?>>",
+        "result": "%reinterpret_cast_5"
+      },
+      {
+        "canonical_op": "alloc",
+        "raw": "%alloc_6 = memref.alloc() : memref<1024xf16>",
+        "result": "%alloc_6"
+      },
+      {
+        "canonical_op": "copy",
+        "raw": "memref.copy %reinterpret_cast_5, %alloc_6 : memref<1024xf16, strided<[1], offset: ?>> to memref<1024xf16>",
+        "result": null
+      },
+      {
+        "canonical_op": "to_tensor",
+        "raw": "%16 = bufferization.to_tensor %alloc_6 restrict writable : memref<1024xf16>",
+        "result": "%16"
+      },
+      {
+        "canonical_op": "reinterpret_cast",
+        "raw": "%reinterpret_cast_7 = memref.reinterpret_cast %arg5 to offset: [0], sizes: [1024], strides: [1] : memref<?xf16> to memref<1024xf16, strided<[1]>>",
+        "result": "%reinterpret_cast_7"
+      },
+      {
+        "canonical_op": "alloc",
+        "raw": "%alloc_8 = memref.alloc() : memref<1024xf16>",
+        "result": "%alloc_8"
+      },
+      {
+        "canonical_op": "copy",
+        "raw": "memref.copy %reinterpret_cast_7, %alloc_8 : memref<1024xf16, strided<[1]>> to memref<1024xf16>",
+        "result": null
+      },
+      {
+        "canonical_op": "to_tensor",
+        "raw": "%17 = bufferization.to_tensor %alloc_8 restrict writable : memref<1024xf16>",
+        "result": "%17"
+      },
+      {
+        "canonical_op": "cast",
+        "raw": "%18 = arith.extf %17 : tensor<1024xf16> to tensor<1024xf32>",
+        "result": "%18"
+      },
+      {
+        "canonical_op": "empty",
+        "raw": "%19 = tensor.empty() : tensor<1024xf32>",
+        "result": "%19"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%20 = linalg.fill ins(%extracted_4 : f32) outs(%19 : tensor<1024xf32>) -> tensor<1024xf32>",
+        "result": "%20"
+      },
+      {
+        "canonical_op": "divf",
+        "raw": "%21 = arith.divf %6, %20 : tensor<1024xf32>",
+        "result": "%21"
+      },
+      {
+        "canonical_op": "mulf",
+        "raw": "%22 = arith.mulf %21, %18 : tensor<1024xf32>",
+        "result": "%22"
+      },
+      {
+        "canonical_op": "truncf",
+        "raw": "%23 = arith.truncf %22 : tensor<1024xf32> to tensor<1024xf16>",
+        "result": "%23"
+      },
+      {
+        "canonical_op": "add",
+        "raw": "%24 = arith.addf %16, %23 : tensor<1024xf16>",
+        "result": "%24"
+      },
+      {
+        "canonical_op": "reinterpret_cast",
+        "raw": "%reinterpret_cast_9 = memref.reinterpret_cast %arg2 to offset: [%4], sizes: [1024], strides: [1] : memref<?xf16> to memref<1024xf16, strided<[1], offset: ?>>",
+        "result": "%reinterpret_cast_9"
+      },
+      {
+        "canonical_op": "materialize_in_destination",
+        "raw": "bufferization.materialize_in_destination %24 in writable %reinterpret_cast_9 : (tensor<1024xf16>, memref<1024xf16, strided<[1], offset: ?>>) -> ()",
+        "result": null
+      },
+      {
+        "canonical_op": "cast",
+        "raw": "%25 = arith.extf %24 : tensor<1024xf16> to tensor<1024xf32>",
+        "result": "%25"
+      },
+      {
+        "canonical_op": "mulf",
+        "raw": "%26 = arith.mulf %25, %25 : tensor<1024xf32>",
+        "result": "%26"
+      },
+      {
+        "canonical_op": "alloc_tensor",
+        "raw": "%27 = bufferization.alloc_tensor() : tensor<f32>",
+        "result": "%27"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%28 = linalg.fill ins(%cst : f32) outs(%27 : tensor<f32>) -> tensor<f32>",
+        "result": "%28"
+      },
+      {
+        "canonical_op": "reduce",
+        "raw": "%reduced_10 = linalg.reduce ins(%26 : tensor<1024xf32>) outs(%28 : tensor<f32>) dimensions = [0]",
+        "result": "%reduced_10"
+      },
+      {
+        "canonical_op": "add",
+        "raw": "%41 = arith.addf %in, %init : f32",
+        "result": "%41"
+      },
+      {
+        "canonical_op": "yield",
+        "raw": "linalg.yield %41 : f32",
+        "result": null
+      },
+      {
+        "canonical_op": "extract",
+        "raw": "%extracted_11 = tensor.extract %reduced_10[] : tensor<f32>",
+        "result": "%extracted_11"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%29 = linalg.fill ins(%extracted_11 : f32) outs(%0 : tensor<1xf32>) -> tensor<1xf32>",
+        "result": "%29"
+      },
+      {
+        "canonical_op": "divf",
+        "raw": "%30 = arith.divf %29, %2 : tensor<1xf32>",
+        "result": "%30"
+      },
+      {
+        "canonical_op": "extract",
+        "raw": "%extracted_12 = tensor.extract %30[%c0] : tensor<1xf32>",
+        "result": "%extracted_12"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%31 = linalg.fill ins(%extracted_12 : f32) outs(%0 : tensor<1xf32>) -> tensor<1xf32>",
+        "result": "%31"
+      },
+      {
+        "canonical_op": "add",
+        "raw": "%32 = arith.addf %31, %1 : tensor<1xf32>",
+        "result": "%32"
+      },
+      {
+        "canonical_op": "extract",
+        "raw": "%extracted_13 = tensor.extract %32[%c0] : tensor<1xf32>",
+        "result": "%extracted_13"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%33 = linalg.fill ins(%extracted_13 : f32) outs(%0 : tensor<1xf32>) -> tensor<1xf32>",
+        "result": "%33"
+      },
+      {
+        "canonical_op": "sqrt",
+        "raw": "%34 = math.sqrt %33 : tensor<1xf32>",
+        "result": "%34"
+      },
+      {
+        "canonical_op": "extract",
+        "raw": "%extracted_14 = tensor.extract %34[%c0] : tensor<1xf32>",
+        "result": "%extracted_14"
+      },
+      {
+        "canonical_op": "reinterpret_cast",
+        "raw": "%reinterpret_cast_15 = memref.reinterpret_cast %arg6 to offset: [0], sizes: [1024], strides: [1] : memref<?xf16> to memref<1024xf16, strided<[1]>>",
+        "result": "%reinterpret_cast_15"
+      },
+      {
+        "canonical_op": "alloc",
+        "raw": "%alloc_16 = memref.alloc() : memref<1024xf16>",
+        "result": "%alloc_16"
+      },
+      {
+        "canonical_op": "copy",
+        "raw": "memref.copy %reinterpret_cast_15, %alloc_16 : memref<1024xf16, strided<[1]>> to memref<1024xf16>",
+        "result": null
+      },
+      {
+        "canonical_op": "to_tensor",
+        "raw": "%35 = bufferization.to_tensor %alloc_16 restrict writable : memref<1024xf16>",
+        "result": "%35"
+      },
+      {
+        "canonical_op": "cast",
+        "raw": "%36 = arith.extf %35 : tensor<1024xf16> to tensor<1024xf32>",
+        "result": "%36"
+      },
+      {
+        "canonical_op": "reinterpret_cast",
+        "raw": "%reinterpret_cast_17 = memref.reinterpret_cast %arg1 to offset: [%4], sizes: [1024], strides: [1] : memref<?xf16> to memref<1024xf16, strided<[1], offset: ?>>",
+        "result": "%reinterpret_cast_17"
+      },
+      {
+        "canonical_op": "fill",
+        "raw": "%37 = linalg.fill ins(%extracted_14 : f32) outs(%19 : tensor<1024xf32>) -> tensor<1024xf32>",
+        "result": "%37"
+      },
+      {
+        "canonical_op": "divf",
+        "raw": "%38 = arith.divf %25, %37 : tensor<1024xf32>",
+        "result": "%38"
+      },
+      {
+        "canonical_op": "mulf",
+        "raw": "%39 = arith.mulf %38, %36 : tensor<1024xf32>",
+        "result": "%39"
+      },
+      {
+        "canonical_op": "truncf",
+        "raw": "%40 = arith.truncf %39 : tensor<1024xf32> to tensor<1024xf16>",
+        "result": "%40"
+      },
+      {
+        "canonical_op": "materialize_in_destination",
+        "raw": "bufferization.materialize_in_destination %40 in writable %reinterpret_cast_17 : (tensor<1024xf16>, memref<1024xf16, strided<[1], offset: ?>>) -> ()",
+        "result": null
+      },
+      {
+        "canonical_op": "return",
+        "raw": "return",
+        "result": null
+      }
+    ],
+    "variant": "dual_residual_rmsnorm"
+  }
+}

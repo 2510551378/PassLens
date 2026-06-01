@@ -69,3 +69,32 @@ The built-in `ascendc` profile treats the following metrics as contract signals:
 
 These are triage signals. They do not prove a pass is wrong by themselves, but
 they identify where a compiler developer should inspect first.
+
+## Real Local Dual RMSNorm Trace
+
+Trace: `sample-traces/real-triton-npu-dual-rmsnorm.json`
+
+This trace is generated from the local `npuir2ascendc` workspace:
+
+```powershell
+python generate.py `
+  --input samples\rmsnorm_residual_cast\case_001\raw\fused_dual_residual_rmsnorm_kernel.ttadapter.mlir `
+  --out sample-traces\artifacts\real-triton-npu-dual-rmsnorm
+```
+
+It records a real captured TTAdapter IR input and the generated AscendC kernel
+artifact for:
+
+```text
+fused_dual_residual_rmsnorm_kernel
+```
+
+The trace uses artifact-backed IR:
+
+```text
+captured.ttadapter.mlir -> selected_function.ttadapter.mlir -> kernel.cpp
+```
+
+This is not a synthetic failure case. It is included to show how Pass Lens can
+hold a real downstream compiler conversion path even when the collector is not
+yet integrated into that compiler as a live `PassInstrumentation` hook.

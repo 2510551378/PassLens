@@ -32,7 +32,7 @@
     if (!button) {
       return;
     }
-    handleAction(button.dataset.action);
+    handleAction(button.dataset.action, button);
   });
   
   search.addEventListener('input', () => {
@@ -164,7 +164,7 @@
     }
   }
   
-  function handleAction(action) {
+  function handleAction(action, button) {
     if (action === 'first-signal') {
       jumpTo('first-signal');
     } else if (action === 'prev-changed') {
@@ -180,6 +180,8 @@
     } else if (action === 'export-bundle') {
       const stage = trace.stages[selectedIndex];
       vscode.postMessage({ type: 'exportBundle', selectedStageIndex: stage?.index });
+    } else if (action === 'open-artifact' && button?.dataset.artifactPath) {
+      vscode.postMessage({ type: 'openArtifact', path: button.dataset.artifactPath });
     }
   }
   
@@ -487,8 +489,11 @@
     const source = artifactPath
       ? 'artifact: ' + artifactPath
       : text ? 'inline ' + label : 'missing ' + label;
+    const open = artifactPath
+      ? '<button class="artifact-open" data-action="open-artifact" data-artifact-path="' + escapeHtml(artifactPath) + '">Open ' + escapeHtml(label) + '</button>'
+      : '';
     return '<div class="source-line"><span class="source-path" title="' + escapeHtml(source) + '">' +
-      escapeHtml(source) + '</span></div>';
+      escapeHtml(source) + '</span>' + open + '</div>';
   }
   
   function stageIrSource(stage) {

@@ -2,10 +2,26 @@
   "name": "pass-lens",
   "displayName": "Pass Lens",
   "description": "Inspect compiler pass timelines, metric deltas, and IR diffs from structured pass traces.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "2510551378",
   "author": "2510551378",
   "license": "MIT",
+  "icon": "media/pass-lens-icon.png",
+  "preview": true,
+  "keywords": [
+    "compiler",
+    "MLIR",
+    "LLVM",
+    "IR",
+    "debugger",
+    "trace",
+    "passes",
+    "AscendC"
+  ],
+  "galleryBanner": {
+    "color": "#101722",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/2510551378/PassLens.git"
@@ -18,6 +34,7 @@
     "vscode": "^1.90.0"
   },
   "categories": [
+    "Debuggers",
     "Other"
   ],
   "activationEvents": [

@@ -55,6 +55,12 @@ const sampleTraces: SampleTraceEntry[] = [
     description: 'AscendC strict-mode legality failure',
     detail: 'Case study trace where a lowering pass introduces fallback and missing tile proof evidence.',
     file: 'triton-npu-strict-fallback.json'
+  },
+  {
+    label: 'Real Triton NPU dual RMSNorm',
+    description: 'Captured TTAdapter IR to generated AscendC artifact',
+    detail: 'Real local npuir2ascendc sample generated from fused_dual_residual_rmsnorm_kernel.',
+    file: 'real-triton-npu-dual-rmsnorm.json'
   }
 ];
 
@@ -403,6 +409,9 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     if (parsed.type === 'exportBundle') {
       await exportReproBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
+    if (parsed.type === 'openArtifact') {
+      await openArtifact(sourceUri, parsed.path);
+    }
   });
 
   const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.css'));
@@ -441,6 +450,17 @@ async function exportReproBundle(
   if (open === 'Open') {
     await vscode.window.showTextDocument(target, { preview: false });
   }
+}
+
+async function openArtifact(sourceUri: vscode.Uri, artifactPath: string): Promise<void> {
+  const resolvedPath = path.normalize(path.isAbsolute(artifactPath)
+    ? artifactPath
+    : path.resolve(path.dirname(sourceUri.fsPath), artifactPath));
+  if (!await pathExists(resolvedPath)) {
+    vscode.window.showWarningMessage(`Pass Lens artifact does not exist: ${resolvedPath}`);
+    return;
+  }
+  await vscode.window.showTextDocument(vscode.Uri.file(resolvedPath), { preview: false });
 }
 
 function getWebviewHtml(

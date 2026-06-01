@@ -5,6 +5,10 @@ compiler developers identify where an IR first changes, which pass introduced
 invalid IR, which metrics changed abnormally, and which passes dominate the
 pipeline timeline.
 
+![Pass Lens first bad pass view](docs/images/pass-lens-first-bad-pass.png)
+
+Animated focus view: [`docs/images/pass-lens-first-bad-pass.gif`](docs/images/pass-lens-first-bad-pass.gif)
+
 ## Features
 
 - Open structured JSON pass traces.
@@ -19,6 +23,8 @@ pipeline timeline.
 - Compare metric deltas before and after each pass.
 - View side-by-side IR diffs, including source markers for inline IR versus
   external artifact files.
+- Open before/after IR artifacts and diagnostics sidecars directly from the
+  diff view.
 - Copy the generated repro command from the viewer.
 - Export a Markdown repro bundle with trace summary, selected-pass IR,
   diagnostics, validation issues, and top metric anomalies.
@@ -84,6 +90,8 @@ the result in the `Pass Lens Collector Setup` output channel.
   from sidecar files.
 - `Triton NPU UB budget overflow`: AscendC resource-budget anomaly case study.
 - `Triton NPU strict fallback`: strict-mode legality and fallback case study.
+- `Real Triton NPU dual RMSNorm`: real local `npuir2ascendc` trace from
+  captured TTAdapter IR to generated AscendC kernel artifact.
 
 See `docs/examples/triton-npu.md` for the intended debugging story behind the
 Triton NPU / AscendC samples.

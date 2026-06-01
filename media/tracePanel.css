@@ -492,6 +492,9 @@ table.metrics {
 }
 
 .source-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
   margin-top: 3px;
   color: var(--muted);
@@ -502,11 +505,28 @@ table.metrics {
 
 .source-path {
   display: inline-block;
+  flex: 1;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
   vertical-align: bottom;
   white-space: nowrap;
+}
+
+.artifact-open {
+  flex: 0 0 auto;
+  color: var(--vscode-textLink-foreground);
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+}
+
+.artifact-open:hover {
+  color: var(--vscode-textLink-activeForeground);
 }
 
 .diff {

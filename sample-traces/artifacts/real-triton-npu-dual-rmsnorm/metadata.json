@@ -1,0 +1,88 @@
+{
+  "buffer_size": 4096,
+  "files": {
+    "host": "C:\\Users\\25105\\Documents\\Codex\\2026-06-01\\new-chat-2\\outputs\\pass-lens-vscode\\sample-traces\\artifacts\\real-triton-npu-dual-rmsnorm\\host.cpp",
+    "kernel": "C:\\Users\\25105\\Documents\\Codex\\2026-06-01\\new-chat-2\\outputs\\pass-lens-vscode\\sample-traces\\artifacts\\real-triton-npu-dual-rmsnorm\\kernel.cpp",
+    "metadata": "C:\\Users\\25105\\Documents\\Codex\\2026-06-01\\new-chat-2\\outputs\\pass-lens-vscode\\sample-traces\\artifacts\\real-triton-npu-dual-rmsnorm\\metadata.json",
+    "source_map": "C:\\Users\\25105\\Documents\\Codex\\2026-06-01\\new-chat-2\\outputs\\pass-lens-vscode\\sample-traces\\artifacts\\real-triton-npu-dual-rmsnorm\\source_map.json",
+    "tiling": "C:\\Users\\25105\\Documents\\Codex\\2026-06-01\\new-chat-2\\outputs\\pass-lens-vscode\\sample-traces\\artifacts\\real-triton-npu-dual-rmsnorm\\tiling.hpp"
+  },
+  "function_name": "fused_dual_residual_rmsnorm_kernel",
+  "input_path": "C:\\Users\\25105\\npuir2ascendc\\samples\\rmsnorm_residual_cast\\case_001\\raw\\fused_dual_residual_rmsnorm_kernel.ttadapter.mlir",
+  "kernel_name": "fused_dual_residual_rmsnorm_kernel_rmsnorm_residual_cast",
+  "match_mode": "reference_name",
+  "pattern_name": "rmsnorm_residual_cast",
+  "tensor_count": 7,
+  "tensors": [
+    {
+      "dtype": "i8",
+      "layout": "ND",
+      "name": "arg0",
+      "role": "input",
+      "shape": [
+        "?"
+      ]
+    },
+    {
+      "dtype": "f16",
+      "layout": "ND",
+      "name": "arg1",
+      "role": "input",
+      "shape": [
+        "?"
+      ]
+    },
+    {
+      "dtype": "f16",
+      "layout": "ND",
+      "name": "arg2",
+      "role": "input",
+      "shape": [
+        "?"
+      ]
+    },
+    {
+      "dtype": "f16",
+      "layout": "ND",
+      "name": "arg3",
+      "role": "input",
+      "shape": [
+        "?"
+      ]
+    },
+    {
+      "dtype": "f16",
+      "layout": "ND",
+      "name": "arg4",
+      "role": "input",
+      "shape": [
+        "?"
+      ]
+    },
+    {
+      "dtype": "f16",
+      "layout": "ND",
+      "name": "arg5",
+      "role": "input",
+      "shape": [
+        "?"
+      ]
+    },
+    {
+      "dtype": "f16",
+      "layout": "ND",
+      "name": "arg6",
+      "role": "input",
+      "shape": [
+        "?"
+      ]
+    }
+  ],
+  "tunables": {
+    "block_dim": 8,
+    "buffer_num": 1,
+    "tile_size": 128,
+    "vector_width": 16
+  },
+  "variant": "dual_residual_rmsnorm"
+}
