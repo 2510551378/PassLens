@@ -7,6 +7,7 @@
   let selectedIndex = initialSelectedIndex();
   let filterText = '';
   let showChangedOnly = false;
+  let showFullDiff = false;
   
   const timeline = document.getElementById('timeline');
   const details = document.getElementById('details');
@@ -232,6 +233,9 @@
       vscode.postMessage({ type: 'exportBundle', selectedStageIndex: stage?.index });
     } else if (action === 'open-artifact' && button?.dataset.artifactPath) {
       vscode.postMessage({ type: 'openArtifact', path: button.dataset.artifactPath });
+    } else if (action === 'toggle-diff-context') {
+      showFullDiff = !showFullDiff;
+      renderDetails();
     }
   }
 
@@ -602,14 +606,21 @@
     if (!rows.length) {
       return '<div class="empty">No IR text recorded for this pass.</div>';
     }
+    const renderedRows = showFullDiff ? rows : collapseUnchangedRows(rows);
+    const stats = diffStats(rows, renderedRows);
   
-    return '<div class="diff-head"><div><div class="diff-title">Before pass</div>' +
-      renderSourceLine('before IR', stage.artifacts?.beforePath, beforeText) +
+    return renderDiffToolbar(stage, stats) +
+      '<div class="diff-head"><div><div class="diff-title">Before pass</div>' +
+      renderSourceLine('before IR', stage.artifacts?.beforePath, beforeText, { open: false }) +
       '</div><div><div class="diff-title">After pass</div>' +
-      renderSourceLine('after IR', stage.artifacts?.afterPath, afterText) +
+      renderSourceLine('after IR', stage.artifacts?.afterPath, afterText, { open: false }) +
       '</div></div>' +
       '<div class="diff-scroll"><table class="diff"><tbody>' +
-      rows.map((row) => {
+      renderedRows.map((row) => {
+        if (row.kind === 'context') {
+          return '<tr class="context-row"><td class="line-no"></td><td class="context-cell" colspan="3">' +
+            escapeHtml(row.message) + '</td></tr>';
+        }
         return '<tr class="' + row.kind + '">' +
           '<td class="line-no">' + escapeHtml(row.leftNo ?? '') + '</td>' +
           '<td class="code">' + escapeHtml(row.left ?? '') + '</td>' +
@@ -620,15 +631,98 @@
       '</tbody></table></div>';
   }
   
-  function renderSourceLine(label, artifactPath, text) {
+  function renderDiffToolbar(stage, stats) {
+    const artifactButtons = [
+      artifactButton('Open before artifact', stage.artifacts?.beforePath),
+      artifactButton('Open after artifact', stage.artifacts?.afterPath),
+      artifactButton('Open diagnostics', stage.artifacts?.diagnosticsPath)
+    ].filter(Boolean).join('');
+    const artifactGroup = artifactButtons
+      ? '<div class="artifact-toolbar" aria-label="Diff artifacts"><span class="toolbar-label">Artifacts</span>' + artifactButtons + '</div>'
+      : '';
+    const contextLabel = showFullDiff
+      ? 'Collapse unchanged context'
+      : stats.hidden > 0 ? 'Show full context' : 'Full context shown';
+    const contextDisabled = !showFullDiff && stats.hidden === 0 ? ' disabled' : '';
+    const hidden = stats.hidden > 0
+      ? '<span class="diff-chip muted">' + escapeHtml(stats.hidden + ' unchanged hidden') + '</span>'
+      : '';
+    return '<div class="diff-toolbar">' +
+      '<div class="diff-stats">' +
+        '<span class="diff-chip add">+' + escapeHtml(stats.added) + '</span>' +
+        '<span class="diff-chip del">-' + escapeHtml(stats.deleted) + '</span>' +
+        '<span class="diff-chip">shown ' + escapeHtml(stats.shown) + ' / ' + escapeHtml(stats.total) + '</span>' +
+        hidden +
+      '</div>' +
+      '<div class="diff-actions">' +
+        artifactGroup +
+        '<button class="action-button compact" data-action="toggle-diff-context"' + contextDisabled + '>' + escapeHtml(contextLabel) + '</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function artifactButton(label, artifactPath) {
+    if (!artifactPath) {
+      return '';
+    }
+    return '<button class="artifact-button" data-action="open-artifact" data-artifact-path="' +
+      escapeHtml(artifactPath) + '" title="' + escapeHtml(artifactPath) + '">' + escapeHtml(label) + '</button>';
+  }
+
+  function renderSourceLine(label, artifactPath, text, options = {}) {
     const source = artifactPath
       ? 'artifact: ' + artifactPath
       : text ? 'inline ' + label : 'missing ' + label;
-    const open = artifactPath
+    const open = artifactPath && options.open !== false
       ? '<button class="artifact-open" data-action="open-artifact" data-artifact-path="' + escapeHtml(artifactPath) + '">Open ' + escapeHtml(label) + '</button>'
       : '';
     return '<div class="source-line"><span class="source-path" title="' + escapeHtml(source) + '">' +
       escapeHtml(source) + '</span>' + open + '</div>';
+  }
+
+  function diffStats(rows, renderedRows) {
+    const added = rows.filter((row) => row.kind === 'add').length;
+    const deleted = rows.filter((row) => row.kind === 'del').length;
+    const changed = rows.filter((row) => row.kind === 'changed').length;
+    const shown = renderedRows.filter((row) => row.kind !== 'context').length;
+    return {
+      added: added + changed,
+      deleted: deleted + changed,
+      shown,
+      total: rows.length,
+      hidden: Math.max(0, rows.length - shown)
+    };
+  }
+
+  function collapseUnchangedRows(rows, context = 3) {
+    if (showFullDiff || rows.length <= 80) {
+      return rows;
+    }
+    const collapsed = [];
+    let index = 0;
+    while (index < rows.length) {
+      if (rows[index].kind !== 'same') {
+        collapsed.push(rows[index]);
+        index++;
+        continue;
+      }
+      const start = index;
+      while (index < rows.length && rows[index].kind === 'same') {
+        index++;
+      }
+      const run = rows.slice(start, index);
+      if (run.length <= context * 2 + 3) {
+        collapsed.push(...run);
+        continue;
+      }
+      collapsed.push(...run.slice(0, context));
+      collapsed.push({
+        kind: 'context',
+        message: run.length - context * 2 + ' unchanged line(s) hidden'
+      });
+      collapsed.push(...run.slice(-context));
+    }
+    return collapsed;
   }
   
   function stageIrSource(stage) {
@@ -651,8 +745,8 @@
       return [];
     }
   
-    const a = beforeText.split(/\\r?\\n/);
-    const b = afterText.split(/\\r?\\n/);
+    const a = beforeText.split(/\r?\n/);
+    const b = afterText.split(/\r?\n/);
     if (a.length * b.length > 200000) {
       return pairedDiff(a, b);
     }
