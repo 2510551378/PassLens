@@ -1,38 +1,43 @@
 :root {
-  --border: color-mix(in srgb, var(--vscode-foreground) 18%, transparent);
-  --muted: color-mix(in srgb, var(--vscode-foreground) 64%, transparent);
-  --changed: var(--vscode-testing-iconPassed);
-  --unchanged: var(--vscode-descriptionForeground);
-  --failed: var(--vscode-testing-iconFailed);
-  --panel: color-mix(in srgb, var(--vscode-sideBar-background) 88%, var(--vscode-editor-background));
-  --panel-strong: color-mix(in srgb, var(--vscode-sideBar-background) 74%, var(--vscode-editor-background));
-  --added-bg: color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground) 18%, transparent);
-  --deleted-bg: color-mix(in srgb, var(--vscode-gitDecoration-deletedResourceForeground) 18%, transparent);
-  --row-hover: var(--vscode-list-hoverBackground);
-  --row-active: var(--vscode-list-activeSelectionBackground);
-  --code-bg: var(--vscode-editor-background);
+  --app-fg: var(--vscode-foreground, #e6edf7);
+  --app-bg: var(--vscode-editor-background, #0c1220);
+  --app-sidebar: var(--vscode-sideBar-background, #111a2a);
+  --border: color-mix(in srgb, var(--app-fg) 18%, transparent);
+  --muted: color-mix(in srgb, var(--app-fg) 64%, transparent);
+  --changed: var(--vscode-testing-iconPassed, #6ee787);
+  --unchanged: var(--vscode-descriptionForeground, #9aa8bc);
+  --failed: var(--vscode-testing-iconFailed, #ff6b72);
+  --panel: color-mix(in srgb, var(--app-sidebar) 88%, var(--app-bg));
+  --panel-strong: color-mix(in srgb, var(--app-sidebar) 74%, var(--app-bg));
+  --added-bg: color-mix(in srgb, var(--vscode-gitDecoration-addedResourceForeground, #6ee787) 18%, transparent);
+  --deleted-bg: color-mix(in srgb, var(--vscode-gitDecoration-deletedResourceForeground, #ff6b72) 18%, transparent);
+  --row-hover: var(--vscode-list-hoverBackground, color-mix(in srgb, var(--app-fg) 8%, transparent));
+  --row-active: var(--vscode-list-activeSelectionBackground, #21304a);
+  --code-bg: var(--vscode-editor-background, #080d17);
 }
 
 * { box-sizing: border-box; }
 
 body {
   margin: 0;
-  color: var(--vscode-foreground);
-  background: var(--vscode-editor-background);
-  font-family: var(--vscode-font-family);
-  font-size: var(--vscode-font-size);
+  overflow-x: hidden;
+  color: var(--app-fg);
+  background: var(--app-bg);
+  font-family: var(--vscode-font-family, Inter, "Segoe UI", sans-serif);
+  font-size: var(--vscode-font-size, 13px);
 }
 
 header {
   padding: 16px 18px 12px;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--panel-strong), var(--vscode-editor-background));
+  background: linear-gradient(180deg, var(--panel-strong), var(--app-bg));
 }
 
 h1 {
   margin: 0 0 6px;
   font-size: 20px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .meta {
@@ -43,9 +48,19 @@ h1 {
   font-size: 12px;
 }
 
+.meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#source {
+  flex: 1 1 360px;
+}
+
 .summary {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   gap: 8px;
   margin-top: 12px;
 }
@@ -68,7 +83,7 @@ h1 {
 }
 
 .summary-card[data-jump]:hover {
-  border-color: var(--vscode-focusBorder);
+  border-color: var(--vscode-focusBorder, #3794ff);
   background: var(--row-hover);
 }
 
@@ -90,9 +105,9 @@ h1 {
   display: none;
   margin-top: 10px;
   border: 1px solid var(--border);
-  border-left: 4px solid var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground));
+  border-left: 4px solid var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground, #ffb454));
   border-radius: 6px;
-  background: color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground)) 8%, transparent);
+  background: color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground, #ffb454)) 8%, transparent);
   padding: 9px 10px;
 }
 
@@ -117,12 +132,12 @@ h1 {
 
 .issue-severity {
   font-weight: 600;
-  color: var(--vscode-foreground);
+  color: var(--app-fg);
 }
 
 main {
   display: grid;
-  grid-template-columns: minmax(320px, 34%) 1fr;
+  grid-template-columns: minmax(280px, 32%) minmax(0, 1fr);
   min-height: calc(100vh - 105px);
 }
 
@@ -139,7 +154,7 @@ section {
 
 .toolbar {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 8px;
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);
@@ -155,8 +170,8 @@ section {
   width: 100%;
   min-width: 0;
   padding: 5px 7px;
-  color: var(--vscode-input-foreground);
-  background: var(--vscode-input-background);
+  color: var(--vscode-input-foreground, var(--app-fg));
+  background: var(--vscode-input-background, var(--code-bg));
   border: 1px solid var(--vscode-input-border, var(--border));
   font: inherit;
 }
@@ -182,7 +197,7 @@ section {
   height: 26px;
   border: 1px solid var(--border);
   border-radius: 4px;
-  background: color-mix(in srgb, var(--vscode-foreground) 6%, transparent);
+  background: color-mix(in srgb, var(--app-fg) 6%, transparent);
   cursor: pointer;
   overflow: hidden;
 }
@@ -197,7 +212,7 @@ section {
 }
 
 .overview-segment.active {
-  outline: 2px solid var(--vscode-focusBorder);
+  outline: 2px solid var(--vscode-focusBorder, #3794ff);
   outline-offset: 1px;
 }
 
@@ -248,15 +263,19 @@ section {
 
 .stage-card.active {
   background: var(--row-active);
-  color: var(--vscode-list-activeSelectionForeground);
-  border-color: var(--vscode-focusBorder);
+  color: var(--vscode-list-activeSelectionForeground, var(--app-fg));
+  border-color: var(--vscode-focusBorder, #3794ff);
 }
 
 .stage-line {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) max-content;
   align-items: baseline;
   gap: 8px;
+}
+
+.stage-line > * {
+  min-width: 0;
 }
 
 .stage-index,
@@ -275,6 +294,21 @@ section {
   font-weight: 600;
 }
 
+.duration,
+.status {
+  justify-self: end;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.scope {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .status.changed { color: var(--changed); }
 .status.unchanged { color: var(--unchanged); }
 
@@ -285,8 +319,8 @@ section {
 }
 
 .pass-hero {
-  display: grid;
-  grid-template-columns: 1fr auto;
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: start;
   margin-bottom: 12px;
@@ -297,9 +331,15 @@ section {
   background: var(--panel);
 }
 
+.pass-hero > div:first-child {
+  flex: 1 1 430px;
+  min-width: min(100%, 260px);
+}
+
 .details h2 {
   margin: 18px 0 8px;
   font-size: 16px;
+  overflow-wrap: anywhere;
 }
 
 .details h2:first-child {
@@ -308,32 +348,38 @@ section {
 
 .insight {
   margin: 0 0 14px;
-  border-left: 3px solid var(--vscode-textLink-foreground);
+  border-left: 3px solid var(--vscode-textLink-foreground, #79c0ff);
   padding: 8px 10px;
-  background: color-mix(in srgb, var(--vscode-textLink-foreground) 8%, transparent);
-  color: var(--vscode-foreground);
+  background: color-mix(in srgb, var(--vscode-textLink-foreground, #79c0ff) 8%, transparent);
+  color: var(--app-fg);
 }
 
 .badges {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
+  flex: 1 1 220px;
   gap: 6px;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .pill {
+  max-width: 100%;
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 3px 8px;
-  background: color-mix(in srgb, var(--vscode-foreground) 7%, transparent);
+  background: color-mix(in srgb, var(--app-fg) 7%, transparent);
   color: var(--muted);
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .pill.changed { color: var(--changed); border-color: color-mix(in srgb, var(--changed) 45%, var(--border)); }
 .pill.failed { color: var(--failed); border-color: color-mix(in srgb, var(--failed) 45%, var(--border)); }
-.pill.warning { color: var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground)); }
+.pill.warning { color: var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground, #ffb454)); }
 
 .action-row {
   display: flex;
@@ -343,7 +389,7 @@ section {
 }
 
 .action-button {
-  color: var(--vscode-button-secondaryForeground, var(--vscode-foreground));
+  color: var(--vscode-button-secondaryForeground, var(--app-fg));
   background: var(--vscode-button-secondaryBackground, var(--panel-strong));
   border: 1px solid var(--border);
   border-radius: 5px;
@@ -358,14 +404,14 @@ section {
 }
 
 .action-button.primary {
-  color: var(--vscode-button-foreground);
-  background: var(--vscode-button-background);
-  border-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground, #ffffff);
+  background: var(--vscode-button-background, #0e639c);
+  border-color: var(--vscode-button-background, #0e639c);
 }
 
 .details-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   gap: 8px;
   margin: 10px 0 14px;
 }
@@ -393,9 +439,9 @@ section {
 
 .anomaly-panel {
   border: 1px solid var(--border);
-  border-left: 4px solid var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground));
+  border-left: 4px solid var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground, #ffb454));
   border-radius: 6px;
-  background: color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground)) 8%, transparent);
+  background: color-mix(in srgb, var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground, #ffb454)) 8%, transparent);
   padding: 8px 10px;
   margin-bottom: 14px;
 }
@@ -407,14 +453,14 @@ section {
 
 .anomaly-item {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: minmax(72px, auto) minmax(0, 1fr) max-content;
   gap: 8px;
   align-items: baseline;
   min-width: 0;
 }
 
 .anomaly-severity {
-  color: var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground));
+  color: var(--vscode-notificationsWarningIcon-foreground, var(--vscode-editorWarning-foreground, #ffb454));
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
@@ -439,25 +485,40 @@ table.metrics {
   font-variant-numeric: tabular-nums;
 }
 
+.table-scroll,
+.diff-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow: auto;
+}
+
 .metrics th,
 .metrics td {
   border-bottom: 1px solid var(--border);
   padding: 6px 8px;
   text-align: right;
+  white-space: nowrap;
 }
 
 .metrics th:first-child,
 .metrics td:first-child {
   text-align: left;
+  min-width: 180px;
 }
 
-.metric-pos { color: var(--vscode-gitDecoration-addedResourceForeground); }
-.metric-neg { color: var(--vscode-gitDecoration-deletedResourceForeground); }
+.metric-pos { color: var(--vscode-gitDecoration-addedResourceForeground, #6ee787); }
+.metric-neg { color: var(--vscode-gitDecoration-deletedResourceForeground, #ff6b72); }
 
 .metric-name {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
+}
+
+.metric-name > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .metric-spark {
@@ -465,7 +526,7 @@ table.metrics {
   min-width: 42px;
   height: 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--vscode-foreground) 10%, transparent);
+  background: color-mix(in srgb, var(--app-fg) 10%, transparent);
   overflow: hidden;
 }
 
@@ -481,7 +542,7 @@ table.metrics {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin: 0 0 6px 48px;
+  margin: 0 0 6px;
 }
 
 .diff-title {
@@ -494,6 +555,7 @@ table.metrics {
 .source-line {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   min-width: 0;
   margin-top: 3px;
@@ -515,7 +577,7 @@ table.metrics {
 
 .artifact-open {
   flex: 0 0 auto;
-  color: var(--vscode-textLink-foreground);
+  color: var(--vscode-textLink-foreground, #79c0ff);
   background: transparent;
   border: 0;
   padding: 0;
@@ -526,15 +588,16 @@ table.metrics {
 }
 
 .artifact-open:hover {
-  color: var(--vscode-textLink-activeForeground);
+  color: var(--vscode-textLink-activeForeground, #a5d6ff);
 }
 
 .diff {
   width: 100%;
+  min-width: 680px;
   border-collapse: collapse;
   table-layout: fixed;
-  font-family: var(--vscode-editor-font-family);
-  font-size: var(--vscode-editor-font-size);
+  font-family: var(--vscode-editor-font-family, Consolas, "Cascadia Mono", monospace);
+  font-size: var(--vscode-editor-font-size, 13px);
   line-height: 1.45;
   background: var(--code-bg);
   border: 1px solid var(--border);
@@ -584,8 +647,8 @@ pre.diagnostics {
   background: var(--code-bg);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  font-family: var(--vscode-editor-font-family);
-  font-size: var(--vscode-editor-font-size);
+  font-family: var(--vscode-editor-font-family, Consolas, "Cascadia Mono", monospace);
+  font-size: var(--vscode-editor-font-size, 13px);
 }
 
 @media (max-width: 900px) {
@@ -600,10 +663,68 @@ pre.diagnostics {
   }
 
   .details-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
   }
 
   .summary {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+
+  .badges {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 640px) {
+  header {
+    padding: 12px;
+  }
+
+  .details {
+    padding: 12px;
+  }
+
+  .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .toggle {
+    white-space: normal;
+  }
+
+  .overview {
+    grid-template-columns: repeat(auto-fit, minmax(12px, 1fr));
+  }
+
+  .stage-line {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .stage-line .status,
+  .stage-line .duration {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .pass-hero > div:first-child,
+  .badges {
+    flex-basis: 100%;
+  }
+
+  .anomaly-item {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .anomaly-message {
+    white-space: normal;
+  }
+
+  .diff-head {
+    grid-template-columns: 1fr;
+  }
+
+  .summary {
+    grid-template-columns: 1fr;
   }
 }

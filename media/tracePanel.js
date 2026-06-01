@@ -1,7 +1,8 @@
 (() => {
   const vscode = acquireVsCodeApi();
   const dataElement = document.getElementById('pass-lens-data');
-  const passLensData = JSON.parse(dataElement?.textContent ?? '{}');
+  const serializedData = dataElement?.content?.textContent ?? dataElement?.textContent ?? '{}';
+  const passLensData = JSON.parse(serializedData);
   const { trace, traceIssues, traceAnomalies, traceIssueSummary, sourcePath } = passLensData;
   let selectedIndex = initialSelectedIndex();
   let filterText = '';
@@ -418,7 +419,7 @@
       return Math.abs(a - b);
     }));
   
-    return '<table class="metrics"><thead><tr><th>metric</th><th>before</th><th>after</th><th>delta</th></tr></thead><tbody>' +
+    return '<div class="table-scroll"><table class="metrics"><thead><tr><th>metric</th><th>before</th><th>after</th><th>delta</th></tr></thead><tbody>' +
       keys.map((key) => {
         const b = before[key];
         const a = after[key];
@@ -434,7 +435,7 @@
           '</td><td>' + escapeHtml(fmtNumber(a)) + '</td><td class="' + deltaClass + '">' +
           escapeHtml(deltaLabel) + '</td></tr>';
       }).join('') +
-      '</tbody></table>';
+      '</tbody></table></div>';
   }
   
   function topMetricDeltas(before, after) {
@@ -473,7 +474,7 @@
       '</div><div><div class="diff-title">After pass</div>' +
       renderSourceLine('after IR', stage.artifacts?.afterPath, afterText) +
       '</div></div>' +
-      '<table class="diff"><tbody>' +
+      '<div class="diff-scroll"><table class="diff"><tbody>' +
       rows.map((row) => {
         return '<tr class="' + row.kind + '">' +
           '<td class="line-no">' + escapeHtml(row.leftNo ?? '') + '</td>' +
@@ -482,7 +483,7 @@
           '<td class="code">' + escapeHtml(row.right ?? '') + '</td>' +
         '</tr>';
       }).join('') +
-      '</tbody></table>';
+      '</tbody></table></div>';
   }
   
   function renderSourceLine(label, artifactPath, text) {
