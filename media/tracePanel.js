@@ -196,9 +196,9 @@
     const firstAnomaly = traceAnomalies[0];
     document.getElementById('summary').innerHTML =
       summaryCard('Stages', String(trace.stages.length), 'first') +
-      summaryCard('Changed', changed.length + ' / ' + trace.stages.length, firstChanged ? 'first-signal' : undefined) +
-      summaryCard('First signal', failed ? 'verifier failed at #' + failed.index : firstChanged ? 'first change at #' + firstChanged.index : 'no IR changes', failed || firstChanged ? 'first-signal' : undefined) +
-      summaryCard('Anomalies', traceAnomalies.length ? traceAnomalies.length + ' suspicious metric delta(s)' : 'none', firstAnomaly ? 'first-anomaly' : undefined) +
+      summaryCard('Changed', changed.length + ' / ' + trace.stages.length, firstChanged ? 'first-signal' : undefined, firstChanged ? 'changed' : undefined) +
+      summaryCard('First signal', failed ? 'verifier failed at #' + failed.index : firstChanged ? 'first change at #' + firstChanged.index : 'no IR changes', failed || firstChanged ? 'first-signal' : undefined, failed ? 'failed' : firstChanged ? 'changed' : undefined) +
+      summaryCard('Anomalies', traceAnomalies.length ? traceAnomalies.length + ' suspicious metric delta(s)' : 'none', firstAnomaly ? 'first-anomaly' : undefined, traceAnomalies.length ? 'warning' : undefined) +
       summaryCard('Slowest', slowest ? slowest.pass + ' (' + fmtNumber(slowest.durationMs) + ' ms)' : 'not recorded', slowest ? 'slowest' : undefined);
     document.getElementById('stage-count').textContent = trace.stages.length + ' stages';
     document.getElementById('changed-count').textContent = changed.length + ' changed';
@@ -228,9 +228,10 @@
       '</ul>';
   }
   
-  function summaryCard(label, value, jump) {
+  function summaryCard(label, value, jump, tone) {
     const jumpAttr = jump ? ' data-jump="' + escapeHtml(jump) + '"' : '';
-    return '<button class="summary-card"' + jumpAttr + '><div class="summary-label">' + escapeHtml(label) + '</div>' +
+    const toneClass = tone ? ' ' + escapeHtml(tone) : '';
+    return '<button class="summary-card' + toneClass + '"' + jumpAttr + '><div class="summary-label">' + escapeHtml(label) + '</div>' +
       '<div class="summary-value" title="' + escapeHtml(value) + '">' + escapeHtml(value) + '</div></button>';
   }
   
@@ -277,7 +278,7 @@
         const anomalyText = anomalies.length ? anomalies.length + ' anomaly' + (anomalies.length === 1 ? '' : 'ies') : '';
         const impact = impactPercent(stage) + '%';
         const accent = stageAccent(stage);
-        return '<button class="stage-card' + active + '" data-index="' + idx + '" style="--accent: ' + accent + '; --impact: ' + impact + '">' +
+        return '<button class="stage-card ' + statusClass + active + '" data-index="' + idx + '" style="--accent: ' + accent + '; --impact: ' + impact + '">' +
           '<div class="stage-line">' +
             '<span class="stage-index">#' + escapeHtml(stage.index) + '</span>' +
             '<span class="stage-pass">' + escapeHtml(stage.pass) + '</span>' +
@@ -342,7 +343,7 @@
     const impact = impactPercent(stage);
     const anomalyCount = anomaliesForStage(stage.index).length;
     const irSource = stageIrSource(stage);
-    return '<div class="pass-hero" style="--accent: ' + stageAccent(stage) + '">' +
+    return '<div class="pass-hero ' + statusClass + '" style="--accent: ' + stageAccent(stage) + '">' +
       '<div>' +
         '<h2>' + escapeHtml(stage.pass) + '</h2>' +
         renderInsight(stage) +
