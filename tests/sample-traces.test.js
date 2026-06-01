@@ -5,6 +5,7 @@ const test = require('node:test');
 
 const { hydrateTraceArtifacts } = require('../out/trace/artifacts.js');
 const { normalizeTrace } = require('../out/trace/schema.js');
+const { validateTraceStrict } = require('../out/trace/strictValidation.js');
 const { validateTrace } = require('../out/trace/validation.js');
 
 test('sample traces normalize, hydrate artifacts, and validate without errors', async () => {
@@ -17,7 +18,10 @@ test('sample traces normalize, hydrate artifacts, and validate without errors', 
 
   for (const file of files) {
     const tracePath = path.join(sampleDir, file);
-    const trace = normalizeTrace(JSON.parse(await fs.readFile(tracePath, 'utf8')));
+    const raw = JSON.parse(await fs.readFile(tracePath, 'utf8'));
+    assert.deepEqual(validateTraceStrict(raw), [], file);
+
+    const trace = normalizeTrace(raw);
     const artifactIssues = await hydrateTraceArtifacts(trace, tracePath);
     const issues = [...validateTrace(trace), ...artifactIssues];
 
