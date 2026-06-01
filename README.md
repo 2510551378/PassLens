@@ -9,6 +9,31 @@ pipeline timeline.
 
 Animated focus view: [`docs/images/pass-lens-first-bad-pass.gif`](docs/images/pass-lens-first-bad-pass.gif)
 
+## Quick Start
+
+Install the local VSIX:
+
+```powershell
+code --install-extension pass-lens-0.1.0.vsix
+```
+
+Open VSCode and run:
+
+```text
+Pass Lens: Open Sample Trace
+```
+
+Choose `Triton NPU strict fallback` or `Real Triton NPU dual RMSNorm` to see a
+complete pass debugging view with first signal, metric anomalies, and IR diff.
+
+For a local trace file:
+
+```text
+Pass Lens: Open Trace File
+```
+
+Select any JSON trace that follows `docs/pass-lens.schema.json`.
+
 ## Features
 
 - Open structured JSON pass traces.
@@ -52,6 +77,68 @@ Package a local VSIX:
 ```powershell
 npm run package
 ```
+
+## Producing a Trace
+
+There are three supported paths.
+
+### 1. Structured MLIR Collector
+
+Use `Pass Lens: Run Structured MLIR Trace` when `pass-lens-mlir-opt` is built
+and available on `PATH`:
+
+```powershell
+pass-lens-mlir-opt input.mlir `
+  --pass-pipeline="builtin.module(func.func(canonicalize,cse))" `
+  --pass-lens-trace=input.pass-lens.json `
+  --pass-lens-artifact-dir=input.pass-lens-artifacts `
+  -o output.mlir
+```
+
+This is the preferred path for timing, verifier failure attribution, pass
+identity, and artifact-backed IR snapshots.
+
+### 2. `mlir-opt` Dump Fallback
+
+Use `Pass Lens: Run mlir-opt Trace` for quick experiments when only `mlir-opt`
+is available. This path reverse-parses textual dump markers and does not
+provide reliable per-pass duration.
+
+### 3. Downstream Compiler Integration
+
+Downstream compilers can emit the JSON schema directly. At minimum, provide:
+
+```json
+{
+  "schemaVersion": 1,
+  "tool": "my-compiler",
+  "capture": {
+    "ir": "artifact",
+    "metrics": true,
+    "timing": true
+  },
+  "stages": [
+    {
+      "index": 0,
+      "pass": "my-pass",
+      "status": "changed",
+      "changed": true,
+      "artifacts": {
+        "beforePath": "artifacts/0-before.mlir",
+        "afterPath": "artifacts/0-after.mlir"
+      },
+      "metricsBefore": {
+        "ops": 10
+      },
+      "metricsAfter": {
+        "ops": 7
+      }
+    }
+  ]
+}
+```
+
+Run `npm test` to validate the built-in samples and strict schema checks.
 
 ## Collector Paths
 
@@ -164,11 +251,23 @@ in that case. Other failures are configure/build failures worth inspecting.
 
 ## Roadmap
 
-- Stabilize schema v1 with validation diagnostics.
-- Keep the structured MLIR collector as the primary path and the textual
-  `mlir-opt` dump parser as a fallback.
-- Add external IR artifacts for large traces.
-- Add domain-specific metric examples for downstream MLIR compilers.
+- Export directory-style repro bundles with standalone `trace.json`, IR
+  artifacts, diagnostics, and repro scripts.
+- Add metric trend charts and root-cause candidate summaries.
+- Run the structured collector in a real downstream MLIR/Triton NPU pipeline.
+- Publish VSCode Marketplace releases after the local VSIX workflow is stable.
+
+## Known Limitations
+
+- The `mlir-opt` dump fallback is best-effort and cannot produce reliable
+  per-pass timing.
+- The structured collector currently targets MLIR-based drivers. LLVM New Pass
+  Manager support is future work.
+- Metric anomalies are triage hints. They identify suspicious deltas and domain
+  contract violations, but they do not prove a pass is incorrect.
+- The included Triton NPU failure traces are case-study samples. The real dual
+  RMSNorm trace is generated from a local `npuir2ascendc` run, but it is not yet
+  produced by live `PassInstrumentation` inside that compiler.
 
 ## License
 
