@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "collectorVersion": "0.1.0",
+  "tool": "pass-lens-mlir-opt",
+  "compiler": {
+    "name": "triton-npu-opt",
+    "version": "dev"
+  },
+  "target": {
+    "backend": "ascendc",
+    "platform": "ascend-910b"
+  },
+  "capture": {
+    "ir": "inline",
+    "metrics": true,
+    "timing": true
+  },
+  "input": "gather_points.ttir.mlir",
+  "pipeline": "builtin.module(canonicalize,cse,ttnpu-plan-scratch-queues,ttnpu-lower-to-ac)",
+  "command": "triton-npu-opt gather_points.ttir.mlir --pass-pipeline=builtin.module(canonicalize,cse,ttnpu-plan-scratch-queues,ttnpu-lower-to-ac) --pass-lens-trace=triton-npu-ub-budget-overflow.json",
+  "stages": [
+    {
+      "index": 0,
+      "pass": "canonicalize",
+      "argument": "canonicalize",
+      "opName": "builtin.module",
+      "scope": "builtin.module",
+      "changed": true,
+      "status": "changed",
+      "durationMs": 1.12,
+      "verifier": "ok",
+      "metricsBefore": {
+        "ops": 42,
+        "ub.live.slots.max": 2,
+        "queue.depth": 2,
+        "fallback.count": 0,
+        "strict.violations": 0
+      },
+      "metricsAfter": {
+        "ops": 39,
+        "ub.live.slots.max": 2,
+        "queue.depth": 2,
+        "fallback.count": 0,
+        "strict.violations": 0
+      },
+      "irBefore": "module {\n  tt.func @gather_points(%idx: tensor<1024xi32>, %src: tensor<1024xf16>) {\n    %0 = tt.load %src\n    %1 = tt.gather %0, %idx\n    tt.return %1\n  }\n}\n",
+      "irAfter": "module {\n  tt.func @gather_points(%idx: tensor<1024xi32>, %src: tensor<1024xf16>) {\n    %0 = tt.load %src\n    %1 = tt.gather %0, %idx\n    tt.return %1\n  }\n}\n"
+    },
+    {
+      "index": 1,
+      "pass": "ttnpu-plan-scratch-queues",
+      "argument": "ttnpu-plan-scratch-queues",
+      "opName": "builtin.module",
+      "scope": "builtin.module",
+      "changed": true,
+      "status": "changed",
+      "durationMs": 4.86,
+      "verifier": "ok",
+      "metricsBefore": {
+        "ops": 39,
+        "ub.live.slots.max": 3,
+        "queue.depth": 3,
+        "fallback.count": 0,
+        "strict.violations": 0
+      },
+      "metricsAfter": {
+        "ops": 48,
+        "ub.live.slots.max": 5,
+        "queue.depth": 5,
+        "fallback.count": 0,
+        "strict.violations": 0
+      },
+      "irBefore": "module {\n  tt.func @gather_points(%idx: tensor<1024xi32>, %src: tensor<1024xf16>) {\n    %0 = tt.load %src\n    %1 = tt.gather %0, %idx\n    tt.return %1\n  }\n}\n",
+      "irAfter": "module {\n  tt.func @gather_points(%idx: tensor<1024xi32>, %src: tensor<1024xf16>) {\n    %q0 = ac.queue.create depth(5)\n    %ub0 = ac.local.alloc : memref<1024xf16, #ub>\n    %ub1 = ac.local.alloc : memref<1024xf16, #ub>\n    %ub2 = ac.local.alloc : memref<1024xi32, #ub>\n    %ub3 = ac.local.alloc : memref<1024xf16, #ub>\n    %ub4 = ac.local.alloc : memref<1024xf16, #ub>\n    ac.queue.push %q0, %ub0\n    tt.return\n  }\n}\n"
+    },
+    {
+      "index": 2,
+      "pass": "ttnpu-lower-to-ac",
+      "argument": "ttnpu-lower-to-ac",
+      "opName": "builtin.module",
+      "scope": "builtin.module",
+      "changed": true,
+      "status": "changed",
+      "durationMs": 3.24,
+      "verifier": "ok",
+      "metricsBefore": {
+        "ops": 48,
+        "ub.live.slots.max": 5,
+        "queue.depth": 5,
+        "fallback.count": 0,
+        "strict.violations": 0
+      },
+      "metricsAfter": {
+        "ops": 55,
+        "ac.queue.create": 1,
+        "ac.local.alloc": 5,
+        "ac.datacopy": 2,
+        "ub.live.slots.max": 5,
+        "queue.depth": 5,
+        "fallback.count": 0,
+        "strict.violations": 0
+      },
+      "irBefore": "module {\n  tt.func @gather_points() {\n    %q0 = ac.queue.create depth(5)\n    %ub0 = ac.local.alloc : memref<1024xf16, #ub>\n    %ub1 = ac.local.alloc : memref<1024xf16, #ub>\n    %ub2 = ac.local.alloc : memref<1024xi32, #ub>\n    %ub3 = ac.local.alloc : memref<1024xf16, #ub>\n    %ub4 = ac.local.alloc : memref<1024xf16, #ub>\n    tt.return\n  }\n}\n",
+      "irAfter": "module {\n  ac.func @gather_points() {\n    %q0 = ac.queue.create depth(5)\n    %ub0 = ac.local.alloc : memref<1024xf16, #ub>\n    %ub1 = ac.local.alloc : memref<1024xf16, #ub>\n    %ub2 = ac.local.alloc : memref<1024xi32, #ub>\n    %ub3 = ac.local.alloc : memref<1024xf16, #ub>\n    %ub4 = ac.local.alloc : memref<1024xf16, #ub>\n    ac.datacopy %ub0, %ub1\n    ac.datacopy %ub2, %ub3\n    ac.return\n  }\n}\n"
+    }
+  ]
+}

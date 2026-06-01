@@ -82,6 +82,11 @@ the result in the `Pass Lens Collector Setup` output channel.
   failing pass.
 - `External IR artifacts`: trace that loads before/after IR and diagnostics
   from sidecar files.
+- `Triton NPU UB budget overflow`: AscendC resource-budget anomaly case study.
+- `Triton NPU strict fallback`: strict-mode legality and fallback case study.
+
+See `docs/examples/triton-npu.md` for the intended debugging story behind the
+Triton NPU / AscendC samples.
 
 ## Trace Schema
 

@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "collectorVersion": "0.1.0",
+  "tool": "pass-lens-mlir-opt",
+  "compiler": {
+    "name": "triton-npu-opt",
+    "version": "dev"
+  },
+  "target": {
+    "backend": "ascendc",
+    "platform": "ascend-910b"
+  },
+  "capture": {
+    "ir": "inline",
+    "metrics": true,
+    "timing": true
+  },
+  "input": "blocked_matmul.ttir.mlir",
+  "pipeline": "builtin.module(ttnpu-prove-tile-shapes,ttnpu-lower-fixed-pipeline-overlap,ttnpu-verify-strict-ac)",
+  "command": "triton-npu-opt blocked_matmul.ttir.mlir --pass-pipeline=builtin.module(ttnpu-prove-tile-shapes,ttnpu-lower-fixed-pipeline-overlap,ttnpu-verify-strict-ac) --pass-lens-trace=triton-npu-strict-fallback.json",
+  "diagnostics": "strict AC verification failed after LowerFixedPipelineOverlapPass: fallback path introduced without tile-size proof",
+  "stages": [
+    {
+      "index": 0,
+      "pass": "ttnpu-prove-tile-shapes",
+      "argument": "ttnpu-prove-tile-shapes",
+      "opName": "builtin.module",
+      "scope": "builtin.module",
+      "changed": true,
+      "status": "changed",
+      "durationMs": 2.44,
+      "verifier": "ok",
+      "metricsBefore": {
+        "ops": 61,
+        "unproven.tile_size": 2,
+        "fallback.count": 0,
+        "strict.violations": 0
+      },
+      "metricsAfter": {
+        "ops": 63,
+        "unproven.tile_size": 0,
+        "fallback.count": 0,
+        "strict.violations": 0
+      },
+      "irBefore": "module {\n  tt.func @blocked_matmul(%a: tensor<128x128xf16>, %b: tensor<128x128xf16>) {\n    %0 = tt.dot %a, %b {tile = ?}\n    tt.return %0\n  }\n}\n",
+      "irAfter": "module {\n  tt.func @blocked_matmul(%a: tensor<128x128xf16>, %b: tensor<128x128xf16>) {\n    %0 = tt.dot %a, %b {tile = 32}\n    tt.return %0\n  }\n}\n"
+    },
+    {
+      "index": 1,
+      "pass": "ttnpu-lower-fixed-pipeline-overlap",
+      "argument": "ttnpu-lower-fixed-pipeline-overlap",
+      "opName": "builtin.module",
+      "scope": "builtin.module",
+      "changed": true,
+      "status": "changed",
+      "durationMs": 6.73,
+      "verifier": "ok",
+      "diagnostics": "fallback.count increased from 0 to 1 while strict mode is enabled",
+      "metricsBefore": {
+        "ops": 63,
+        "unproven.tile_size": 0,
+        "fallback.count": 0,
+        "strict.violations": 0,
+        "ub.live.slots.max": 3
+      },
+      "metricsAfter": {
+        "ops": 78,
+        "unproven.tile_size": 1,
+        "fallback.count": 1,
+        "strict.violations": 1,
+        "ub.live.slots.max": 3
+      },
+      "irBefore": "module {\n  tt.func @blocked_matmul(%a: tensor<128x128xf16>, %b: tensor<128x128xf16>) {\n    %0 = tt.dot %a, %b {tile = 32}\n    tt.return %0\n  }\n}\n",
+      "irAfter": "module {\n  ac.func @blocked_matmul(%a: memref<128x128xf16>, %b: memref<128x128xf16>) {\n    %ok = ac.pipeline.overlap fixed(tile = 32)\n    %fallback = ac.fallback.dynamic_tile reason(\"missing overlap proof\")\n    ac.return\n  }\n}\n"
+    },
+    {
+      "index": 2,
+      "pass": "ttnpu-verify-strict-ac",
+      "argument": "ttnpu-verify-strict-ac",
+      "opName": "builtin.module",
+      "scope": "builtin.module",
+      "changed": false,
+      "status": "verifier_failed",
+      "durationMs": 0.91,
+      "verifier": "failed",
+      "diagnostics": "strict violation: fallback.count must remain 0; unproven.tile_size must remain 0",
+      "metricsBefore": {
+        "ops": 78,
+        "unproven.tile_size": 1,
+        "fallback.count": 1,
+        "strict.violations": 1,
+        "ub.live.slots.max": 3
+      },
+      "metricsAfter": {
+        "ops": 78,
+        "unproven.tile_size": 1,
+        "fallback.count": 1,
+        "strict.violations": 1,
+        "ub.live.slots.max": 3
+      },
+      "irBefore": "module {\n  ac.func @blocked_matmul(%a: memref<128x128xf16>, %b: memref<128x128xf16>) {\n    %ok = ac.pipeline.overlap fixed(tile = 32)\n    %fallback = ac.fallback.dynamic_tile reason(\"missing overlap proof\")\n    ac.return\n  }\n}\n",
+      "irAfter": "module {\n  ac.func @blocked_matmul(%a: memref<128x128xf16>, %b: memref<128x128xf16>) {\n    %ok = ac.pipeline.overlap fixed(tile = 32)\n    %fallback = ac.fallback.dynamic_tile reason(\"missing overlap proof\")\n    ac.return\n  }\n}\n"
+    }
+  ]
+}

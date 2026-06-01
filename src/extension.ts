@@ -43,6 +43,18 @@ const sampleTraces: SampleTraceEntry[] = [
     description: '2 passes, IR stored in sidecar files',
     detail: 'Trace that resolves before/after IR and diagnostics from artifact paths.',
     file: 'mlir-artifacts.json'
+  },
+  {
+    label: 'Triton NPU UB budget overflow',
+    description: 'AscendC resource budget anomaly',
+    detail: 'Case study trace where scratch queue planning exceeds UB live-slot and queue-depth budgets.',
+    file: 'triton-npu-ub-budget-overflow.json'
+  },
+  {
+    label: 'Triton NPU strict fallback',
+    description: 'AscendC strict-mode legality failure',
+    detail: 'Case study trace where a lowering pass introduces fallback and missing tile proof evidence.',
+    file: 'triton-npu-strict-fallback.json'
   }
 ];
 
