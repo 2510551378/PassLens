@@ -8,9 +8,11 @@
 ![Status](https://img.shields.io/badge/status-preview-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Pass Lens is a VSCode extension for debugging compiler pass pipelines after a
-failure. It turns pass traces into a focused investigation view: first signal,
-metric anomalies, IR diff, diagnostics, and repro context in one place.
+Pass Lens is an evidence-driven postmortem debugger for MLIR/LLVM pass
+pipelines. It is a pass pipeline observability and debugging workbench that
+turns structured traces into a focused investigation view: first signal, IR
+diff, diagnostics, metric anomalies, repro context, and artifact paths in one
+place.
 
 ![Pass Lens first bad pass view](docs/images/pass-lens-first-bad-pass.png)
 
@@ -43,6 +45,8 @@ Pass Lens is built for that postmortem loop:
   guardrails, export, and copy actions.
 - Bounded JSON / Markdown agent context export for trace-grounded debugging
   agents, with copy-to-clipboard support for quick handoff.
+- AI-facing exports are trace-grounded and tool-mediated: Pass Lens packages
+  cited evidence and repro context, rather than offering a generic chat surface.
 - Keyboard navigation: `j` / `k`, arrow keys, `/`, `c`, `f`, `a`, `s`.
 - Structured JSON schema for downstream compiler integrations.
 - MLIR paths for both quick `mlir-opt` dump parsing and structured

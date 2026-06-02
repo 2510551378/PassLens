@@ -9,14 +9,18 @@ an execution checklist. The guiding principle is:
 
 ## Positioning
 
-- [ ] Update public positioning from "trace viewer" to "pass pipeline
+- [x] Update public positioning from "trace viewer" to "pass pipeline
   observability / debugging workbench".
-- [ ] Use the tagline: "evidence-driven postmortem debugger for MLIR/LLVM pass
+- [x] Use the tagline: "evidence-driven postmortem debugger for MLIR/LLVM pass
   pipelines".
-- [ ] Emphasize evidence chains: first signal, IR diff, diagnostics, metric
+- [x] Emphasize evidence chains: first signal, IR diff, diagnostics, metric
   anomalies, repro context, and artifact paths.
-- [ ] Avoid positioning AI as a generic chat feature; keep AI trace-grounded
+- [x] Avoid positioning AI as a generic chat feature; keep AI trace-grounded
   and tool-mediated.
+  - Commit: this change.
+  - Public README/package positioning now frames Pass Lens as a pass pipeline
+    observability/debugging workbench and describes AI exports as
+    trace-grounded, evidence-cited handoff artifacts rather than generic chat.
 
 ## P0: Trace-Grounded AI Foundation
 
@@ -155,7 +159,7 @@ an execution checklist. The guiding principle is:
   - Commit: this change.
   - Trace panels now expose `Export repro directory`, backed by
     `exportDirectoryReproBundle`.
-- [ ] Target structure:
+- [x] Target structure:
 
 ```text
 repro/
@@ -171,6 +175,9 @@ repro/
   summary.md
   agent-context.json
 ```
+
+  - Commit: this change.
+  - Implemented by `exportDirectoryReproBundle` and L20-verified via `run.sh`.
 
 - [x] Preserve artifact references and optionally copy artifacts into the bundle.
   - Commit: this change.

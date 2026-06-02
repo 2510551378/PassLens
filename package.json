@@ -1,7 +1,7 @@
 {
   "name": "pass-lens",
   "displayName": "Pass Lens",
-  "description": "Inspect compiler pass timelines, metric deltas, and IR diffs from structured pass traces.",
+  "description": "Evidence-driven postmortem debugger for MLIR/LLVM pass pipelines.",
   "version": "0.1.0",
   "publisher": "2510551378",
   "author": "2510551378",

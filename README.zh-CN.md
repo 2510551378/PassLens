@@ -8,9 +8,10 @@
 ![Status](https://img.shields.io/badge/status-preview-orange)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-Pass Lens 是一个面向编译器 pass pipeline 的 VSCode 调试插件。它把 pass
-trace 转成一个 postmortem debugging 视图，把 first signal、metric
-anomaly、IR diff、diagnostics 和 repro context 放在同一个界面里。
+Pass Lens 是一个 evidence-driven postmortem debugger for MLIR/LLVM pass
+pipelines。它是面向 pass pipeline observability / debugging 的工作台，把结构化
+trace 转成聚焦的 postmortem debugging 视图：first signal、IR diff、
+diagnostics、metric anomaly、repro context 和 artifact paths 都放在同一个界面里。
 
 ![Pass Lens first bad pass view](docs/images/pass-lens-first-bad-pass.png)
 
@@ -41,6 +42,8 @@ Pass Lens 服务的是这个 postmortem loop：
 - selected pass 内直接预览 suspicious-pass explanation，包含证据、next checks、
   confidence、guardrails，并支持导出和复制。
 - 导出或复制 bounded agent context，方便交给 trace-grounded debugging agent。
+- AI-facing export 坚持 trace-grounded、tool-mediated：Pass Lens 负责打包带引用的
+  evidence 和 repro context，而不是提供 generic chat surface。
 - 快捷键导航：`j` / `k`、方向键、`/`、`c`、`f`、`a`、`s`。
 - 面向 downstream compiler 的结构化 JSON schema。
 - 支持快速 `mlir-opt` dump fallback，也支持基于 `PassInstrumentation` 的结构化
