@@ -37,6 +37,7 @@ test('evaluateTraceSize counts inline IR diagnostics and stages', async () => {
   assert.equal(summary.artifactBytes, 0);
   assert.equal(summary.artifactCount, 0);
   assert.equal(summary.largestInlineStage.stageIndex, 0);
+  assert.deepEqual(summary.warnings, []);
 });
 
 test('evaluateTraceSize stats relative artifacts and reports missing artifacts', async () => {
@@ -67,6 +68,7 @@ test('evaluateTraceSize stats relative artifacts and reports missing artifacts',
   assert.equal(summary.missingArtifactCount, 1);
   assert.equal(summary.largestArtifact.stageIndex, 3);
   assert.equal(summary.largestArtifact.kind, 'after');
+  assert.ok(summary.warnings.some((entry) => entry.id === 'missing-artifact-size-data'));
 });
 
 test('evaluateTraceSize does not double-count hydrated artifact IR as inline payload', async () => {
@@ -94,6 +96,28 @@ test('evaluateTraceSize does not double-count hydrated artifact IR as inline pay
   assert.equal(summary.inlineIrBytes, 0);
   assert.equal(summary.artifactBytes, Buffer.byteLength('before artifactafter artifact', 'utf8'));
   assert.equal(summary.totalKnownBytes, summary.artifactBytes);
+  assert.deepEqual(summary.warnings, []);
+});
+
+test('evaluateTraceSize warns and suggests artifact capture for large inline IR', async () => {
+  const largeIr = 'x'.repeat(700 * 1024);
+  const summary = await evaluateTraceSize({
+    schemaVersion: 1,
+    capture: { ir: 'inline' },
+    stages: [
+      {
+        index: 7,
+        pass: 'large-inline',
+        irBefore: largeIr,
+        irAfter: largeIr
+      }
+    ]
+  });
+  const ids = summary.warnings.map((entry) => entry.id);
+
+  assert.ok(ids.includes('large-inline-ir'));
+  assert.ok(ids.includes('large-inline-stage'));
+  assert.ok(summary.warnings.some((entry) => /--pass-lens-artifact-dir/.test(entry.quickFix)));
 });
 
 test('renderTraceSizeMarkdown renders size accounting fields', async () => {
@@ -114,6 +138,8 @@ test('renderTraceSizeMarkdown renders size accounting fields', async () => {
   assert.match(markdown, /Stages: 1/);
   assert.match(markdown, /Inline IR: 3 B/);
   assert.match(markdown, /Total known payload: 3 B/);
+  assert.match(markdown, /Warnings And Quick Fixes/);
+  assert.match(markdown, /No trace size warnings recorded/);
 });
 
 test('formatBytes uses binary units', () => {

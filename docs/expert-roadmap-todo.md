@@ -217,8 +217,12 @@ repro/
   - Implemented by `src/trace/size.ts`, exposed in the webview summary as
     `Trace size`, and available through `Pass Lens: Query Current Trace` as a
     trace size report.
-- [ ] Add warnings and quick fixes for traces that should switch from inline IR
+- [x] Add warnings and quick fixes for traces that should switch from inline IR
   to artifact IR.
+  - Commit: this change.
+  - `TraceSizeSummary` now includes size warnings with explicit quick fixes,
+    including artifact-backed recapture via `--pass-lens-artifact-dir <dir>`
+    and repro directory export for missing artifact references.
 
 ## Schema And Collector Ecosystem
 

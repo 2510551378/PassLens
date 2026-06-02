@@ -333,7 +333,7 @@
     const firstChanged = changed[0];
     const firstAnomaly = traceAnomalies[0];
     const qualityTone = traceQuality?.score < 70 ? 'warning' : undefined;
-    const sizeTone = (traceSize?.inlineIrBytes ?? 0) > 1024 * 1024 ? 'warning' : undefined;
+    const sizeTone = traceSize?.warnings?.some((entry) => entry.severity === 'warning') ? 'warning' : undefined;
     document.getElementById('summary').innerHTML =
       summaryCard('Stages', String(trace.stages.length), 'first') +
       summaryCard('Changed', changed.length + ' / ' + trace.stages.length, firstChanged ? 'first-signal' : undefined, firstChanged ? 'changed' : undefined) +

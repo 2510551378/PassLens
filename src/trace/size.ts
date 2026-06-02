@@ -10,8 +10,17 @@ export interface TraceSizeSummary {
   missingArtifactCount: number;
   diagnosticsBytes: number;
   totalKnownBytes: number;
+  warnings: TraceSizeWarning[];
   largestInlineStage?: StageSizeSummary;
   largestArtifact?: ArtifactSizeSummary;
+}
+
+export interface TraceSizeWarning {
+  id: string;
+  severity: 'warning' | 'info';
+  message: string;
+  quickFix: string;
+  stageIndex?: number;
 }
 
 export interface StageSizeSummary {
@@ -39,7 +48,8 @@ export async function evaluateTraceSize(
     artifactCount: 0,
     missingArtifactCount: 0,
     diagnosticsBytes: byteLength(trace.diagnostics ?? ''),
-    totalKnownBytes: 0
+    totalKnownBytes: 0,
+    warnings: []
   };
 
   for (const stage of trace.stages) {
@@ -68,6 +78,7 @@ export async function evaluateTraceSize(
   }
 
   summary.totalKnownBytes = summary.inlineIrBytes + summary.artifactBytes + summary.diagnosticsBytes;
+  summary.warnings = createSizeWarnings(summary, trace);
   return summary;
 }
 
@@ -98,6 +109,17 @@ export function renderTraceSizeMarkdown(summary: TraceSizeSummary): string {
       `${summary.largestArtifact.pass} ${summary.largestArtifact.kind} ` +
       `${summary.largestArtifact.path} (${formatBytes(summary.largestArtifact.bytes)})`
     );
+  }
+
+  lines.push('', '## Warnings And Quick Fixes', '');
+  if (!summary.warnings.length) {
+    lines.push('No trace size warnings recorded.');
+    return `${lines.join('\n')}\n`;
+  }
+  for (const warning of summary.warnings) {
+    const stage = typeof warning.stageIndex === 'number' ? ` #${warning.stageIndex}` : '';
+    lines.push(`- [${warning.severity}]${stage} ${warning.id}: ${warning.message}`);
+    lines.push(`  - Quick fix: ${warning.quickFix}`);
   }
 
   return `${lines.join('\n')}\n`;
@@ -171,6 +193,57 @@ function stageArtifacts(stage: TraceStage): Array<{ kind: ArtifactSizeSummary['k
 
 function resolveArtifactPath(baseDir: string, artifactPath: string): string {
   return path.normalize(path.isAbsolute(artifactPath) ? artifactPath : path.resolve(baseDir, artifactPath));
+}
+
+function createSizeWarnings(summary: TraceSizeSummary, trace: PassTrace): TraceSizeWarning[] {
+  const warnings: TraceSizeWarning[] = [];
+  const isArtifactCapture = trace.capture?.ir === 'artifact';
+
+  if (summary.inlineIrBytes > 1024 * 1024) {
+    warnings.push({
+      id: 'large-inline-ir',
+      severity: 'warning',
+      message: `Trace embeds ${formatBytes(summary.inlineIrBytes)} of inline IR.`,
+      quickFix: 'Recapture the trace with artifact-backed IR, for example with --pass-lens-artifact-dir <dir>.'
+    });
+  } else if (!isArtifactCapture && summary.inlineIrBytes > 256 * 1024) {
+    warnings.push({
+      id: 'inline-ir-near-large-trace-threshold',
+      severity: 'info',
+      message: `Trace embeds ${formatBytes(summary.inlineIrBytes)} of inline IR and may become expensive on longer pipelines.`,
+      quickFix: 'Prefer artifact-backed capture before scaling this workflow to real downstream compiler pipelines.'
+    });
+  }
+
+  if (summary.largestInlineStage && summary.largestInlineStage.bytes > 512 * 1024) {
+    warnings.push({
+      id: 'large-inline-stage',
+      severity: 'warning',
+      stageIndex: summary.largestInlineStage.stageIndex,
+      message: `Stage ${summary.largestInlineStage.pass} embeds ${formatBytes(summary.largestInlineStage.bytes)} of inline IR.`,
+      quickFix: 'Store this stage IR as beforePath/afterPath artifacts and keep only artifact references in trace.json.'
+    });
+  }
+
+  if (summary.missingArtifactCount > 0) {
+    warnings.push({
+      id: 'missing-artifact-size-data',
+      severity: 'warning',
+      message: `${summary.missingArtifactCount} artifact reference(s) could not be sized.`,
+      quickFix: 'Keep trace.json beside its artifact directory or export a repro directory bundle that copies artifacts.'
+    });
+  }
+
+  if (isArtifactCapture && summary.artifactCount === 0 && summary.stageCount > 0) {
+    warnings.push({
+      id: 'artifact-capture-without-artifacts',
+      severity: 'warning',
+      message: 'Trace declares artifact IR capture but no artifact files were found.',
+      quickFix: 'Check collector output paths and verify beforePath/afterPath are relative to trace.json or absolute.'
+    });
+  }
+
+  return warnings;
 }
 
 function byteLength(text: string): number {
