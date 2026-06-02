@@ -37,7 +37,10 @@ an execution checklist. The guiding principle is:
   - Commit: this change.
   - `Copy explanation` copies Markdown; `Copy agent context` copies structured
     JSON generated from the selected stage.
-- [ ] Define a stable `pass-lens-agent-context` JSON schema.
+- [x] Define a stable `pass-lens-agent-context` JSON schema.
+  - Commit: this change.
+  - Schema lives at `docs/pass-lens-agent-context.schema.json` and is covered by
+    `tests/agent-context.test.js`.
 - [ ] Add context size accounting: selected IR chars, diagnostics chars,
   artifact-only references, and omitted stages.
 - [ ] Add evidence IDs so explanations can cite specific fields such as

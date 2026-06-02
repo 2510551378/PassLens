@@ -79,6 +79,8 @@ Pass Lens: Open Trace File
 
 选择符合 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json) 的 JSON
 trace。
+Agent context 导出遵循
+[`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json)。
 
 ## 核心工作流
 

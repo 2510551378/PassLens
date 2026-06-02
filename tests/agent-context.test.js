@@ -1,4 +1,6 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const test = require('node:test');
 
 const {
@@ -6,8 +8,8 @@ const {
   createAgentContextMarkdown
 } = require('../out/agentContext.js');
 
-test('createAgentContext captures selected stage evidence and bounded IR', () => {
-  const context = createAgentContext(
+function makeContext() {
+  return createAgentContext(
     {
       schemaVersion: 1,
       tool: 'pass-lens-mlir-opt',
@@ -91,6 +93,10 @@ test('createAgentContext captures selected stage evidence and bounded IR', () =>
       maxIrChars: 16
     }
   );
+}
+
+test('createAgentContext captures selected stage evidence and bounded IR', () => {
+  const context = makeContext();
 
   assert.equal(context.kind, 'pass-lens-agent-context');
   assert.equal(context.summary.stageCount, 3);
@@ -116,6 +122,37 @@ test('createAgentContext captures selected stage evidence and bounded IR', () =>
   assert.equal(context.neighborStages.length, 2);
   assert.equal(Object.hasOwn(context.neighborStages[1], 'irBefore'), false);
   assert.match(context.investigationQuestions.join('\n'), /artifact paths/);
+});
+
+test('agent context JSON schema declares the exported contract', () => {
+  const schemaPath = path.resolve(__dirname, '..', 'docs', 'pass-lens-agent-context.schema.json');
+  const schema = JSON.parse(fs.readFileSync(schemaPath, 'utf8'));
+  const context = makeContext();
+
+  assert.equal(schema.$schema, 'https://json-schema.org/draft/2020-12/schema');
+  assert.equal(schema.properties.schemaVersion.const, 1);
+  assert.equal(schema.properties.kind.const, 'pass-lens-agent-context');
+  assert.deepEqual(schema.required, [
+    'schemaVersion',
+    'kind',
+    'objective',
+    'source',
+    'summary',
+    'neighborStages',
+    'topAnomalies',
+    'validationIssues',
+    'investigationQuestions'
+  ]);
+
+  for (const key of Object.keys(context)) {
+    assert.ok(schema.properties[key], `schema covers top-level field ${key}`);
+  }
+  for (const key of Object.keys(context.selectedStage)) {
+    assert.ok(schema.$defs.stageContext.properties[key], `schema covers selected stage field ${key}`);
+  }
+  for (const key of Object.keys(context.neighborStages[0])) {
+    assert.ok(schema.$defs.stageSummary.properties[key], `schema covers neighbor stage field ${key}`);
+  }
 });
 
 test('createAgentContextMarkdown renders selected pass and questions', () => {

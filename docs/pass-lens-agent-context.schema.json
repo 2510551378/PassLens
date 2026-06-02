@@ -1,0 +1,400 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://2510551378.github.io/PassLens/schemas/pass-lens-agent-context.schema.json",
+  "title": "Pass Lens Agent Context",
+  "description": "Bounded, trace-grounded context exported for compiler debugging agents.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "kind",
+    "objective",
+    "source",
+    "summary",
+    "neighborStages",
+    "topAnomalies",
+    "validationIssues",
+    "investigationQuestions"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "pass-lens-agent-context"
+    },
+    "objective": {
+      "type": "string"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "summary": {
+      "$ref": "#/$defs/summary"
+    },
+    "selectedStage": {
+      "$ref": "#/$defs/stageContext"
+    },
+    "neighborStages": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/stageSummary"
+      }
+    },
+    "topAnomalies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/metricAnomaly"
+      }
+    },
+    "validationIssues": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/traceIssue"
+      }
+    },
+    "diagnostics": {
+      "$ref": "#/$defs/truncatedText"
+    },
+    "investigationQuestions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tracePath": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "collectorVersion": {
+          "type": "string"
+        },
+        "input": {
+          "type": "string"
+        },
+        "pipeline": {
+          "type": "string"
+        },
+        "command": {
+          "type": "string"
+        },
+        "exitCode": {
+          "type": "number"
+        },
+        "capture": {
+          "$ref": "#/$defs/capture"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "stageCount",
+        "changedStageCount"
+      ],
+      "properties": {
+        "stageCount": {
+          "type": "number"
+        },
+        "changedStageCount": {
+          "type": "number"
+        },
+        "firstFailureStageIndex": {
+          "type": "number"
+        },
+        "firstChangedStageIndex": {
+          "type": "number"
+        },
+        "selectedStageIndex": {
+          "type": "number"
+        }
+      }
+    },
+    "stageContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "pass",
+        "changed",
+        "metricDeltas"
+      ],
+      "properties": {
+        "index": {
+          "type": "number"
+        },
+        "pass": {
+          "type": "string"
+        },
+        "argument": {
+          "type": "string"
+        },
+        "opName": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "verifier": {
+          "type": "string"
+        },
+        "durationMs": {
+          "type": "number"
+        },
+        "location": {
+          "type": "string"
+        },
+        "artifacts": {
+          "$ref": "#/$defs/artifacts"
+        },
+        "metricDeltas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/metricDelta"
+          }
+        },
+        "diagnostics": {
+          "$ref": "#/$defs/truncatedText"
+        },
+        "irBefore": {
+          "$ref": "#/$defs/truncatedText"
+        },
+        "irAfter": {
+          "$ref": "#/$defs/truncatedText"
+        }
+      }
+    },
+    "stageSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "index",
+        "pass",
+        "changed",
+        "metricDeltas"
+      ],
+      "properties": {
+        "index": {
+          "type": "number"
+        },
+        "pass": {
+          "type": "string"
+        },
+        "argument": {
+          "type": "string"
+        },
+        "opName": {
+          "type": "string"
+        },
+        "symbol": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "changed": {
+          "type": "boolean"
+        },
+        "verifier": {
+          "type": "string"
+        },
+        "durationMs": {
+          "type": "number"
+        },
+        "location": {
+          "type": "string"
+        },
+        "artifacts": {
+          "$ref": "#/$defs/artifacts"
+        },
+        "metricDeltas": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/metricDelta"
+          }
+        }
+      }
+    },
+    "metricDelta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "metric",
+        "before",
+        "after",
+        "delta"
+      ],
+      "properties": {
+        "metric": {
+          "type": "string"
+        },
+        "before": {
+          "type": "number"
+        },
+        "after": {
+          "type": "number"
+        },
+        "delta": {
+          "type": "number"
+        }
+      }
+    },
+    "metricAnomaly": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "severity",
+        "stageIndex",
+        "pass",
+        "metric",
+        "before",
+        "after",
+        "delta",
+        "message"
+      ],
+      "properties": {
+        "severity": {
+          "enum": [
+            "warning",
+            "info"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "delta",
+            "budget",
+            "critical"
+          ]
+        },
+        "stageIndex": {
+          "type": "number"
+        },
+        "pass": {
+          "type": "string"
+        },
+        "metric": {
+          "type": "string"
+        },
+        "before": {
+          "type": "number"
+        },
+        "after": {
+          "type": "number"
+        },
+        "delta": {
+          "type": "number"
+        },
+        "ratio": {
+          "type": "number"
+        },
+        "budget": {
+          "type": "number"
+        },
+        "message": {
+          "type": "string"
+        }
+      }
+    },
+    "traceIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "severity",
+        "message"
+      ],
+      "properties": {
+        "severity": {
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ]
+        },
+        "message": {
+          "type": "string"
+        },
+        "stageIndex": {
+          "type": "number"
+        },
+        "field": {
+          "type": "string"
+        }
+      }
+    },
+    "truncatedText": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "truncated",
+        "originalChars"
+      ],
+      "properties": {
+        "text": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        },
+        "originalChars": {
+          "type": "number"
+        }
+      }
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ir": {
+          "enum": [
+            "inline",
+            "artifact",
+            "omitted"
+          ]
+        },
+        "metrics": {
+          "type": "boolean"
+        },
+        "timing": {
+          "type": "boolean"
+        }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "beforePath": {
+          "type": "string"
+        },
+        "afterPath": {
+          "type": "string"
+        },
+        "diagnosticsPath": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

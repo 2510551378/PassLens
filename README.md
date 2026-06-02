@@ -81,6 +81,8 @@ Pass Lens: Open Trace File
 
 Select a JSON trace that follows
 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json).
+Agent context exports follow
+[`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json).
 
 ## Core Workflow
 
