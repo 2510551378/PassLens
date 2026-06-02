@@ -135,14 +135,22 @@ an execution checklist. The guiding principle is:
   - Commit: this change.
   - Implemented in `src/issueSummary.ts` and exposed through
     `Pass Lens: Query Current Trace`.
-- [ ] Generate regression test sketches from repro bundles.
+- [x] Generate regression test sketches from repro bundles.
+  - Commit: this change.
+  - `createRegressionTestSketch` generates a conservative MLIR/FileCheck-style
+    test draft from trace evidence, and directory repro bundles now include
+    `regression-test-sketch.md`.
 - [x] Suggest legality checks or rewrite guards only when diagnostics / IR diff
   provide concrete evidence.
   - Commit: this change.
   - Candidate reports only mention legality/rewrite guard inspection when the
     selected stage has concrete legality, verifier, invalid, rewrite,
     diagnostic, or IR evidence; otherwise they explicitly defer patch ideas.
-- [ ] Do not auto-edit compiler source until rerun/bisect evidence is available.
+- [x] Do not auto-edit compiler source until rerun/bisect evidence is available.
+  - Commit: this change.
+  - Regression sketches and candidate-root-cause reports explicitly frame source
+    edits as post-confirmation work after rerun, prefix bisection, or verifier
+    evidence.
 
 ## v0.2 Collector Credibility
 
@@ -188,6 +196,7 @@ repro/
   run.ps1
   run.sh
   summary.md
+  regression-test-sketch.md
   agent-context.json
 ```
 

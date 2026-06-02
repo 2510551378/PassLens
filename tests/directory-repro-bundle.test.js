@@ -95,6 +95,7 @@ test('exportDirectoryReproBundle writes repro directory with manifest and agent 
     'input',
     'manifest',
     'pipeline',
+    'regressionTestSketch',
     'runPs1',
     'runSh',
     'summary',
@@ -106,11 +107,14 @@ test('exportDirectoryReproBundle writes repro directory with manifest and agent 
   assert.equal(await exists(path.join(target, 'run.ps1')), true);
   assert.equal(await exists(path.join(target, 'run.sh')), true);
   assert.equal(await exists(path.join(target, 'summary.md')), true);
+  assert.equal(await exists(path.join(target, 'regression-test-sketch.md')), true);
   assert.equal(await exists(path.join(target, 'agent-context.json')), true);
   assert.equal(await fs.readFile(path.join(target, 'artifacts', '001-after.mlir'), 'utf8'), 'module { ac.launch @main }\n');
 
   const manifestJson = JSON.parse(await fs.readFile(path.join(target, 'manifest.json'), 'utf8'));
   assert.equal(manifestJson.createdAt, '2026-06-02T00:00:00.000Z');
+  assert.equal(manifestJson.files.regressionTestSketch, 'regression-test-sketch.md');
+  assert.match(await fs.readFile(path.join(target, 'regression-test-sketch.md'), 'utf8'), /Pass Lens Regression Test Sketch/);
   const agentContext = JSON.parse(await fs.readFile(path.join(target, 'agent-context.json'), 'utf8'));
   assert.equal(agentContext.kind, 'pass-lens-agent-context');
 });

@@ -1,4 +1,5 @@
 import type { MetricAnomaly, PassTrace, TraceIssue, TraceStage } from './types';
+import { createRegressionTestSketch } from './regressionTestSketch';
 
 export interface ReproBundleOptions {
   sourcePath?: string;
@@ -55,6 +56,14 @@ export function createReproBundle(
     '## Selected Pass IR',
     '',
     renderSelectedIr(selectedStage, maxInlineChars),
+    '',
+    '## Regression Test Sketch',
+    '',
+    createRegressionTestSketch(trace, issues, anomalies, {
+      sourcePath: options.sourcePath,
+      selectedStageIndex: options.selectedStageIndex,
+      maxInputChars: maxInlineChars
+    }).trimEnd(),
     '',
     '## Trace JSON',
     '',
