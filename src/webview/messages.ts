@@ -19,6 +19,14 @@ export type TracePanelMessage =
       selectedStageIndex?: number;
     }
   | {
+      type: 'copyAgentContext';
+      selectedStageIndex?: number;
+    }
+  | {
+      type: 'copyExplanation';
+      selectedStageIndex?: number;
+    }
+  | {
       type: 'openArtifact';
       path: string;
     };
@@ -73,6 +81,28 @@ export function parseTracePanelMessage(raw: unknown): TracePanelMessage | undefi
         }
       : {
           type: 'exportExplanation'
+        };
+  }
+
+  if (raw.type === 'copyAgentContext') {
+    return typeof raw.selectedStageIndex === 'number' && Number.isFinite(raw.selectedStageIndex)
+      ? {
+          type: 'copyAgentContext',
+          selectedStageIndex: raw.selectedStageIndex
+        }
+      : {
+          type: 'copyAgentContext'
+        };
+  }
+
+  if (raw.type === 'copyExplanation') {
+    return typeof raw.selectedStageIndex === 'number' && Number.isFinite(raw.selectedStageIndex)
+      ? {
+          type: 'copyExplanation',
+          selectedStageIndex: raw.selectedStageIndex
+        }
+      : {
+          type: 'copyExplanation'
         };
   }
 

@@ -237,6 +237,12 @@
     } else if (action === 'export-explanation') {
       const stage = trace.stages[selectedIndex];
       vscode.postMessage({ type: 'exportExplanation', selectedStageIndex: stage?.index });
+    } else if (action === 'copy-agent-context') {
+      const stage = trace.stages[selectedIndex];
+      vscode.postMessage({ type: 'copyAgentContext', selectedStageIndex: stage?.index });
+    } else if (action === 'copy-explanation') {
+      const stage = trace.stages[selectedIndex];
+      vscode.postMessage({ type: 'copyExplanation', selectedStageIndex: stage?.index });
     } else if (action === 'open-artifact' && button?.dataset.artifactPath) {
       vscode.postMessage({ type: 'openArtifact', path: button.dataset.artifactPath });
     } else if (action === 'toggle-diff-context') {
@@ -543,6 +549,10 @@
       '<div class="explanation-section strong">' +
         '<div class="explanation-label">Likely issue</div>' +
         '<p>' + escapeHtml(explanationLikelyIssue(stage)) + '</p>' +
+        '<div class="action-row compact">' +
+          '<button class="action-button compact" data-action="copy-explanation">Copy explanation</button>' +
+          '<button class="action-button compact" data-action="copy-agent-context">Copy agent context</button>' +
+        '</div>' +
       '</div>' +
       '<div class="explanation-grid">' +
         explanationList('Evidence', evidence.length ? evidence : ['No concrete evidence recorded for this stage.']) +

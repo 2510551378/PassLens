@@ -417,6 +417,19 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     if (parsed.type === 'exportExplanation') {
       await exportTraceExplanation(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
+    if (parsed.type === 'copyAgentContext') {
+      const content = createAgentContextJson(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
+      await vscode.env.clipboard.writeText(content);
+      vscode.window.showInformationMessage('Pass Lens copied agent context.');
+    }
+    if (parsed.type === 'copyExplanation') {
+      const content = createTraceExplanation(trace, issues, anomalies, {
+        sourcePath: sourceUri.fsPath,
+        selectedStageIndex: typeof parsed.selectedStageIndex === 'number' ? parsed.selectedStageIndex : undefined
+      });
+      await vscode.env.clipboard.writeText(content);
+      vscode.window.showInformationMessage('Pass Lens copied suspicious pass explanation.');
+    }
     if (parsed.type === 'openArtifact') {
       await openArtifact(sourceUri, parsed.path);
     }
@@ -483,18 +496,37 @@ async function exportAgentContext(
     return;
   }
 
-  const context = createAgentContext(trace, issues, anomalies, {
-    sourcePath: sourceUri.fsPath,
-    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
-  });
   const content = path.extname(target.fsPath).toLowerCase() === '.md'
-    ? createAgentContextMarkdown(context)
-    : `${JSON.stringify(context, null, 2)}\n`;
+    ? createAgentContextMarkdown(createAgentContextValue(sourceUri, trace, issues, anomalies, selectedStageIndex))
+    : createAgentContextJson(sourceUri, trace, issues, anomalies, selectedStageIndex);
   await fs.writeFile(target.fsPath, content, 'utf8');
   const open = await vscode.window.showInformationMessage('Pass Lens exported agent context.', 'Open');
   if (open === 'Open') {
     await vscode.window.showTextDocument(target, { preview: false });
   }
+}
+
+function createAgentContextValue(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+) {
+  return createAgentContext(trace, issues, anomalies, {
+    sourcePath: sourceUri.fsPath,
+    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
+  });
+}
+
+function createAgentContextJson(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+): string {
+  return `${JSON.stringify(createAgentContextValue(sourceUri, trace, issues, anomalies, selectedStageIndex), null, 2)}\n`;
 }
 
 async function exportTraceExplanation(

@@ -33,7 +33,10 @@ an execution checklist. The guiding principle is:
   - Commit: `ced3a5d Preview suspicious pass explanations`.
   - Preview renders likely issue, evidence, recommended checks, confidence, and
     guardrails in the selected-stage details view.
-- [ ] Add copy-to-clipboard actions for agent context and explanation.
+- [x] Add copy-to-clipboard actions for agent context and explanation.
+  - Commit: this change.
+  - `Copy explanation` copies Markdown; `Copy agent context` copies structured
+    JSON generated from the selected stage.
 - [ ] Define a stable `pass-lens-agent-context` JSON schema.
 - [ ] Add context size accounting: selected IR chars, diagnostics chars,
   artifact-only references, and omitted stages.

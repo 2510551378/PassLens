@@ -40,9 +40,9 @@ Pass Lens is built for that postmortem loop:
 - Side-by-side IR diff with inline or artifact-backed snapshots.
 - Artifact open actions for before IR, after IR, and diagnostics sidecars.
 - In-view suspicious-pass explanation with evidence, next checks, confidence,
-  and guardrails.
+  guardrails, export, and copy actions.
 - Bounded JSON / Markdown agent context export for trace-grounded debugging
-  agents.
+  agents, with copy-to-clipboard support for quick handoff.
 - Keyboard navigation: `j` / `k`, arrow keys, `/`, `c`, `f`, `a`, `s`.
 - Structured JSON schema for downstream compiler integrations.
 - MLIR paths for both quick `mlir-opt` dump parsing and structured
