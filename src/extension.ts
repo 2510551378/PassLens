@@ -23,6 +23,7 @@ import {
 } from './rerun';
 import { computeTraceAnomalies } from './trace/anomalies';
 import { hydrateTraceArtifacts } from './trace/artifacts';
+import { evaluateTraceQuality, renderTraceQualityMarkdown } from './trace/quality';
 import { createTraceExplanation } from './traceExplanation';
 import { renderTraceQueryResultMarkdown, runTraceQuery, type TraceQuery } from './traceQuery';
 import { normalizeTrace } from './trace/schema';
@@ -485,6 +486,11 @@ async function queryCurrentTraceCommand(): Promise<void> {
         label: 'Explain first fallback / legality / budget signal',
         detail: 'Choose a signal family and generate a concise evidence summary.',
         summaryKind: 'firstSignal'
+      },
+      {
+        label: 'Generate trace quality report',
+        detail: 'Check collector credibility: pass identity, timing, verifier, artifacts, and indexes.',
+        summaryKind: 'traceQuality'
       }
     ],
     {
@@ -556,6 +562,9 @@ async function resolveIssueSummary(
       loaded.anomalies,
       picked.label as FirstSignalKind
     ));
+  }
+  if (summaryKind === 'traceQuality') {
+    return renderTraceQualityMarkdown(evaluateTraceQuality(loaded.trace));
   }
   return undefined;
 }

@@ -144,12 +144,17 @@ an execution checklist. The guiding principle is:
 - [ ] Replace or supplement synthetic samples with 2-3 real trace cases.
 - [ ] Document which samples are live `PassInstrumentation` output versus
   hand-authored / converted examples.
-- [ ] Add collector trace quality checks:
-  - [ ] Missing pass identity.
-  - [ ] Missing timing.
-  - [ ] Missing verifier status.
-  - [ ] Missing artifacts for large IR.
-  - [ ] Duplicate or non-monotonic stage indexes.
+- [x] Add collector trace quality checks:
+  - [x] Missing pass identity.
+  - [x] Missing timing.
+  - [x] Missing verifier status.
+  - [x] Missing artifacts for large IR.
+  - [x] Duplicate or non-monotonic stage indexes.
+  - Commit: this change.
+  - Implemented by `src/trace/quality.ts` and exposed through
+    `Pass Lens: Query Current Trace` as a trace quality report.
+  - L20 verified: real `pass-lens-mlir-opt` trace for
+    `canonicalize,cse` scored 100/100 with no collector quality issues.
 - [ ] Keep TypeScript `mlir-opt` dump parser as fallback, with clear timing
   limitations.
 
