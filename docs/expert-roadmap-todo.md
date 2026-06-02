@@ -207,7 +207,10 @@ repro/
 - [ ] Lazy-load artifact IR on stage selection instead of hydrating every stage
   eagerly.
 - [ ] Add virtualized timeline/list rendering for large traces.
-- [ ] Add bounded / on-demand diff computation.
+- [x] Add bounded / on-demand diff computation.
+  - Commit: this change.
+  - Diff rows are computed only for the selected stage and rendered through a
+    hard row cap, with explicit omitted-row chips for large IR.
 - [x] Add trace-level size summary:
   - [x] inline IR bytes.
   - [x] artifact bytes.
