@@ -42,7 +42,8 @@
     "onCommand:passLens.openSampleTrace",
     "onCommand:passLens.runMlirOptTrace",
     "onCommand:passLens.runStructuredMlirTrace",
-    "onCommand:passLens.checkMlirCollectorSetup"
+    "onCommand:passLens.checkMlirCollectorSetup",
+    "onCommand:passLens.queryCurrentTrace"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -66,6 +67,10 @@
       {
         "command": "passLens.checkMlirCollectorSetup",
         "title": "Pass Lens: Check MLIR Collector Setup"
+      },
+      {
+        "command": "passLens.queryCurrentTrace",
+        "title": "Pass Lens: Query Current Trace"
       }
     ],
     "configuration": {
@@ -99,6 +104,9 @@
         },
         {
           "command": "passLens.checkMlirCollectorSetup"
+        },
+        {
+          "command": "passLens.queryCurrentTrace"
         }
       ]
     }

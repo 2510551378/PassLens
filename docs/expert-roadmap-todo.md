@@ -53,15 +53,23 @@ an execution checklist. The guiding principle is:
 
 ## P1: Natural-Language Trace Query
 
-- [ ] Implement deterministic trace query primitives first:
-  - [ ] Find first failure stage.
-  - [ ] Find first changed stage.
-  - [ ] Find first metric jump for a metric name.
-  - [ ] Find stages over a metric budget.
-  - [ ] List slowest N passes.
-  - [ ] Search pass names, scopes, diagnostics, and IR text.
-- [ ] Add query results as structured objects before adding any LLM mapping.
-- [ ] Add command palette entry: `Pass Lens: Query Current Trace`.
+- [x] Implement deterministic trace query primitives first:
+  - [x] Find first failure stage.
+  - [x] Find first changed stage.
+  - [x] Find first metric jump for a metric name.
+  - [x] Find stages over a metric budget.
+  - [x] List slowest N passes.
+  - [x] Search pass names, scopes, diagnostics, and IR text.
+  - Commit: this change.
+  - Implemented in `src/traceQuery.ts` with unit coverage.
+- [x] Add query results as structured objects before adding any LLM mapping.
+  - Commit: this change.
+  - `TraceQueryResult` and `TraceQueryMatch` carry labels, reasons, metrics,
+    snippets, and evidence IDs.
+- [x] Add command palette entry: `Pass Lens: Query Current Trace`.
+  - Commit: this change.
+  - The command runs deterministic queries against the current opened trace and
+    renders a Markdown result document.
 - [ ] Support issue-ready summaries:
   - [ ] "Generate GitHub issue description".
   - [ ] "Summarize top 3 suspicious passes".
