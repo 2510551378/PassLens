@@ -60,6 +60,7 @@ export interface AgentStageSummary {
   location?: string;
   artifacts?: TraceStage['artifacts'];
   metricDeltas: MetricDelta[];
+  evidenceIds: string[];
 }
 
 export interface MetricDelta {
@@ -67,6 +68,7 @@ export interface MetricDelta {
   before: number;
   after: number;
   delta: number;
+  evidenceIds: string[];
 }
 
 export interface TruncatedText {
@@ -243,7 +245,8 @@ function summarizeStage(stage: TraceStage): AgentStageSummary {
     durationMs: stage.durationMs,
     location: stage.location,
     artifacts: stage.artifacts,
-    metricDeltas: topMetricDeltas(stage.metricsBefore ?? {}, stage.metricsAfter ?? {}).slice(0, 10)
+    metricDeltas: topMetricDeltas(stage.index, stage.metricsBefore ?? {}, stage.metricsAfter ?? {}).slice(0, 10),
+    evidenceIds: stageEvidenceIds(stage)
   };
 }
 
@@ -313,7 +316,11 @@ function isTruncatedText(value: unknown): value is TruncatedText {
   );
 }
 
-function topMetricDeltas(before: Metrics, after: Metrics): MetricDelta[] {
+function isString(value: unknown): value is string {
+  return typeof value === 'string';
+}
+
+function topMetricDeltas(stageIndex: number, before: Metrics, after: Metrics): MetricDelta[] {
   return Array.from(new Set([...Object.keys(before), ...Object.keys(after)]))
     .map((metric) => {
       const beforeValue = before[metric] ?? 0;
@@ -322,11 +329,40 @@ function topMetricDeltas(before: Metrics, after: Metrics): MetricDelta[] {
         metric,
         before: beforeValue,
         after: afterValue,
-        delta: afterValue - beforeValue
+        delta: afterValue - beforeValue,
+        evidenceIds: [
+          metricEvidenceId(stageIndex, 'metricsBefore', metric),
+          metricEvidenceId(stageIndex, 'metricsAfter', metric)
+        ]
       };
     })
     .filter((entry) => entry.delta !== 0)
     .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta));
+}
+
+function stageEvidenceIds(stage: TraceStage): string[] {
+  return [
+    stageEvidenceId(stage.index, 'pass'),
+    stageEvidenceId(stage.index, 'changed'),
+    stage.status !== undefined ? stageEvidenceId(stage.index, 'status') : undefined,
+    stage.verifier !== undefined ? stageEvidenceId(stage.index, 'verifier') : undefined,
+    stage.diagnostics !== undefined ? stageEvidenceId(stage.index, 'diagnostics') : undefined,
+    stage.artifacts?.beforePath ? stageArtifactEvidenceId(stage.index, 'beforePath') : undefined,
+    stage.artifacts?.afterPath ? stageArtifactEvidenceId(stage.index, 'afterPath') : undefined,
+    stage.artifacts?.diagnosticsPath ? stageArtifactEvidenceId(stage.index, 'diagnosticsPath') : undefined
+  ].filter(isString);
+}
+
+export function stageEvidenceId(stageIndex: number, field: string): string {
+  return `stages[${stageIndex}].${field}`;
+}
+
+export function metricEvidenceId(stageIndex: number, bucket: 'metricsBefore' | 'metricsAfter', metric: string): string {
+  return `stages[${stageIndex}].${bucket}[${JSON.stringify(metric)}]`;
+}
+
+export function stageArtifactEvidenceId(stageIndex: number, field: keyof NonNullable<TraceStage['artifacts']>): string {
+  return `stages[${stageIndex}].artifacts.${field}`;
 }
 
 function selectIssues(issues: TraceIssue[], selectedStageIndex: number | undefined, maxIssues: number): TraceIssue[] {

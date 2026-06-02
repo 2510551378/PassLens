@@ -1,4 +1,12 @@
-import { createAgentContext, type AgentContext, type AgentContextOptions, type AgentStageContext } from './agentContext';
+import {
+  createAgentContext,
+  metricEvidenceId,
+  stageArtifactEvidenceId,
+  stageEvidenceId,
+  type AgentContext,
+  type AgentContextOptions,
+  type AgentStageContext
+} from './agentContext';
 import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
 
 export interface TraceExplanationOptions extends AgentContextOptions {
@@ -81,41 +89,53 @@ function collectEvidence(context: AgentContext, maxItems: number): string[] {
   }
 
   const evidence: string[] = [];
-  evidence.push(`Selected stage #${stage.index}: pass=\`${stage.pass}\`, status=\`${stage.status ?? 'unknown'}\`, changed=${stage.changed ? 'yes' : 'no'}, verifier=\`${stage.verifier ?? 'unknown'}\`.`);
+  evidence.push(`Selected stage #${stage.index}: pass=\`${stage.pass}\`, status=\`${stage.status ?? 'unknown'}\`, changed=${stage.changed ? 'yes' : 'no'}, verifier=\`${stage.verifier ?? 'unknown'}\`. ${cite(stage.evidenceIds)}`);
 
   if (typeof context.summary.firstFailureStageIndex === 'number') {
-    evidence.push(`First failure stage recorded by trace: #${context.summary.firstFailureStageIndex}.`);
+    const index = context.summary.firstFailureStageIndex;
+    evidence.push(`First failure stage recorded by trace: #${index}. ${cite([
+      stageEvidenceId(index, 'status'),
+      stageEvidenceId(index, 'verifier')
+    ])}`);
   }
   if (typeof context.summary.firstChangedStageIndex === 'number') {
-    evidence.push(`First changed stage recorded by trace: #${context.summary.firstChangedStageIndex}.`);
+    const index = context.summary.firstChangedStageIndex;
+    evidence.push(`First changed stage recorded by trace: #${index}. ${cite([stageEvidenceId(index, 'changed')])}`);
   }
 
   for (const delta of stage.metricDeltas.slice(0, 4)) {
-    evidence.push(`Metric \`${delta.metric}\` changed from ${delta.before} to ${delta.after} (${signed(delta.delta)}).`);
+    evidence.push(`Metric \`${delta.metric}\` changed from ${delta.before} to ${delta.after} (${signed(delta.delta)}). ${cite(delta.evidenceIds)}`);
   }
 
   for (const anomaly of context.topAnomalies.filter((entry) => entry.stageIndex === stage.index).slice(0, 3)) {
-    evidence.push(`Metric anomaly: ${anomaly.message}`);
+    evidence.push(`Metric anomaly: ${anomaly.message} ${cite([
+      metricEvidenceId(anomaly.stageIndex, 'metricsBefore', anomaly.metric),
+      metricEvidenceId(anomaly.stageIndex, 'metricsAfter', anomaly.metric)
+    ])}`);
   }
 
   if (stage.diagnostics?.text) {
-    evidence.push(`Stage diagnostics are present (${stage.diagnostics.originalChars} character(s), truncated=${stage.diagnostics.truncated ? 'yes' : 'no'}).`);
+    evidence.push(`Stage diagnostics are present (${stage.diagnostics.originalChars} character(s), truncated=${stage.diagnostics.truncated ? 'yes' : 'no'}). ${cite([stageEvidenceId(stage.index, 'diagnostics')])}`);
   }
   if (context.diagnostics?.text) {
-    evidence.push(`Trace-level diagnostics are present (${context.diagnostics.originalChars} character(s), truncated=${context.diagnostics.truncated ? 'yes' : 'no'}).`);
+    evidence.push(`Trace-level diagnostics are present (${context.diagnostics.originalChars} character(s), truncated=${context.diagnostics.truncated ? 'yes' : 'no'}). ${cite(['diagnostics'])}`);
   }
   if (stage.artifacts?.beforePath || stage.artifacts?.afterPath || stage.artifacts?.diagnosticsPath) {
     evidence.push(`Artifacts referenced: ${[
       stage.artifacts.beforePath ? `before=${stage.artifacts.beforePath}` : undefined,
       stage.artifacts.afterPath ? `after=${stage.artifacts.afterPath}` : undefined,
       stage.artifacts.diagnosticsPath ? `diagnostics=${stage.artifacts.diagnosticsPath}` : undefined
-    ].filter(Boolean).join(', ')}.`);
+    ].filter(Boolean).join(', ')}. ${cite([
+      stage.artifacts.beforePath ? stageArtifactEvidenceId(stage.index, 'beforePath') : undefined,
+      stage.artifacts.afterPath ? stageArtifactEvidenceId(stage.index, 'afterPath') : undefined,
+      stage.artifacts.diagnosticsPath ? stageArtifactEvidenceId(stage.index, 'diagnosticsPath') : undefined
+    ])}`);
   }
 
   for (const issue of context.validationIssues.filter((entry) =>
     typeof entry.stageIndex !== 'number' || entry.stageIndex === stage.index
   ).slice(0, 3)) {
-    evidence.push(`Trace validation ${issue.severity}: ${issue.message}`);
+    evidence.push(`Trace validation ${issue.severity}: ${issue.message} ${cite(issueEvidenceIds(issue))}`);
   }
 
   return evidence.slice(0, maxItems);
@@ -197,4 +217,19 @@ function fenced(text: string): string {
 
 function signed(value: number): string {
   return value > 0 ? `+${value}` : String(value);
+}
+
+function cite(evidenceIds: Array<string | undefined>): string {
+  const ids = evidenceIds.filter((id): id is string => typeof id === 'string' && id.length > 0);
+  return ids.length ? `[evidence: ${ids.join(', ')}]` : '';
+}
+
+function issueEvidenceIds(issue: TraceIssue): string[] {
+  if (typeof issue.stageIndex === 'number' && issue.field) {
+    return [stageEvidenceId(issue.stageIndex, issue.field)];
+  }
+  if (issue.field) {
+    return [issue.field];
+  }
+  return [];
 }

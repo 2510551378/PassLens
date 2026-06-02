@@ -65,6 +65,8 @@ test('createTraceExplanation explains failed selected pass with grounded evidenc
   assert.match(explanation, /# Pass Lens Suspicious Pass Explanation/);
   assert.match(explanation, /root-cause candidate/);
   assert.match(explanation, /Metric `fallback\.count` changed from 0 to 3 \(\+3\)/);
+  assert.match(explanation, /stages\[1\]\.metricsBefore\["fallback\.count"\]/);
+  assert.match(explanation, /stages\[1\]\.metricsAfter\["fallback\.count"\]/);
   assert.match(explanation, /Artifacts referenced: before=artifacts\/stage-000001\.before\.mlir/);
   assert.match(explanation, /high: failure status\/verifier evidence/);
   assert.match(explanation, /Treat root-cause statements as candidates/);

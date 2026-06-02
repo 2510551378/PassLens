@@ -130,7 +130,8 @@
         "index",
         "pass",
         "changed",
-        "metricDeltas"
+        "metricDeltas",
+        "evidenceIds"
       ],
       "properties": {
         "index": {
@@ -174,6 +175,9 @@
           "items": {
             "$ref": "#/$defs/metricDelta"
           }
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/evidenceIds"
         },
         "diagnostics": {
           "$ref": "#/$defs/truncatedText"
@@ -193,7 +197,8 @@
         "index",
         "pass",
         "changed",
-        "metricDeltas"
+        "metricDeltas",
+        "evidenceIds"
       ],
       "properties": {
         "index": {
@@ -237,6 +242,9 @@
           "items": {
             "$ref": "#/$defs/metricDelta"
           }
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/evidenceIds"
         }
       }
     },
@@ -247,7 +255,8 @@
         "metric",
         "before",
         "after",
-        "delta"
+        "delta",
+        "evidenceIds"
       ],
       "properties": {
         "metric": {
@@ -261,7 +270,16 @@
         },
         "delta": {
           "type": "number"
+        },
+        "evidenceIds": {
+          "$ref": "#/$defs/evidenceIds"
         }
+      }
+    },
+    "evidenceIds": {
+      "type": "array",
+      "items": {
+        "type": "string"
       }
     },
     "metricAnomaly": {

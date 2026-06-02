@@ -45,8 +45,11 @@ an execution checklist. The guiding principle is:
   artifact-only references, and omitted stages.
   - Commit: this change.
   - `contextSize` is part of the agent-context JSON schema and Markdown export.
-- [ ] Add evidence IDs so explanations can cite specific fields such as
+- [x] Add evidence IDs so explanations can cite specific fields such as
   `stages[17].metricsAfter["fallback.count"]`.
+  - Commit: this change.
+  - Stage summaries and metric deltas now expose `evidenceIds`; suspicious-pass
+    explanations cite those IDs inline.
 
 ## P1: Natural-Language Trace Query
 

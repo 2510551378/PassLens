@@ -116,13 +116,21 @@ test('createAgentContext captures selected stage evidence and bounded IR', () =>
       metric: 'ops',
       before: 20,
       after: 12,
-      delta: -8
+      delta: -8,
+      evidenceIds: [
+        'stages[1].metricsBefore["ops"]',
+        'stages[1].metricsAfter["ops"]'
+      ]
     },
     {
       metric: 'allocs',
       before: 0,
       after: 4,
-      delta: 4
+      delta: 4,
+      evidenceIds: [
+        'stages[1].metricsBefore["allocs"]',
+        'stages[1].metricsAfter["allocs"]'
+      ]
     }
   ]);
   assert.equal(context.selectedStage.irBefore.truncated, true);
@@ -177,6 +185,9 @@ test('agent context JSON schema declares the exported contract', () => {
   }
   for (const key of Object.keys(context.neighborStages[0])) {
     assert.ok(schema.$defs.stageSummary.properties[key], `schema covers neighbor stage field ${key}`);
+  }
+  for (const key of Object.keys(context.selectedStage.metricDeltas[0])) {
+    assert.ok(schema.$defs.metricDelta.properties[key], `schema covers metric delta field ${key}`);
   }
 });
 
