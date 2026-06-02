@@ -70,10 +70,13 @@ an execution checklist. The guiding principle is:
   - Commit: this change.
   - The command runs deterministic queries against the current opened trace and
     renders a Markdown result document.
-- [ ] Support issue-ready summaries:
-  - [ ] "Generate GitHub issue description".
-  - [ ] "Summarize top 3 suspicious passes".
-  - [ ] "Explain first fallback / legality breakage / budget overflow".
+- [x] Support issue-ready summaries:
+  - [x] "Generate GitHub issue description".
+  - [x] "Summarize top 3 suspicious passes".
+  - [x] "Explain first fallback / legality breakage / budget overflow".
+  - Commit: this change.
+  - Implemented deterministic Markdown generators in `src/issueSummary.ts` and
+    exposed them through `Pass Lens: Query Current Trace`.
 - [ ] Only later map natural language to deterministic query primitives.
 
 ## P2: Agentic Rerun / Prefix Bisection

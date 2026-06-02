@@ -4,6 +4,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { createAgentContext, createAgentContextMarkdown } from './agentContext';
+import {
+  createGithubIssueDescription,
+  createSuspiciousPassesMarkdown,
+  explainFirstSignal,
+  renderFirstSignalExplanation,
+  type FirstSignalKind
+} from './issueSummary';
 import { collectMlirTrace } from './mlirCollector';
 import { createReproBundle } from './reproBundle';
 import { computeTraceAnomalies } from './trace/anomalies';
@@ -20,6 +27,12 @@ interface SampleTraceEntry {
   description: string;
   detail: string;
   file: string;
+}
+
+interface TraceQueryPick extends vscode.QuickPickItem {
+  query?: TraceQuery;
+  queryKind?: string;
+  summaryKind?: string;
 }
 
 const sampleTraces: SampleTraceEntry[] = [
@@ -326,7 +339,7 @@ async function queryCurrentTraceCommand(): Promise<void> {
     return;
   }
 
-  const picked = await vscode.window.showQuickPick(
+  const picked = await vscode.window.showQuickPick<TraceQueryPick>(
     [
       {
         label: 'Find first failure stage',
@@ -357,6 +370,21 @@ async function queryCurrentTraceCommand(): Promise<void> {
         label: 'Search trace text',
         detail: 'Search pass names, scopes, diagnostics, and IR text.',
         queryKind: 'search'
+      },
+      {
+        label: 'Generate GitHub issue description',
+        detail: 'Create a trace-grounded issue draft with evidence and guardrails.',
+        summaryKind: 'githubIssue'
+      },
+      {
+        label: 'Summarize top 3 suspicious passes',
+        detail: 'Rank suspicious pass candidates by failures, anomalies, diagnostics, and validation issues.',
+        summaryKind: 'topSuspicious'
+      },
+      {
+        label: 'Explain first fallback / legality / budget signal',
+        detail: 'Choose a signal family and generate a concise evidence summary.',
+        summaryKind: 'firstSignal'
       }
     ],
     {
@@ -368,12 +396,21 @@ async function queryCurrentTraceCommand(): Promise<void> {
     return;
   }
 
+  const { loaded, sourceUri } = currentTraceSession;
+  if (picked.summaryKind) {
+    const content = await resolveIssueSummary(picked.summaryKind, loaded, sourceUri);
+    if (!content) {
+      return;
+    }
+    await showMarkdownDocument(content);
+    return;
+  }
+
   const query = await resolveTraceQuery(picked);
   if (!query) {
     return;
   }
 
-  const { loaded, sourceUri } = currentTraceSession;
   const result = runTraceQuery(loaded.trace, query);
   const content = [
     renderTraceQueryResultMarkdown(result).trimEnd(),
@@ -384,15 +421,55 @@ async function queryCurrentTraceCommand(): Promise<void> {
     `- Tool: ${loaded.trace.tool ?? 'unknown'}`,
     `- Input: ${loaded.trace.input ?? 'unknown'}`
   ].join('\n');
+  await showMarkdownDocument(`${content}\n`);
+}
+
+async function resolveIssueSummary(
+  summaryKind: string,
+  loaded: LoadedTrace,
+  sourceUri: vscode.Uri
+): Promise<string | undefined> {
+  if (summaryKind === 'githubIssue') {
+    return createGithubIssueDescription(loaded.trace, loaded.issues, loaded.anomalies, sourceUri.fsPath);
+  }
+  if (summaryKind === 'topSuspicious') {
+    return `${createSuspiciousPassesMarkdown(loaded.trace, loaded.issues, loaded.anomalies, 3)}\n`;
+  }
+  if (summaryKind === 'firstSignal') {
+    const picked = await vscode.window.showQuickPick(
+      [
+        { label: 'fallback', detail: 'First fallback metric, diagnostic, pass, or IR signal.' },
+        { label: 'legality', detail: 'First legality, verifier, or failed-status signal.' },
+        { label: 'budget', detail: 'First budget anomaly or budget-related metric signal.' }
+      ],
+      {
+        title: 'Pass Lens: First Signal Family',
+        placeHolder: 'Choose the signal family to explain'
+      }
+    );
+    if (!picked) {
+      return undefined;
+    }
+    return renderFirstSignalExplanation(explainFirstSignal(
+      loaded.trace,
+      loaded.issues,
+      loaded.anomalies,
+      picked.label as FirstSignalKind
+    ));
+  }
+  return undefined;
+}
+
+async function showMarkdownDocument(content: string): Promise<void> {
   const document = await vscode.workspace.openTextDocument({
     language: 'markdown',
-    content: `${content}\n`
+    content
   });
   await vscode.window.showTextDocument(document, { preview: true });
 }
 
 async function resolveTraceQuery(
-  picked: { query?: TraceQuery; queryKind?: string }
+  picked: TraceQueryPick
 ): Promise<TraceQuery | undefined> {
   if (picked.query) {
     return picked.query;
