@@ -3,6 +3,7 @@ import { spawn } from 'node:child_process';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { createAgentContext, createAgentContextMarkdown } from './agentContext';
 import { collectMlirTrace } from './mlirCollector';
 import { createReproBundle } from './reproBundle';
 import { computeTraceAnomalies } from './trace/anomalies';
@@ -391,6 +392,9 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     if (parsed.type === 'exportBundle') {
       await exportReproBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
+    if (parsed.type === 'exportAgentContext') {
+      await exportAgentContext(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
+    }
   });
 
   const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.css'));
@@ -426,6 +430,43 @@ async function exportReproBundle(
   });
   await fs.writeFile(target.fsPath, content, 'utf8');
   const open = await vscode.window.showInformationMessage('Pass Lens exported repro bundle.', 'Open');
+  if (open === 'Open') {
+    await vscode.window.showTextDocument(target, { preview: false });
+  }
+}
+
+async function exportAgentContext(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+): Promise<void> {
+  const parsed = path.parse(sourceUri.fsPath);
+  const defaultUri = vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-agent-context.json`));
+  const target = await vscode.window.showSaveDialog({
+    defaultUri,
+    filters: {
+      JSON: ['json'],
+      Markdown: ['md'],
+      'All files': ['*']
+    },
+    saveLabel: 'Export Agent Context',
+    title: 'Export Pass Lens agent context'
+  });
+  if (!target) {
+    return;
+  }
+
+  const context = createAgentContext(trace, issues, anomalies, {
+    sourcePath: sourceUri.fsPath,
+    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
+  });
+  const content = path.extname(target.fsPath).toLowerCase() === '.md'
+    ? createAgentContextMarkdown(context)
+    : `${JSON.stringify(context, null, 2)}\n`;
+  await fs.writeFile(target.fsPath, content, 'utf8');
+  const open = await vscode.window.showInformationMessage('Pass Lens exported agent context.', 'Open');
   if (open === 'Open') {
     await vscode.window.showTextDocument(target, { preview: false });
   }
