@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { createAgentContext, createAgentContextMarkdown } from './agentContext';
+import { exportDirectoryReproBundle } from './directoryReproBundle';
 import {
   createGithubIssueDescription,
   createSuspiciousPassesMarkdown,
@@ -731,6 +732,9 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     if (parsed.type === 'exportBundle') {
       await exportReproBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
+    if (parsed.type === 'exportDirectoryBundle') {
+      await exportReproDirectoryBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
+    }
     if (parsed.type === 'exportAgentContext') {
       await exportAgentContext(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
@@ -790,6 +794,38 @@ async function exportReproBundle(
   const open = await vscode.window.showInformationMessage('Pass Lens exported repro bundle.', 'Open');
   if (open === 'Open') {
     await vscode.window.showTextDocument(target, { preview: false });
+  }
+}
+
+async function exportReproDirectoryBundle(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+): Promise<void> {
+  const parsed = path.parse(sourceUri.fsPath);
+  const target = await vscode.window.showOpenDialog({
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+    defaultUri: vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-repro`)),
+    openLabel: 'Export Repro Directory',
+    title: 'Select Pass Lens repro directory'
+  });
+  if (!target?.[0]) {
+    return;
+  }
+
+  await exportDirectoryReproBundle(trace, issues, anomalies, {
+    targetDir: target[0].fsPath,
+    sourceTracePath: sourceUri.fsPath,
+    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
+  });
+  const manifestUri = vscode.Uri.file(path.join(target[0].fsPath, 'manifest.json'));
+  const open = await vscode.window.showInformationMessage('Pass Lens exported repro directory.', 'Open manifest');
+  if (open === 'Open manifest') {
+    await vscode.window.showTextDocument(manifestUri, { preview: false });
   }
 }
 

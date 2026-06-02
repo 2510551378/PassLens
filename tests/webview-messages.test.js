@@ -37,6 +37,21 @@ test('parseTracePanelMessage accepts export bundle messages with optional select
   });
 });
 
+test('parseTracePanelMessage accepts export directory bundle messages with optional selected stage', () => {
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'exportDirectoryBundle',
+    selectedStageIndex: 8
+  }), {
+    type: 'exportDirectoryBundle',
+    selectedStageIndex: 8
+  });
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'exportDirectoryBundle'
+  }), {
+    type: 'exportDirectoryBundle'
+  });
+});
+
 test('parseTracePanelMessage accepts export agent context messages with optional selected stage', () => {
   assert.deepEqual(parseTracePanelMessage({
     type: 'exportAgentContext',

@@ -85,10 +85,11 @@ an execution checklist. The guiding principle is:
   - [x] `run_pipeline(prefix)`.
   - [x] `run_prefix_bisect()`.
   - [x] `run_with_verify_each()`.
-  - [ ] `export_repro_bundle()`.
+  - [x] `export_repro_bundle()`.
   - Commit: this change.
   - `src/rerun.ts` defines a runner interface plus deterministic prefix and
-    verify-each orchestration.
+    verify-each orchestration; directory repro export is implemented in
+    `src/directoryReproBundle.ts`.
 - [x] Add prefix bisection for MLIR textual pipelines.
   - Commit: this change.
   - MLIR textual pipeline wrappers are preserved while constructing prefixes.
@@ -150,7 +151,10 @@ an execution checklist. The guiding principle is:
 
 ## Directory-Style Repro Bundle
 
-- [ ] Add directory export alongside the existing Markdown repro bundle.
+- [x] Add directory export alongside the existing Markdown repro bundle.
+  - Commit: this change.
+  - Trace panels now expose `Export repro directory`, backed by
+    `exportDirectoryReproBundle`.
 - [ ] Target structure:
 
 ```text
@@ -168,10 +172,23 @@ repro/
   agent-context.json
 ```
 
-- [ ] Preserve artifact references and optionally copy artifacts into the bundle.
-- [ ] Generate platform-specific rerun scripts.
-- [ ] Add bundle manifest with tool versions and capture mode.
-- [ ] Make bundle suitable for CI artifact upload and AI-agent tool input.
+- [x] Preserve artifact references and optionally copy artifacts into the bundle.
+  - Commit: this change.
+  - Copied artifact mappings are recorded in `manifest.json`.
+- [x] Generate platform-specific rerun scripts.
+  - Commit: this change.
+  - Bundles include `run.ps1` and `run.sh`.
+- [x] Add bundle manifest with tool versions and capture mode.
+  - Commit: this change.
+  - `manifest.json` records tool, collector version, capture mode, files, input
+    source, and copied artifact mappings.
+- [x] Make bundle suitable for CI artifact upload and AI-agent tool input.
+  - Commit: this change.
+  - Bundles include `summary.md`, `agent-context.json`, `trace.json`, rerun
+    scripts, diagnostics, and manifest metadata.
+  - L20 verified: generated a real structured trace with
+    `/home/ahc/PassLens/build/pass-lens-mlir/pass-lens-mlir-opt`, exported a
+    directory bundle, then reran `run.sh` to produce `trace.rerun.json`.
 
 ## Performance And Large Trace Support
 
