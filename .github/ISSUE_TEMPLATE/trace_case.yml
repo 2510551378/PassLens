@@ -1,0 +1,49 @@
+name: Trace case study
+description: Propose a real compiler trace, sample, or downstream integration case.
+title: "[Trace Case]: "
+labels:
+  - trace-case
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for real traces, collector integrations, and debugging stories. The strongest cases include a repro command, artifact-backed IR, diagnostics, and a clear first signal.
+  - type: textarea
+    id: compiler
+    attributes:
+      label: Compiler / pipeline
+      description: Which compiler, backend, and pass pipeline produced this trace?
+      placeholder: Triton -> TTIR -> TTGIR -> AscendC, IREE, torch-mlir, custom MLIR driver ...
+    validations:
+      required: true
+  - type: textarea
+    id: story
+    attributes:
+      label: Debugging story
+      description: What is the failure or suspicious behavior, and what should Pass Lens help localize?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Available evidence
+      description: Mention trace quality, trace size, artifact availability, diagnostics, and whether repro scripts can be shared.
+      placeholder: |
+        Trace quality:
+        Trace size:
+        Artifact-backed IR:
+        Diagnostics:
+        Repro command:
+    validations:
+      required: false
+  - type: dropdown
+    id: sharing
+    attributes:
+      label: Sharing constraints
+      options:
+        - Public trace and artifacts can be shared
+        - Redacted trace can be shared
+        - Only screenshots / summaries can be shared
+        - Private discussion needed
+    validations:
+      required: true

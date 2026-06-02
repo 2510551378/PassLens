@@ -1,106 +1,124 @@
-# Pass Lens
+<p align="center">
+  <img src="docs/images/pass-lens-logo.png" width="132" alt="Pass Lens logo">
+</p>
 
-**English** | [中文](README.zh-CN.md)
+<h1 align="center">Pass Lens</h1>
 
-[![CI](https://github.com/2510551378/PassLens/actions/workflows/ci.yml/badge.svg)](https://github.com/2510551378/PassLens/actions/workflows/ci.yml)
-![Version](https://img.shields.io/badge/version-0.1.0-blue)
-![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.90-007ACC)
-![Status](https://img.shields.io/badge/status-preview-orange)
-![License](https://img.shields.io/badge/license-MIT-green)
+<p align="center">
+  <strong>Evidence-driven postmortem debugger for MLIR / LLVM pass pipelines.</strong>
+</p>
 
-Pass Lens is an evidence-driven postmortem debugger for MLIR/LLVM pass
-pipelines. It is a pass pipeline observability and debugging workbench that
-turns structured traces into a focused investigation view: first signal, IR
-diff, diagnostics, metric anomalies, repro context, and artifact paths in one
-place.
+<p align="center">
+  Turn compiler pass traces into a focused investigation: first signal, IR diff,
+  diagnostics, metric anomalies, trace quality, repro context, and artifact paths.
+</p>
+
+<p align="center">
+  <a href="README.zh-CN.md">中文</a>
+  ·
+  <a href="docs/trace-schema.md">Trace Schema</a>
+  ·
+  <a href="docs/expert-roadmap-todo.md">Roadmap</a>
+  ·
+  <a href="collectors/mlir-pass-lens">MLIR Collector</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/2510551378/PassLens/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/2510551378/PassLens/actions/workflows/ci.yml/badge.svg"></a>
+  <img alt="Version" src="https://img.shields.io/badge/version-0.1.0-blue">
+  <img alt="VS Code" src="https://img.shields.io/badge/VS%20Code-%5E1.90-007ACC">
+  <img alt="Status" src="https://img.shields.io/badge/status-preview-orange">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-green">
+</p>
+
+![Pass Lens hero](docs/images/pass-lens-hero.png)
 
 ![Pass Lens first bad pass view](docs/images/pass-lens-first-bad-pass.png)
 
-[Animated demo](docs/images/pass-lens-first-bad-pass.gif)
-
 ## Why Pass Lens
 
-Compiler failures are rarely local to the final crash. Invalid IR, legality
-breakage, resource-budget violations, or suspicious metric jumps often appear
+Compiler failures are rarely born at the final crash. Invalid IR, legality
+breakage, resource-budget overflow, or suspicious metric jumps often appear
 several passes earlier.
 
-Pass Lens is built for that postmortem loop:
+Pass Lens gives compiler engineers a trace-grounded workflow:
 
-- Find the first failing or suspicious pass.
-- Compare before/after IR without opening scattered dump files.
-- See metric deltas and anomaly hints next to the selected pass.
-- Open before/after artifacts and diagnostics directly from the diff view.
-- Export a compact Markdown repro bundle for bug reports and code review.
+| Step | What Pass Lens surfaces |
+| --- | --- |
+| Signal | First verifier failure, first IR change, first anomaly, slowest pass |
+| Evidence | Before/after IR, diagnostics, metric deltas, validation issues |
+| Repro | Markdown repro, directory repro bundle, commands, artifacts |
+| Agent handoff | Bounded JSON/Markdown context with evidence IDs and guardrails |
 
 ## Highlights
 
-- Pass-by-pass timeline with changed, unchanged, and failed states.
-- Visual pipeline map for quick navigation through long lowering pipelines.
-- First-signal navigation for verifier failures and first IR changes.
+- Pass-by-pass timeline with changed, unchanged, failed, anomalous, and slow
+  stages.
+- First-signal navigation for verifier failures, first IR changes, anomaly
+  spikes, and slowest passes.
+- Side-by-side IR diff with inline or artifact-backed snapshots.
 - Metric anomaly detection for zero-to-positive jumps, large relative changes,
   and domain-specific budget violations.
-- Side-by-side IR diff with inline or artifact-backed snapshots.
-- Artifact open actions for before IR, after IR, and diagnostics sidecars.
-- In-view suspicious-pass explanation with evidence, next checks, confidence,
-  guardrails, export, and copy actions.
-- Bounded JSON / Markdown agent context export for trace-grounded debugging
-  agents, with copy-to-clipboard support for quick handoff.
-- AI-facing exports are trace-grounded and tool-mediated: Pass Lens packages
-  cited evidence and repro context, rather than offering a generic chat surface.
-- Keyboard navigation: `j` / `k`, arrow keys, `/`, `c`, `f`, `a`, `s`.
-- Structured JSON schema for downstream compiler integrations.
-- MLIR paths for both quick `mlir-opt` dump parsing and structured
+- Trace quality score for collector credibility: pass identity, timing,
+  verifier status, artifact coverage, and index consistency.
+- Trace size report with quick fixes for traces that should switch from inline
+  IR to artifact-backed capture.
+- Directory-style repro bundle with `trace.json`, artifacts, diagnostics,
+  `run.ps1`, `run.sh`, `manifest.json`, and agent context.
+- Deterministic issue summaries and suspicious-pass explanations before any
+  model call.
+- Trace-grounded AI exports: cited evidence and bounded context, not a generic
+  chat surface.
+- MLIR support through both `mlir-opt` dump fallback and structured
   `PassInstrumentation` collection.
-- Sample gallery, including Triton NPU / AscendC case studies.
 
 ## Quick Start
 
 Download `pass-lens-0.1.0.vsix` from the
 [v0.1.0 release](https://github.com/2510551378/PassLens/releases/tag/v0.1.0),
-or build it locally.
-
-Install the VSIX:
+or build it locally:
 
 ```powershell
+npm install
+npm run package
 code --install-extension pass-lens-0.1.0.vsix
 ```
 
-Open VSCode and run:
+Open VS Code and run:
 
 ```text
 Pass Lens: Open Sample Trace
 ```
 
-Start with one of these samples:
+Good first samples:
 
 - `Triton NPU strict fallback`
 - `Real Triton NPU dual RMSNorm`
 - `Verifier failure`
+- `External IR artifacts`
 
-To open your own trace:
+Open your own trace with:
 
 ```text
 Pass Lens: Open Trace File
 ```
 
-Select a JSON trace that follows
-[`docs/pass-lens.schema.json`](docs/pass-lens.schema.json).
-Agent context exports follow
+The trace should follow [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json).
+Agent exports follow
 [`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json).
 
 ## Core Workflow
 
-1. Open a trace from the sample gallery or a local JSON file.
-2. Inspect the summary cards: changed passes, first signal, anomalies, slowest
-   pass.
-3. Use the left timeline to select a pass.
-4. Read the selected-pass card first. It tells you why the pass is interesting.
-5. Check metric anomalies and metric deltas.
-6. Read the suspicious-pass explanation as a candidate, not proof.
-7. Compare the side-by-side IR diff.
-8. Open artifacts or diagnostics when the trace uses sidecar files.
-9. Export a repro bundle or agent context when the trace should become a bug
-   report or AI-assisted investigation.
+1. Open a sample or local JSON trace.
+2. Read the summary cards: changed passes, first signal, anomalies, trace
+   quality, trace size, and slowest pass.
+3. Select a pass in the timeline.
+4. Inspect why the selected pass is interesting.
+5. Compare before/after IR and metric deltas.
+6. Open artifact sidecars or diagnostics when needed.
+7. Export a repro bundle, issue summary, suspicious-pass explanation, or agent
+   context.
+8. Use prefix bisection when you need a minimal failing pass prefix.
 
 Useful shortcuts:
 
@@ -116,8 +134,6 @@ Useful shortcuts:
 
 ## Trace Producers
 
-Pass Lens supports three trace-producing paths.
-
 ### Structured MLIR Collector
 
 Use this path when you can build `pass-lens-mlir-opt` or integrate the
@@ -131,27 +147,18 @@ pass-lens-mlir-opt input.mlir `
   -o output.mlir
 ```
 
-This is the preferred path for timing, verifier failure attribution, pass
-identity, and artifact-backed IR snapshots.
+This is the preferred path for timing, verifier attribution, pass identity, and
+artifact-backed IR snapshots.
 
 ### `mlir-opt` Dump Fallback
 
-Use `Pass Lens: Run mlir-opt Trace` when only `mlir-opt` is available. This
-path reverse-parses textual dump markers, so it is useful for quick
-experiments but cannot provide reliable per-pass duration.
-
-Example pass pipeline:
-
-```text
-builtin.module(func.func(canonicalize,cse))
-```
-
-Set `passLens.mlirOptPath` if `mlir-opt` is not on `PATH`.
+Use `Pass Lens: Run mlir-opt Trace` when only `mlir-opt` is available. This path
+reverse-parses textual dump markers, so it is useful for quick experiments but
+cannot provide reliable per-pass duration.
 
 ### Downstream Compiler JSON
 
-Downstream compilers can emit the schema directly. A minimal artifact-backed
-trace looks like:
+Downstream compilers can emit the schema directly:
 
 ```json
 {
@@ -191,12 +198,11 @@ See [docs/trace-schema.md](docs/trace-schema.md) for the full viewer contract.
 `Pass Lens: Open Sample Trace` includes:
 
 - `Toy MLIR pipeline`: small trace for checking the basic viewer layout.
-- `Long lowering pipeline`: longer trace for filters and slowest-pass
-  navigation.
-- `Verifier failure`: failure-focused trace that opens at the first failing
-  pass.
-- `External IR artifacts`: before/after IR and diagnostics loaded from
-  sidecar files.
+- `Long lowering pipeline`: longer trace for filters, changed-only view, and
+  slowest-pass navigation.
+- `Verifier failure`: opens directly at the first failing pass.
+- `External IR artifacts`: before/after IR and diagnostics loaded from sidecar
+  files.
 - `Triton NPU UB budget overflow`: AscendC resource-budget anomaly case study.
 - `Triton NPU strict fallback`: strict-mode legality and fallback case study.
 - `Real Triton NPU dual RMSNorm`: real local `npuir2ascendc` trace from
@@ -205,43 +211,32 @@ See [docs/trace-schema.md](docs/trace-schema.md) for the full viewer contract.
 See [docs/examples/triton-npu.md](docs/examples/triton-npu.md) for the intended
 debugging story behind the Triton NPU / AscendC samples.
 
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `Pass Lens: Open Sample Trace` | Explore built-in examples |
+| `Pass Lens: Open Trace File` | Open a local Pass Lens JSON trace |
+| `Pass Lens: Run mlir-opt Trace` | Collect a best-effort trace from dump output |
+| `Pass Lens: Run Structured MLIR Trace` | Run the structured MLIR collector driver |
+| `Pass Lens: Query Current Trace` | Generate deterministic reports and summaries |
+| `Pass Lens: Run Prefix Bisect` | Find a minimal failing MLIR pass prefix |
+| `Pass Lens: Check MLIR Collector Setup` | Check local LLVM/MLIR collector build setup |
+
 ## Development
 
 ```powershell
 npm install
 npm run compile
-code .
-```
-
-Press `F5` in VSCode, then run one of:
-
-- `Pass Lens: Open Sample Trace`
-- `Pass Lens: Open Trace File`
-- `Pass Lens: Run mlir-opt Trace`
-- `Pass Lens: Run Structured MLIR Trace`
-- `Pass Lens: Check MLIR Collector Setup`
-
-Run tests:
-
-```powershell
 npm test
-```
-
-Package a local VSIX:
-
-```powershell
 npm run package
 ```
 
-## MLIR Collector
+Press `F5` in VS Code to launch an Extension Development Host.
 
 The structured collector lives in
-[`collectors/mlir-pass-lens`](collectors/mlir-pass-lens). It provides a C++
-`PassInstrumentation` library and a `pass-lens-mlir-opt` driver scaffold for
-custom MLIR drivers or downstream compiler tools that can call
-`PassManager::addInstrumentation`.
-
-To check the C++ collector on a machine with LLVM/MLIR development files:
+[`collectors/mlir-pass-lens`](collectors/mlir-pass-lens). On a machine with
+LLVM/MLIR development files:
 
 ```powershell
 $env:MLIR_DIR="C:\path\to\llvm-build\lib\cmake\mlir"
@@ -249,29 +244,21 @@ $env:LLVM_DIR="C:\path\to\llvm-build\lib\cmake\llvm"
 npm run check:mlir-collector
 ```
 
-The helper prints `ENVIRONMENT_MISSING` when LLVM/MLIR development files are
-not configured locally. It exits with code `2` in that case. Other failures are
-configure or build failures worth inspecting.
-
 ## Project Status
 
-Pass Lens is a preview extension. The trace viewer, sample gallery, schema
-validation, repro bundle export, artifact opening, and MLIR collector scaffold
-are usable today. The current focus is making real downstream compiler
-integrations more convincing and reducing the time from "compiler failed" to
-"this pass is the likely cause."
+Pass Lens is a preview extension. The viewer, schema validation, sample gallery,
+artifact opening, trace quality and size reports, repro bundle export, agent
+context export, prefix bisection, and MLIR collector scaffold are usable today.
 
-## Roadmap
+Current focus:
+
+- real downstream MLIR / Triton / IREE / torch-mlir collector workflows;
+- lazy artifact loading and large-trace UX;
+- stronger schema docs for external collector authors;
+- marketplace-ready packaging and demos.
 
 See [docs/expert-roadmap-todo.md](docs/expert-roadmap-todo.md) for the
 expert-guided execution checklist.
-
-- Directory-style repro bundles with standalone `trace.json`, IR artifacts,
-  diagnostics, and repro scripts.
-- Metric trend charts and root-cause candidate summaries.
-- Live structured collector runs in real downstream MLIR / Triton NPU
-  pipelines.
-- VSCode Marketplace publishing after the local VSIX workflow is stable.
 
 ## Known Limitations
 
@@ -279,11 +266,11 @@ expert-guided execution checklist.
   per-pass timing.
 - The structured collector currently targets MLIR-based drivers. LLVM New Pass
   Manager support is future work.
-- Metric anomalies are triage hints. They identify suspicious deltas and domain
-  contract violations, but they do not prove a pass is incorrect.
+- Metric anomalies and suspicious-pass explanations are triage hints. They do
+  not prove a pass is incorrect.
 - The included Triton NPU failure traces are case-study samples. The real dual
-  RMSNorm trace is generated from a local `npuir2ascendc` run, but it is not
-  yet produced by live `PassInstrumentation` inside that compiler.
+  RMSNorm trace is generated from a local `npuir2ascendc` run, but it is not yet
+  produced by live `PassInstrumentation` inside that compiler.
 
 ## License
 

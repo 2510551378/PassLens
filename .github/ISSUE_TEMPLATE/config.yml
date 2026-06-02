@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Roadmap and project direction
+    url: https://github.com/2510551378/PassLens/blob/main/docs/expert-roadmap-todo.md
+    about: Check the current execution checklist before opening broad roadmap requests.
