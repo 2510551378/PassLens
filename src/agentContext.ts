@@ -36,6 +36,7 @@ export interface AgentContext {
   topAnomalies: MetricAnomaly[];
   validationIssues: TraceIssue[];
   diagnostics?: TruncatedText;
+  contextSize: AgentContextSizeAccounting;
   investigationQuestions: string[];
 }
 
@@ -74,6 +75,15 @@ export interface TruncatedText {
   originalChars: number;
 }
 
+export interface AgentContextSizeAccounting {
+  selectedIrChars: number;
+  selectedIrOriginalChars: number;
+  diagnosticsChars: number;
+  diagnosticsOriginalChars: number;
+  artifactOnlyReferenceCount: number;
+  omittedStageCount: number;
+}
+
 export function createAgentContext(
   trace: PassTrace,
   issues: TraceIssue[],
@@ -85,6 +95,13 @@ export function createAgentContext(
   const neighborRadius = options.neighborRadius ?? 2;
   const maxAnomalies = options.maxAnomalies ?? 12;
   const maxIssues = options.maxIssues ?? 20;
+  const selectedStageContext = selectedStage ? summarizeStageWithIr(selectedStage, options) : undefined;
+  const neighborStages = selectedStage
+    ? selectNeighborStages(trace, selectedStage, neighborRadius).map(summarizeStage)
+    : [];
+  const diagnostics = trace.diagnostics
+    ? truncateText(trace.diagnostics, options.maxDiagnosticsChars ?? 8000)
+    : undefined;
 
   return {
     schemaVersion: 1,
@@ -107,15 +124,12 @@ export function createAgentContext(
       firstChangedStageIndex: trace.stages.find((stage) => stage.changed)?.index,
       selectedStageIndex
     },
-    selectedStage: selectedStage ? summarizeStageWithIr(selectedStage, options) : undefined,
-    neighborStages: selectedStage
-      ? selectNeighborStages(trace, selectedStage, neighborRadius).map(summarizeStage)
-      : [],
+    selectedStage: selectedStageContext,
+    neighborStages,
     topAnomalies: anomalies.slice(0, maxAnomalies),
     validationIssues: selectIssues(issues, selectedStageIndex, maxIssues),
-    diagnostics: trace.diagnostics
-      ? truncateText(trace.diagnostics, options.maxDiagnosticsChars ?? 8000)
-      : undefined,
+    diagnostics,
+    contextSize: computeContextSize(trace, selectedStageContext, neighborStages, diagnostics),
     investigationQuestions: buildInvestigationQuestions(trace, selectedStage, anomalies, issues)
   };
 }
@@ -140,6 +154,13 @@ export function createAgentContextMarkdown(context: AgentContext): string {
     `- Changed stages: ${context.summary.changedStageCount}`,
     `- First failure stage: ${formatOptionalIndex(context.summary.firstFailureStageIndex)}`,
     `- Selected stage: ${formatOptionalIndex(context.summary.selectedStageIndex)}`,
+    '',
+    '## Context Size',
+    '',
+    `- Selected IR chars: ${context.contextSize.selectedIrChars} included / ${context.contextSize.selectedIrOriginalChars} original`,
+    `- Diagnostics chars: ${context.contextSize.diagnosticsChars} included / ${context.contextSize.diagnosticsOriginalChars} original`,
+    `- Artifact-only references: ${context.contextSize.artifactOnlyReferenceCount}`,
+    `- Omitted stages: ${context.contextSize.omittedStageCount}`,
     '',
     '## Selected Stage',
     '',
@@ -224,6 +245,72 @@ function summarizeStage(stage: TraceStage): AgentStageSummary {
     artifacts: stage.artifacts,
     metricDeltas: topMetricDeltas(stage.metricsBefore ?? {}, stage.metricsAfter ?? {}).slice(0, 10)
   };
+}
+
+function computeContextSize(
+  trace: PassTrace,
+  selectedStage: AgentStageContext | undefined,
+  neighborStages: AgentStageSummary[],
+  diagnostics: TruncatedText | undefined
+): AgentContextSizeAccounting {
+  const selectedIr = [selectedStage?.irBefore, selectedStage?.irAfter].filter(isTruncatedText);
+  const diagnosticTexts = [selectedStage?.diagnostics, diagnostics].filter(isTruncatedText);
+  const includedStageIndexes = new Set<number>();
+  if (selectedStage) {
+    includedStageIndexes.add(selectedStage.index);
+  }
+  for (const stage of neighborStages) {
+    includedStageIndexes.add(stage.index);
+  }
+
+  return {
+    selectedIrChars: sumTextChars(selectedIr),
+    selectedIrOriginalChars: sumOriginalChars(selectedIr),
+    diagnosticsChars: sumTextChars(diagnosticTexts),
+    diagnosticsOriginalChars: sumOriginalChars(diagnosticTexts),
+    artifactOnlyReferenceCount: countArtifactOnlyReferences([selectedStage, ...neighborStages]),
+    omittedStageCount: trace.stages.filter((stage) => !includedStageIndexes.has(stage.index)).length
+  };
+}
+
+function countArtifactOnlyReferences(stages: Array<AgentStageSummary | AgentStageContext | undefined>): number {
+  let count = 0;
+  for (const stage of stages) {
+    if (!stage?.artifacts) {
+      continue;
+    }
+    if (stage.artifacts.beforePath && !hasTruncatedText(stage, 'irBefore')) {
+      count += 1;
+    }
+    if (stage.artifacts.afterPath && !hasTruncatedText(stage, 'irAfter')) {
+      count += 1;
+    }
+    if (stage.artifacts.diagnosticsPath && !hasTruncatedText(stage, 'diagnostics')) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+function hasTruncatedText(stage: AgentStageSummary | AgentStageContext, field: keyof AgentStageContext): boolean {
+  return isTruncatedText((stage as AgentStageContext)[field]);
+}
+
+function sumTextChars(values: TruncatedText[]): number {
+  return values.reduce((total, value) => total + value.text.length, 0);
+}
+
+function sumOriginalChars(values: TruncatedText[]): number {
+  return values.reduce((total, value) => total + value.originalChars, 0);
+}
+
+function isTruncatedText(value: unknown): value is TruncatedText {
+  return Boolean(
+    value &&
+    typeof value === 'object' &&
+    typeof (value as TruncatedText).text === 'string' &&
+    typeof (value as TruncatedText).originalChars === 'number'
+  );
 }
 
 function topMetricDeltas(before: Metrics, after: Metrics): MetricDelta[] {

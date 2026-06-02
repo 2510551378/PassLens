@@ -14,6 +14,7 @@
     "neighborStages",
     "topAnomalies",
     "validationIssues",
+    "contextSize",
     "investigationQuestions"
   ],
   "properties": {
@@ -55,6 +56,9 @@
     },
     "diagnostics": {
       "$ref": "#/$defs/truncatedText"
+    },
+    "contextSize": {
+      "$ref": "#/$defs/contextSize"
     },
     "investigationQuestions": {
       "type": "array",
@@ -359,6 +363,44 @@
         },
         "originalChars": {
           "type": "number"
+        }
+      }
+    },
+    "contextSize": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "selectedIrChars",
+        "selectedIrOriginalChars",
+        "diagnosticsChars",
+        "diagnosticsOriginalChars",
+        "artifactOnlyReferenceCount",
+        "omittedStageCount"
+      ],
+      "properties": {
+        "selectedIrChars": {
+          "type": "number",
+          "minimum": 0
+        },
+        "selectedIrOriginalChars": {
+          "type": "number",
+          "minimum": 0
+        },
+        "diagnosticsChars": {
+          "type": "number",
+          "minimum": 0
+        },
+        "diagnosticsOriginalChars": {
+          "type": "number",
+          "minimum": 0
+        },
+        "artifactOnlyReferenceCount": {
+          "type": "number",
+          "minimum": 0
+        },
+        "omittedStageCount": {
+          "type": "number",
+          "minimum": 0
         }
       }
     },

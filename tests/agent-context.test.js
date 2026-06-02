@@ -8,7 +8,7 @@ const {
   createAgentContextMarkdown
 } = require('../out/agentContext.js');
 
-function makeContext() {
+function makeContext(optionOverrides = {}) {
   return createAgentContext(
     {
       schemaVersion: 1,
@@ -17,6 +17,7 @@ function makeContext() {
       input: 'kernel.mlir',
       pipeline: 'builtin.module(func.func(canonicalize,cse))',
       command: 'pass-lens-mlir-opt kernel.mlir --pass-pipeline=...',
+      diagnostics: 'trace diagnostics',
       capture: {
         ir: 'artifact',
         metrics: true,
@@ -39,6 +40,7 @@ function makeContext() {
           changed: true,
           status: 'changed',
           verifier: 'ok',
+          diagnostics: 'cse diagnostics',
           metricsBefore: {
             ops: 20,
             allocs: 0
@@ -63,7 +65,12 @@ function makeContext() {
           status: 'pass_failed',
           verifier: 'failed',
           irBefore: 'neighbor before should not be copied',
-          irAfter: 'neighbor after should not be copied'
+          irAfter: 'neighbor after should not be copied',
+          artifacts: {
+            beforePath: 'artifacts/stage-000002.before.mlir',
+            afterPath: 'artifacts/stage-000002.after.mlir',
+            diagnosticsPath: 'artifacts/stage-000002.diag.txt'
+          }
         }
       ]
     },
@@ -90,7 +97,8 @@ function makeContext() {
     {
       sourcePath: 'C:\\tmp\\kernel.pass-lens.json',
       selectedStageIndex: 1,
-      maxIrChars: 16
+      maxIrChars: 16,
+      ...optionOverrides
     }
   );
 }
@@ -119,9 +127,25 @@ test('createAgentContext captures selected stage evidence and bounded IR', () =>
   ]);
   assert.equal(context.selectedStage.irBefore.truncated, true);
   assert.equal(context.selectedStage.irBefore.text.length, 16);
+  assert.deepEqual(context.contextSize, {
+    selectedIrChars: context.selectedStage.irBefore.text.length + context.selectedStage.irAfter.text.length,
+    selectedIrOriginalChars: context.selectedStage.irBefore.originalChars + context.selectedStage.irAfter.originalChars,
+    diagnosticsChars: context.selectedStage.diagnostics.text.length + context.diagnostics.text.length,
+    diagnosticsOriginalChars: context.selectedStage.diagnostics.originalChars + context.diagnostics.originalChars,
+    artifactOnlyReferenceCount: 3,
+    omittedStageCount: 0
+  });
   assert.equal(context.neighborStages.length, 2);
   assert.equal(Object.hasOwn(context.neighborStages[1], 'irBefore'), false);
   assert.match(context.investigationQuestions.join('\n'), /artifact paths/);
+});
+
+test('agent context size accounting reports omitted stages outside the selected neighborhood', () => {
+  const context = makeContext({ neighborRadius: 0 });
+
+  assert.equal(context.neighborStages.length, 0);
+  assert.equal(context.contextSize.omittedStageCount, 2);
+  assert.equal(context.contextSize.artifactOnlyReferenceCount, 0);
 });
 
 test('agent context JSON schema declares the exported contract', () => {
@@ -141,6 +165,7 @@ test('agent context JSON schema declares the exported contract', () => {
     'neighborStages',
     'topAnomalies',
     'validationIssues',
+    'contextSize',
     'investigationQuestions'
   ]);
 
@@ -177,6 +202,8 @@ test('createAgentContextMarkdown renders selected pass and questions', () => {
   ));
 
   assert.match(markdown, /# Pass Lens Agent Context/);
+  assert.match(markdown, /## Context Size/);
+  assert.match(markdown, /- Selected IR chars:/);
   assert.match(markdown, /- Pass: convert-to-ac/);
   assert.match(markdown, /Which verifier invariant/);
   assert.match(markdown, /module \{ ac\.launch @kernel \}/);

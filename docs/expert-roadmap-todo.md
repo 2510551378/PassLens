@@ -41,8 +41,10 @@ an execution checklist. The guiding principle is:
   - Commit: this change.
   - Schema lives at `docs/pass-lens-agent-context.schema.json` and is covered by
     `tests/agent-context.test.js`.
-- [ ] Add context size accounting: selected IR chars, diagnostics chars,
+- [x] Add context size accounting: selected IR chars, diagnostics chars,
   artifact-only references, and omitted stages.
+  - Commit: this change.
+  - `contextSize` is part of the agent-context JSON schema and Markdown export.
 - [ ] Add evidence IDs so explanations can cite specific fields such as
   `stages[17].metricsAfter["fallback.count"]`.
 
