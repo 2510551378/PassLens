@@ -24,6 +24,7 @@ import {
 import { computeTraceAnomalies } from './trace/anomalies';
 import { hydrateTraceArtifacts } from './trace/artifacts';
 import { evaluateTraceQuality, renderTraceQualityMarkdown } from './trace/quality';
+import { evaluateTraceSize, renderTraceSizeMarkdown, type TraceSizeSummary } from './trace/size';
 import { createTraceExplanation } from './traceExplanation';
 import { renderTraceQueryResultMarkdown, runTraceQuery, type TraceQuery } from './traceQuery';
 import { normalizeTrace } from './trace/schema';
@@ -196,7 +197,7 @@ async function runMlirOptTraceCommand(context: vscode.ExtensionContext): Promise
 
     await fs.writeFile(outputUri.fsPath, `${JSON.stringify(trace, null, 2)}\n`, 'utf8');
     vscode.window.showInformationMessage(`Pass Lens trace saved: ${outputUri.fsPath}`);
-    openTracePanel(context, toLoadedTrace(trace), outputUri);
+    openTracePanel(context, await toLoadedTrace(trace, outputUri.fsPath), outputUri);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const action = await vscode.window.showErrorMessage(
@@ -272,7 +273,7 @@ async function runStructuredMlirTraceCommand(context: vscode.ExtensionContext): 
         loaded.trace.command = loaded.trace.command ?? command;
         loaded.trace.exitCode = loaded.trace.exitCode ?? result.exitCode;
         loaded.trace.diagnostics = loaded.trace.diagnostics ?? trimOutput(`${result.stderr}\n${result.stdout}`);
-        openTracePanel(context, toLoadedTrace(loaded.trace), traceUri);
+        openTracePanel(context, await toLoadedTrace(loaded.trace, traceUri.fsPath), traceUri);
       }
       throw new Error(trimOutput(result.stderr || result.stdout || `collector exited with code ${result.exitCode}`));
     }
@@ -282,7 +283,7 @@ async function runStructuredMlirTraceCommand(context: vscode.ExtensionContext): 
     loaded.trace.exitCode = loaded.trace.exitCode ?? result.exitCode;
     loaded.trace.diagnostics = loaded.trace.diagnostics ?? trimOutput(result.stderr);
     vscode.window.showInformationMessage(`Pass Lens structured trace saved: ${traceUri.fsPath}`);
-    openTracePanel(context, toLoadedTrace(loaded.trace), traceUri);
+    openTracePanel(context, await toLoadedTrace(loaded.trace, traceUri.fsPath), traceUri);
   } catch (error) {
     await fs.rm(outputPath, { force: true }).catch(() => undefined);
     const message = error instanceof Error ? error.message : String(error);
@@ -491,6 +492,11 @@ async function queryCurrentTraceCommand(): Promise<void> {
         label: 'Generate trace quality report',
         detail: 'Check collector credibility: pass identity, timing, verifier, artifacts, and indexes.',
         summaryKind: 'traceQuality'
+      },
+      {
+        label: 'Generate trace size report',
+        detail: 'Summarize inline IR, artifacts, diagnostics, and stage-count payload size.',
+        summaryKind: 'traceSize'
       }
     ],
     {
@@ -565,6 +571,9 @@ async function resolveIssueSummary(
   }
   if (summaryKind === 'traceQuality') {
     return renderTraceQualityMarkdown(evaluateTraceQuality(loaded.trace));
+  }
+  if (summaryKind === 'traceSize') {
+    return renderTraceSizeMarkdown(loaded.sizeSummary);
   }
   return undefined;
 }
@@ -652,6 +661,7 @@ interface LoadedTrace {
   trace: PassTrace;
   issues: TraceIssue[];
   anomalies: MetricAnomaly[];
+  sizeSummary: TraceSizeSummary;
 }
 
 async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
@@ -662,7 +672,8 @@ async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
     return {
       trace,
       issues: [...validateTrace(trace), ...artifactIssues],
-      anomalies: computeTraceAnomalies(trace)
+      anomalies: computeTraceAnomalies(trace),
+      sizeSummary: await evaluateTraceSize(trace, uri.fsPath)
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -670,11 +681,12 @@ async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
   }
 }
 
-function toLoadedTrace(trace: PassTrace): LoadedTrace {
+async function toLoadedTrace(trace: PassTrace, tracePath?: string): Promise<LoadedTrace> {
   return {
     trace,
     issues: validateTrace(trace),
-    anomalies: computeTraceAnomalies(trace)
+    anomalies: computeTraceAnomalies(trace),
+    sizeSummary: await evaluateTraceSize(trace, tracePath)
   };
 }
 
@@ -714,7 +726,7 @@ function trimOutput(text: string): string | undefined {
 }
 
 function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, sourceUri: vscode.Uri): void {
-  const { trace, issues, anomalies } = loaded;
+  const { trace, issues, anomalies, sizeSummary } = loaded;
   currentTraceSession = { loaded, sourceUri };
   const panel = vscode.window.createWebviewPanel(
     'passLens.trace',
@@ -770,7 +782,7 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
 
   const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.css'));
   const scriptUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.js'));
-  panel.webview.html = getWebviewHtml(trace, issues, anomalies, sourceUri.fsPath, styleUri, scriptUri, panel.webview.cspSource);
+  panel.webview.html = getWebviewHtml(trace, issues, anomalies, sizeSummary, sourceUri.fsPath, styleUri, scriptUri, panel.webview.cspSource);
 }
 
 async function exportReproBundle(
@@ -942,6 +954,7 @@ function getWebviewHtml(
   trace: PassTrace,
   issues: TraceIssue[],
   anomalies: MetricAnomaly[],
+  sizeSummary: TraceSizeSummary,
   sourcePath: string,
   styleUri: vscode.Uri,
   scriptUri: vscode.Uri,
@@ -953,6 +966,7 @@ function getWebviewHtml(
     traceAnomalies: anomalies,
     traceIssueSummary: summarizeTraceIssues(issues),
     traceQuality: evaluateTraceQuality(trace),
+    traceSize: sizeSummary,
     sourcePath
   }).replace(/</g, '\\u003c');
   const title = escapeHtml(trace.input ?? 'Pass Trace');

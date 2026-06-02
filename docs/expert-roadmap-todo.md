@@ -208,11 +208,15 @@ repro/
   eagerly.
 - [ ] Add virtualized timeline/list rendering for large traces.
 - [ ] Add bounded / on-demand diff computation.
-- [ ] Add trace-level size summary:
-  - [ ] inline IR bytes.
-  - [ ] artifact bytes.
-  - [ ] number of stages.
-  - [ ] diagnostics bytes.
+- [x] Add trace-level size summary:
+  - [x] inline IR bytes.
+  - [x] artifact bytes.
+  - [x] number of stages.
+  - [x] diagnostics bytes.
+  - Commit: this change.
+  - Implemented by `src/trace/size.ts`, exposed in the webview summary as
+    `Trace size`, and available through `Pass Lens: Query Current Trace` as a
+    trace size report.
 - [ ] Add warnings and quick fixes for traces that should switch from inline IR
   to artifact IR.
 
