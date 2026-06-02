@@ -432,6 +432,56 @@ section {
   white-space: nowrap;
 }
 
+.explanation-panel {
+  display: grid;
+  gap: 10px;
+  margin: 8px 0 16px;
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--vscode-textLink-foreground);
+  border-radius: 6px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--vscode-textLink-foreground) 7%, transparent);
+}
+
+.explanation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.explanation-section {
+  min-width: 0;
+}
+
+.explanation-section.strong {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+
+.explanation-label {
+  margin-bottom: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.explanation-section p {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.explanation-section ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.explanation-section li {
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
 table.metrics {
   width: 100%;
   border-collapse: collapse;
@@ -585,5 +635,9 @@ pre.diagnostics {
 
   .summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .explanation-grid {
+    grid-template-columns: 1fr;
   }
 }

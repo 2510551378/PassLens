@@ -19,8 +19,8 @@ pipeline timeline.
 - Compare metric deltas before and after each pass.
 - View side-by-side IR diffs, including source markers for inline IR versus
   external artifact files.
-- Export an evidence-grounded suspicious-pass explanation with likely issue,
-  trace evidence, next checks, confidence, and guardrails.
+- Preview and export an evidence-grounded suspicious-pass explanation with
+  likely issue, trace evidence, next checks, confidence, and guardrails.
 - Copy the generated repro command from the viewer.
 - Export a Markdown repro bundle with trace summary, selected-pass IR,
   diagnostics, validation issues, and top metric anomalies.

@@ -29,7 +29,10 @@ an execution checklist. The guiding principle is:
   - Commit: `a61c149 Add suspicious pass explanation export`.
   - Output includes likely issue, evidence, next checks, confidence, guardrails,
     and repro command.
-- [ ] Add an in-view "Explain suspicious pass" preview panel before export.
+- [x] Add an in-view "Explain suspicious pass" preview panel before export.
+  - Commit: pending.
+  - Preview renders likely issue, evidence, recommended checks, confidence, and
+    guardrails in the selected-stage details view.
 - [ ] Add copy-to-clipboard actions for agent context and explanation.
 - [ ] Define a stable `pass-lens-agent-context` JSON schema.
 - [ ] Add context size accounting: selected IR chars, diagnostics chars,
