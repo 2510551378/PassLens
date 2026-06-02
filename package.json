@@ -43,7 +43,8 @@
     "onCommand:passLens.runMlirOptTrace",
     "onCommand:passLens.runStructuredMlirTrace",
     "onCommand:passLens.checkMlirCollectorSetup",
-    "onCommand:passLens.queryCurrentTrace"
+    "onCommand:passLens.queryCurrentTrace",
+    "onCommand:passLens.runPrefixBisect"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -71,6 +72,10 @@
       {
         "command": "passLens.queryCurrentTrace",
         "title": "Pass Lens: Query Current Trace"
+      },
+      {
+        "command": "passLens.runPrefixBisect",
+        "title": "Pass Lens: Run Prefix Bisect"
       }
     ],
     "configuration": {
@@ -107,6 +112,9 @@
         },
         {
           "command": "passLens.queryCurrentTrace"
+        },
+        {
+          "command": "passLens.runPrefixBisect"
         }
       ]
     }

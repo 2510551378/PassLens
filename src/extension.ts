@@ -13,6 +13,13 @@ import {
 } from './issueSummary';
 import { collectMlirTrace } from './mlirCollector';
 import { createReproBundle } from './reproBundle';
+import {
+  createMinimalFailingPrefixReport,
+  runPrefixBisect,
+  type PipelineRunRequest,
+  type PipelineRunResult,
+  type PipelineRunner
+} from './rerun';
 import { computeTraceAnomalies } from './trace/anomalies';
 import { hydrateTraceArtifacts } from './trace/artifacts';
 import { createTraceExplanation } from './traceExplanation';
@@ -126,6 +133,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('passLens.queryCurrentTrace', async () => {
       await queryCurrentTraceCommand();
+    }),
+    vscode.commands.registerCommand('passLens.runPrefixBisect', async () => {
+      await runPrefixBisectCommand(context);
     })
   );
 }
@@ -288,6 +298,96 @@ async function runStructuredMlirTraceCommand(context: vscode.ExtensionContext): 
       await vscode.commands.executeCommand('passLens.runMlirOptTrace');
     }
   }
+}
+
+async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise<void> {
+  const selected = await vscode.window.showOpenDialog({
+    canSelectFiles: true,
+    canSelectFolders: false,
+    canSelectMany: false,
+    filters: {
+      'MLIR files': ['mlir'],
+      'All files': ['*']
+    },
+    title: 'Select MLIR input for prefix bisection'
+  });
+  if (!selected?.[0]) {
+    return;
+  }
+
+  const defaultPipeline = currentTraceSession?.loaded.trace.pipeline ?? 'builtin.module(func.func(canonicalize,cse))';
+  const pipeline = await vscode.window.showInputBox({
+    title: 'MLIR pass pipeline to bisect',
+    prompt: 'Pass Lens will rerun textual prefixes of this pipeline with verifier enabled.',
+    value: defaultPipeline,
+    ignoreFocusOut: true,
+    validateInput: (value) => value.trim().length > 0 ? undefined : 'Pipeline is required.'
+  });
+  if (!pipeline) {
+    return;
+  }
+
+  const configuration = vscode.workspace.getConfiguration('passLens');
+  const driverPath = configuration.get<string>('mlirDriverPath') || 'pass-lens-mlir-opt';
+  const inputPath = selected[0].fsPath;
+  const runner = createMlirPrefixRunner(driverPath, inputPath, path.dirname(inputPath));
+
+  try {
+    const result = await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'Pass Lens: running prefix bisection',
+        cancellable: false
+      },
+      async (progress) => {
+        progress.report({ message: driverPath });
+        return runPrefixBisect(pipeline.trim(), runner);
+      }
+    );
+    await showMarkdownDocument(createMinimalFailingPrefixReport(result, currentTraceSession?.loaded.trace));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const action = await vscode.window.showErrorMessage(
+      `Could not run prefix bisection. ${message}`,
+      'Set Driver Path',
+      'Check Setup'
+    );
+    if (action === 'Set Driver Path') {
+      await vscode.commands.executeCommand('workbench.action.openSettings', 'passLens.mlirDriverPath');
+    } else if (action === 'Check Setup') {
+      await vscode.commands.executeCommand('passLens.checkMlirCollectorSetup');
+    }
+  }
+}
+
+function createMlirPrefixRunner(driverPath: string, inputPath: string, cwd: string): PipelineRunner {
+  return {
+    async runPipeline(request: PipelineRunRequest): Promise<PipelineRunResult> {
+      const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const outputPath = path.join(os.tmpdir(), `pass-lens-bisect-${runId}.mlir`);
+      const tracePath = path.join(os.tmpdir(), `pass-lens-bisect-${runId}.json`);
+      const args = [
+        inputPath,
+        `--pass-pipeline=${request.pipeline}`,
+        `--pass-lens-trace=${tracePath}`,
+        '--verify-each',
+        '-o',
+        outputPath
+      ];
+      const result = await runProcess(driverPath, args, cwd);
+      await fs.rm(outputPath, { force: true }).catch(() => undefined);
+      return {
+        pipeline: request.pipeline,
+        passCount: request.passCount,
+        verifyEach: request.verifyEach,
+        exitCode: result.exitCode,
+        failed: result.exitCode !== 0,
+        commandLine: formatCommand(driverPath, args),
+        diagnostics: trimOutput(result.stderr || result.stdout),
+        tracePath: await pathExists(tracePath) ? tracePath : undefined
+      };
+    }
+  };
 }
 
 async function checkMlirCollectorSetupCommand(context: vscode.ExtensionContext): Promise<void> {

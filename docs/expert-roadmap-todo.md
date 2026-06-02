@@ -97,7 +97,10 @@ an execution checklist. The guiding principle is:
   - Commit: this change.
   - `createMinimalFailingPrefixReport` renders attempts, command lines, traces,
     and diagnostics as Markdown.
-- [ ] Add UI command: `Run Prefix Bisect`.
+- [x] Add UI command: `Run Prefix Bisect`.
+  - Commit: this change.
+  - `Pass Lens: Run Prefix Bisect` prompts for an MLIR input and textual
+    pipeline, then opens a minimal failing prefix report.
 - [x] Generate a minimal failing prefix report:
   - [x] Full pipeline.
   - [x] Shortest failing prefix.
