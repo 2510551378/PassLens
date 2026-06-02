@@ -82,20 +82,29 @@ an execution checklist. The guiding principle is:
 ## P2: Agentic Rerun / Prefix Bisection
 
 - [ ] Design a rerun abstraction:
-  - [ ] `run_pipeline(prefix)`.
-  - [ ] `run_prefix_bisect()`.
-  - [ ] `run_with_verify_each()`.
+  - [x] `run_pipeline(prefix)`.
+  - [x] `run_prefix_bisect()`.
+  - [x] `run_with_verify_each()`.
   - [ ] `export_repro_bundle()`.
-- [ ] Add prefix bisection for MLIR textual pipelines.
+  - Commit: this change.
+  - `src/rerun.ts` defines a runner interface plus deterministic prefix and
+    verify-each orchestration.
+- [x] Add prefix bisection for MLIR textual pipelines.
+  - Commit: this change.
+  - MLIR textual pipeline wrappers are preserved while constructing prefixes.
 - [ ] Confirm behavior on L20 with `pass-lens-mlir-opt`.
-- [ ] Record bisect attempts and results into a repro artifact.
+- [x] Record bisect attempts and results into a repro artifact.
+  - Commit: this change.
+  - `createMinimalFailingPrefixReport` renders attempts, command lines, traces,
+    and diagnostics as Markdown.
 - [ ] Add UI command: `Run Prefix Bisect`.
-- [ ] Generate a minimal failing prefix report:
-  - [ ] Full pipeline.
-  - [ ] Shortest failing prefix.
-  - [ ] First verifier failure.
-  - [ ] Command lines used.
-  - [ ] Diagnostics and trace paths.
+- [x] Generate a minimal failing prefix report:
+  - [x] Full pipeline.
+  - [x] Shortest failing prefix.
+  - [x] First verifier failure.
+  - [x] Command lines used.
+  - [x] Diagnostics and trace paths.
+  - Commit: this change.
 
 ## P3: Patch Suggestion / Test Generation
 
