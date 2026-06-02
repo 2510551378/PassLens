@@ -37,6 +37,70 @@ test('parseTracePanelMessage accepts export bundle messages with optional select
   });
 });
 
+test('parseTracePanelMessage accepts export agent context messages with optional selected stage', () => {
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'exportAgentContext',
+    selectedStageIndex: 9
+  }), {
+    type: 'exportAgentContext',
+    selectedStageIndex: 9
+  });
+
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'exportAgentContext'
+  }), {
+    type: 'exportAgentContext'
+  });
+});
+
+test('parseTracePanelMessage accepts export explanation messages with optional selected stage', () => {
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'exportExplanation',
+    selectedStageIndex: 11
+  }), {
+    type: 'exportExplanation',
+    selectedStageIndex: 11
+  });
+
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'exportExplanation'
+  }), {
+    type: 'exportExplanation'
+  });
+});
+
+test('parseTracePanelMessage accepts copy agent context messages with optional selected stage', () => {
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'copyAgentContext',
+    selectedStageIndex: 13
+  }), {
+    type: 'copyAgentContext',
+    selectedStageIndex: 13
+  });
+
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'copyAgentContext'
+  }), {
+    type: 'copyAgentContext'
+  });
+});
+
+test('parseTracePanelMessage accepts copy explanation messages with optional selected stage', () => {
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'copyExplanation',
+    selectedStageIndex: 15
+  }), {
+    type: 'copyExplanation',
+    selectedStageIndex: 15
+  });
+
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'copyExplanation'
+  }), {
+    type: 'copyExplanation'
+  });
+});
+
 test('parseTracePanelMessage accepts artifact open messages', () => {
   assert.deepEqual(parseTracePanelMessage({
     type: 'openArtifact',

@@ -3,10 +3,12 @@ import { spawn } from 'node:child_process';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
+import { createAgentContext, createAgentContextMarkdown } from './agentContext';
 import { collectMlirTrace } from './mlirCollector';
 import { createReproBundle } from './reproBundle';
 import { computeTraceAnomalies } from './trace/anomalies';
 import { hydrateTraceArtifacts } from './trace/artifacts';
+import { createTraceExplanation } from './traceExplanation';
 import { normalizeTrace } from './trace/schema';
 import { summarizeTraceIssues, validateTrace } from './trace/validation';
 import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
@@ -409,6 +411,25 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     if (parsed.type === 'exportBundle') {
       await exportReproBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
+    if (parsed.type === 'exportAgentContext') {
+      await exportAgentContext(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
+    }
+    if (parsed.type === 'exportExplanation') {
+      await exportTraceExplanation(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
+    }
+    if (parsed.type === 'copyAgentContext') {
+      const content = createAgentContextJson(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
+      await vscode.env.clipboard.writeText(content);
+      vscode.window.showInformationMessage('Pass Lens copied agent context.');
+    }
+    if (parsed.type === 'copyExplanation') {
+      const content = createTraceExplanation(trace, issues, anomalies, {
+        sourcePath: sourceUri.fsPath,
+        selectedStageIndex: typeof parsed.selectedStageIndex === 'number' ? parsed.selectedStageIndex : undefined
+      });
+      await vscode.env.clipboard.writeText(content);
+      vscode.window.showInformationMessage('Pass Lens copied suspicious pass explanation.');
+    }
     if (parsed.type === 'openArtifact') {
       await openArtifact(sourceUri, parsed.path);
     }
@@ -447,6 +468,95 @@ async function exportReproBundle(
   });
   await fs.writeFile(target.fsPath, content, 'utf8');
   const open = await vscode.window.showInformationMessage('Pass Lens exported repro bundle.', 'Open');
+  if (open === 'Open') {
+    await vscode.window.showTextDocument(target, { preview: false });
+  }
+}
+
+async function exportAgentContext(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+): Promise<void> {
+  const parsed = path.parse(sourceUri.fsPath);
+  const defaultUri = vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-agent-context.json`));
+  const target = await vscode.window.showSaveDialog({
+    defaultUri,
+    filters: {
+      JSON: ['json'],
+      Markdown: ['md'],
+      'All files': ['*']
+    },
+    saveLabel: 'Export Agent Context',
+    title: 'Export Pass Lens agent context'
+  });
+  if (!target) {
+    return;
+  }
+
+  const content = path.extname(target.fsPath).toLowerCase() === '.md'
+    ? createAgentContextMarkdown(createAgentContextValue(sourceUri, trace, issues, anomalies, selectedStageIndex))
+    : createAgentContextJson(sourceUri, trace, issues, anomalies, selectedStageIndex);
+  await fs.writeFile(target.fsPath, content, 'utf8');
+  const open = await vscode.window.showInformationMessage('Pass Lens exported agent context.', 'Open');
+  if (open === 'Open') {
+    await vscode.window.showTextDocument(target, { preview: false });
+  }
+}
+
+function createAgentContextValue(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+) {
+  return createAgentContext(trace, issues, anomalies, {
+    sourcePath: sourceUri.fsPath,
+    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
+  });
+}
+
+function createAgentContextJson(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+): string {
+  return `${JSON.stringify(createAgentContextValue(sourceUri, trace, issues, anomalies, selectedStageIndex), null, 2)}\n`;
+}
+
+async function exportTraceExplanation(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+): Promise<void> {
+  const parsed = path.parse(sourceUri.fsPath);
+  const defaultUri = vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-explanation.md`));
+  const target = await vscode.window.showSaveDialog({
+    defaultUri,
+    filters: {
+      Markdown: ['md'],
+      'All files': ['*']
+    },
+    saveLabel: 'Export Explanation',
+    title: 'Export Pass Lens suspicious pass explanation'
+  });
+  if (!target) {
+    return;
+  }
+
+  const content = createTraceExplanation(trace, issues, anomalies, {
+    sourcePath: sourceUri.fsPath,
+    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
+  });
+  await fs.writeFile(target.fsPath, content, 'utf8');
+  const open = await vscode.window.showInformationMessage('Pass Lens exported suspicious pass explanation.', 'Open');
   if (open === 'Open') {
     await vscode.window.showTextDocument(target, { preview: false });
   }

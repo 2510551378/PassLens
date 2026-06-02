@@ -18,7 +18,7 @@ module {
     %7 = arith.mulf %6, %6 : tensor<1024xf32>
     %8 = bufferization.alloc_tensor() : tensor<f32>
     %9 = linalg.fill ins(%cst : f32) outs(%8 : tensor<f32>) -> tensor<f32>
-    %reduced = linalg.reduce ins(%7 : tensor<1024xf32>) outs(%9 : tensor<f32>) dimensions = [0] 
+    %reduced = linalg.reduce ins(%7 : tensor<1024xf32>) outs(%9 : tensor<f32>) dimensions = [0]
       (%in: f32, %init: f32) {
         %41 = arith.addf %in, %init : f32
         linalg.yield %41 : f32
@@ -54,7 +54,7 @@ module {
     %26 = arith.mulf %25, %25 : tensor<1024xf32>
     %27 = bufferization.alloc_tensor() : tensor<f32>
     %28 = linalg.fill ins(%cst : f32) outs(%27 : tensor<f32>) -> tensor<f32>
-    %reduced_10 = linalg.reduce ins(%26 : tensor<1024xf32>) outs(%28 : tensor<f32>) dimensions = [0] 
+    %reduced_10 = linalg.reduce ins(%26 : tensor<1024xf32>) outs(%28 : tensor<f32>) dimensions = [0]
       (%in: f32, %init: f32) {
         %41 = arith.addf %in, %init : f32
         linalg.yield %41 : f32
@@ -83,4 +83,3 @@ module {
     return
   }
 }
-

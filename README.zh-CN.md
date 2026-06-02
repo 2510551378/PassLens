@@ -38,6 +38,9 @@ Pass Lens 服务的是这个 postmortem loop：
   budget violation。
 - side-by-side IR diff，支持 inline IR 和 artifact-backed snapshot。
 - 直接打开 before IR、after IR、diagnostics sidecar。
+- selected pass 内直接预览 suspicious-pass explanation，包含证据、next checks、
+  confidence、guardrails，并支持导出和复制。
+- 导出或复制 bounded agent context，方便交给 trace-grounded debugging agent。
 - 快捷键导航：`j` / `k`、方向键、`/`、`c`、`f`、`a`、`s`。
 - 面向 downstream compiler 的结构化 JSON schema。
 - 支持快速 `mlir-opt` dump fallback，也支持基于 `PassInstrumentation` 的结构化
@@ -76,6 +79,8 @@ Pass Lens: Open Trace File
 
 选择符合 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json) 的 JSON
 trace。
+Agent context 导出遵循
+[`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json)。
 
 ## 核心工作流
 
@@ -85,9 +90,11 @@ trace。
 3. 在左侧 timeline 选择 pass。
 4. 先读 selected-pass card，它会说明这个 pass 为什么值得看。
 5. 检查 metric anomalies 和 metric deltas。
-6. 对比 side-by-side IR diff。
-7. 如果 trace 使用 sidecar 文件，直接打开 artifact 或 diagnostics。
-8. 如果要提交 bug report，导出 repro bundle。
+6. 把 suspicious-pass explanation 当作候选判断阅读，而不是 proof。
+7. 对比 side-by-side IR diff。
+8. 如果 trace 使用 sidecar 文件，直接打开 artifact 或 diagnostics。
+9. 如果要提交 bug report 或进行 AI-assisted investigation，导出 repro bundle
+   或 agent context。
 
 常用快捷键：
 

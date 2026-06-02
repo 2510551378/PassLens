@@ -231,6 +231,18 @@
     } else if (action === 'export-bundle') {
       const stage = trace.stages[selectedIndex];
       vscode.postMessage({ type: 'exportBundle', selectedStageIndex: stage?.index });
+    } else if (action === 'export-agent-context') {
+      const stage = trace.stages[selectedIndex];
+      vscode.postMessage({ type: 'exportAgentContext', selectedStageIndex: stage?.index });
+    } else if (action === 'export-explanation') {
+      const stage = trace.stages[selectedIndex];
+      vscode.postMessage({ type: 'exportExplanation', selectedStageIndex: stage?.index });
+    } else if (action === 'copy-agent-context') {
+      const stage = trace.stages[selectedIndex];
+      vscode.postMessage({ type: 'copyAgentContext', selectedStageIndex: stage?.index });
+    } else if (action === 'copy-explanation') {
+      const stage = trace.stages[selectedIndex];
+      vscode.postMessage({ type: 'copyExplanation', selectedStageIndex: stage?.index });
     } else if (action === 'open-artifact' && button?.dataset.artifactPath) {
       vscode.postMessage({ type: 'openArtifact', path: button.dataset.artifactPath });
     } else if (action === 'toggle-diff-context') {
@@ -426,6 +438,9 @@
         kv('Verifier', stage.verifier ?? 'unknown') +
       '</div>' +
       renderMetricAnomalies(stage.index) +
+      sectionBlock('Suspicious Pass Explanation', renderExplanationPanel(stage), {
+        hint: 'Trace-grounded candidate, not a proof'
+      }) +
       sectionBlock('Metric Delta', renderMetrics(stage.metricsBefore ?? {}, stage.metricsAfter ?? {}), {
         hint: 'Before vs after counters for the selected pass.'
       }) +
@@ -464,6 +479,8 @@
       '<button class="action-button" data-action="prev-changed" title="Previous changed pass">Prev changed</button>' +
       '<button class="action-button" data-action="next-changed" title="Next changed pass">Next changed</button>' +
       '<button class="action-button" data-action="slowest" title="Jump to slowest pass (s)">Slowest</button>' +
+      '<button class="action-button" data-action="export-explanation" title="Export evidence-grounded explanation">Explain suspicious pass</button>' +
+      '<button class="action-button" data-action="export-agent-context" title="Export bounded agent-ready context">Export agent context</button>' +
       '<button class="action-button" data-action="export-bundle">Export repro bundle</button>' +
       '<button class="action-button" data-action="open-trace">Open trace JSON</button>' +
     '</div>';
@@ -518,6 +535,147 @@
       tone: 'warning',
       hint: entries.length + ' suspicious signal' + (entries.length === 1 ? '' : 's')
     });
+  }
+
+  function renderExplanationPanel(stage) {
+    const evidence = explanationEvidence(stage).slice(0, 8);
+    const checks = explanationNextChecks(stage);
+    const guardrails = [
+      'Generated from trace evidence only.',
+      'Treat root-cause statements as candidates until a rerun, verifier output, or source inspection confirms them.',
+      'Do not infer dialect-specific semantics that are not visible in diagnostics, metrics, IR, or artifacts.'
+    ];
+    return '<div class="explanation-panel">' +
+      '<div class="explanation-section strong">' +
+        '<div class="explanation-label">Likely issue</div>' +
+        '<p>' + escapeHtml(explanationLikelyIssue(stage)) + '</p>' +
+        '<div class="action-row compact">' +
+          '<button class="action-button compact" data-action="copy-explanation">Copy explanation</button>' +
+          '<button class="action-button compact" data-action="copy-agent-context">Copy agent context</button>' +
+        '</div>' +
+      '</div>' +
+      '<div class="explanation-grid">' +
+        explanationList('Evidence', evidence.length ? evidence : ['No concrete evidence recorded for this stage.']) +
+        explanationList('Recommended next checks', checks) +
+      '</div>' +
+      '<div class="explanation-section">' +
+        '<div class="explanation-label">Confidence</div>' +
+        '<p>' + escapeHtml(explanationConfidence(stage, evidence)) + '</p>' +
+      '</div>' +
+      '<div class="explanation-section">' +
+        '<div class="explanation-label">Guardrails</div>' +
+        '<ul>' + guardrails.map((item) => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function explanationList(label, items) {
+    return '<div class="explanation-section">' +
+      '<div class="explanation-label">' + escapeHtml(label) + '</div>' +
+      '<ul>' + items.map((item) => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul>' +
+    '</div>';
+  }
+
+  function explanationLikelyIssue(stage) {
+    if (isFailedStage(stage)) {
+      return 'The selected pass ' + stage.pass + ' is a root-cause candidate because the trace records a failed status or failed verifier immediately after this stage.';
+    }
+    const anomaly = anomaliesForStage(stage.index)[0];
+    if (anomaly) {
+      return 'The selected pass ' + stage.pass + ' is suspicious because metric ' + anomaly.metric + ' changed with a recorded anomaly.';
+    }
+    if (stage.changed) {
+      return 'The selected pass ' + stage.pass + ' changed the recorded IR. Inspect the before/after diff and neighboring stages before attributing root cause.';
+    }
+    return 'The selected pass ' + stage.pass + ' did not change the recorded IR. It is less suspicious unless diagnostics or hidden side effects point to it.';
+  }
+
+  function explanationEvidence(stage) {
+    const evidence = [
+      'Selected stage #' + stage.index + ': pass=' + stage.pass + ', status=' + (stage.status ?? 'unknown') + ', changed=' + (stage.changed ? 'yes' : 'no') + ', verifier=' + (stage.verifier ?? 'unknown') + '.'
+    ];
+    const firstFailure = trace.stages.find((entry) => isFailedStage(entry));
+    const firstChanged = trace.stages.find((entry) => entry.changed);
+    if (firstFailure) {
+      evidence.push('First failure stage recorded by trace: #' + firstFailure.index + '.');
+    }
+    if (firstChanged) {
+      evidence.push('First changed stage recorded by trace: #' + firstChanged.index + '.');
+    }
+    topMetricDeltas(stage.metricsBefore ?? {}, stage.metricsAfter ?? {}).slice(0, 4).forEach((delta) => {
+      evidence.push('Metric ' + delta.key + ' changed by ' + signed(delta.delta) + '.');
+    });
+    anomaliesForStage(stage.index).slice(0, 3).forEach((anomaly) => {
+      evidence.push('Metric anomaly: ' + anomaly.message);
+    });
+    if (stage.diagnostics) {
+      evidence.push('Stage diagnostics are present.');
+    }
+    if (trace.diagnostics) {
+      evidence.push('Trace-level diagnostics are present.');
+    }
+    if (stage.artifacts?.beforePath || stage.artifacts?.afterPath || stage.artifacts?.diagnosticsPath) {
+      const artifacts = [
+        stage.artifacts.beforePath ? 'before=' + stage.artifacts.beforePath : undefined,
+        stage.artifacts.afterPath ? 'after=' + stage.artifacts.afterPath : undefined,
+        stage.artifacts.diagnosticsPath ? 'diagnostics=' + stage.artifacts.diagnosticsPath : undefined
+      ].filter(Boolean).join(', ');
+      evidence.push('Artifacts referenced: ' + artifacts + '.');
+    }
+    traceIssues.filter((issue) => typeof issue.stageIndex !== 'number' || issue.stageIndex === stage.index)
+      .slice(0, 3)
+      .forEach((issue) => {
+        evidence.push('Trace validation ' + issue.severity + ': ' + issue.message);
+      });
+    return evidence;
+  }
+
+  function explanationNextChecks(stage) {
+    const neighbors = neighborStages(stage)
+      .map((entry) => '#' + entry.index + ' ' + entry.pass)
+      .join(', ') || 'none recorded';
+    const checks = [
+      'Compare before/after IR for stage #' + stage.index + ' and identify the first concrete op, type, attribute, or region change.',
+      'Inspect neighboring stages: ' + neighbors + '.'
+    ];
+    if (isFailedStage(stage)) {
+      checks.push('Rerun the pipeline prefix through stage #' + stage.index + ' with verifier enabled to confirm this is the minimal failing prefix.');
+    } else if (stage.changed) {
+      checks.push('Check whether the changed IR is expected lowering or the first visible symptom of an earlier pass.');
+    } else {
+      checks.push('Prefer another stage for root-cause localization if this stage has no recorded IR change.');
+    }
+    const anomaly = anomaliesForStage(stage.index)[0];
+    if (anomaly) {
+      checks.push('Audit metric ' + anomaly.metric + ' around this stage and decide whether the delta is expected for this lowering step.');
+    }
+    if (stage.artifacts?.beforePath || stage.artifacts?.afterPath) {
+      checks.push('Open the referenced artifact files if the bounded context is insufficient.');
+    }
+    checks.push('Export a repro bundle or agent context before filing an issue or asking an AI agent to propose fixes.');
+    return checks;
+  }
+
+  function explanationConfidence(stage, evidence) {
+    if (isFailedStage(stage) && evidence.length >= 3) {
+      return 'high: failure status/verifier evidence is directly attached to the selected stage.';
+    }
+    if (anomaliesForStage(stage.index).length && stage.changed) {
+      return 'medium: the selected stage has both an IR change and metric anomaly, but root cause still needs rerun/source confirmation.';
+    }
+    if (stage.changed) {
+      return 'medium-low: the selected stage changed IR, but no failure or anomaly directly proves root cause.';
+    }
+    return 'low: the selected stage has no recorded IR change or direct failure evidence.';
+  }
+
+  function neighborStages(stage) {
+    const position = trace.stages.findIndex((entry) => entry.index === stage.index);
+    if (position < 0) {
+      return [];
+    }
+    return trace.stages.slice(Math.max(0, position - 2), Math.min(trace.stages.length, position + 3))
+      .filter((entry) => entry.index !== stage.index);
   }
 
   function sectionBlock(title, body, options = {}) {
@@ -578,7 +736,11 @@
       .filter((item) => item.delta !== 0)
       .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
   }
-  
+
+  function signed(value) {
+    return value > 0 ? '+' + fmtNumber(value) : String(fmtNumber(value));
+  }
+
   function renderCommandAndDiagnostics(stage) {
     const command = trace.command
       ? sectionBlock('Repro Command', '<div class="action-row compact"><button class="action-button" data-action="copy-command">Copy command</button></div><pre class="diagnostics">' + escapeHtml(trace.command) + '</pre>', {

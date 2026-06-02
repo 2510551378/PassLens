@@ -11,6 +11,22 @@ export type TracePanelMessage =
       selectedStageIndex?: number;
     }
   | {
+      type: 'exportAgentContext';
+      selectedStageIndex?: number;
+    }
+  | {
+      type: 'exportExplanation';
+      selectedStageIndex?: number;
+    }
+  | {
+      type: 'copyAgentContext';
+      selectedStageIndex?: number;
+    }
+  | {
+      type: 'copyExplanation';
+      selectedStageIndex?: number;
+    }
+  | {
       type: 'openArtifact';
       path: string;
     };
@@ -43,6 +59,50 @@ export function parseTracePanelMessage(raw: unknown): TracePanelMessage | undefi
         }
       : {
           type: 'exportBundle'
+        };
+  }
+
+  if (raw.type === 'exportAgentContext') {
+    return typeof raw.selectedStageIndex === 'number' && Number.isFinite(raw.selectedStageIndex)
+      ? {
+          type: 'exportAgentContext',
+          selectedStageIndex: raw.selectedStageIndex
+        }
+      : {
+          type: 'exportAgentContext'
+        };
+  }
+
+  if (raw.type === 'exportExplanation') {
+    return typeof raw.selectedStageIndex === 'number' && Number.isFinite(raw.selectedStageIndex)
+      ? {
+          type: 'exportExplanation',
+          selectedStageIndex: raw.selectedStageIndex
+        }
+      : {
+          type: 'exportExplanation'
+        };
+  }
+
+  if (raw.type === 'copyAgentContext') {
+    return typeof raw.selectedStageIndex === 'number' && Number.isFinite(raw.selectedStageIndex)
+      ? {
+          type: 'copyAgentContext',
+          selectedStageIndex: raw.selectedStageIndex
+        }
+      : {
+          type: 'copyAgentContext'
+        };
+  }
+
+  if (raw.type === 'copyExplanation') {
+    return typeof raw.selectedStageIndex === 'number' && Number.isFinite(raw.selectedStageIndex)
+      ? {
+          type: 'copyExplanation',
+          selectedStageIndex: raw.selectedStageIndex
+        }
+      : {
+          type: 'copyExplanation'
         };
   }
 

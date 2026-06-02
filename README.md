@@ -39,6 +39,10 @@ Pass Lens is built for that postmortem loop:
   and domain-specific budget violations.
 - Side-by-side IR diff with inline or artifact-backed snapshots.
 - Artifact open actions for before IR, after IR, and diagnostics sidecars.
+- In-view suspicious-pass explanation with evidence, next checks, confidence,
+  guardrails, export, and copy actions.
+- Bounded JSON / Markdown agent context export for trace-grounded debugging
+  agents, with copy-to-clipboard support for quick handoff.
 - Keyboard navigation: `j` / `k`, arrow keys, `/`, `c`, `f`, `a`, `s`.
 - Structured JSON schema for downstream compiler integrations.
 - MLIR paths for both quick `mlir-opt` dump parsing and structured
@@ -77,6 +81,8 @@ Pass Lens: Open Trace File
 
 Select a JSON trace that follows
 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json).
+Agent context exports follow
+[`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json).
 
 ## Core Workflow
 
@@ -86,9 +92,11 @@ Select a JSON trace that follows
 3. Use the left timeline to select a pass.
 4. Read the selected-pass card first. It tells you why the pass is interesting.
 5. Check metric anomalies and metric deltas.
-6. Compare the side-by-side IR diff.
-7. Open artifacts or diagnostics when the trace uses sidecar files.
-8. Export a repro bundle when the trace should become a bug report.
+6. Read the suspicious-pass explanation as a candidate, not proof.
+7. Compare the side-by-side IR diff.
+8. Open artifacts or diagnostics when the trace uses sidecar files.
+9. Export a repro bundle or agent context when the trace should become a bug
+   report or AI-assisted investigation.
 
 Useful shortcuts:
 
@@ -250,6 +258,9 @@ integrations more convincing and reducing the time from "compiler failed" to
 "this pass is the likely cause."
 
 ## Roadmap
+
+See [docs/expert-roadmap-todo.md](docs/expert-roadmap-todo.md) for the
+expert-guided execution checklist.
 
 - Directory-style repro bundles with standalone `trace.json`, IR artifacts,
   diagnostics, and repro scripts.
