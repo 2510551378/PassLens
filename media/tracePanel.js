@@ -1,11 +1,13 @@
 (() => {
   const vscode = acquireVsCodeApi();
   const dataElement = document.getElementById('pass-lens-data');
-  const passLensData = JSON.parse(dataElement?.textContent ?? '{}');
+  const serializedData = dataElement?.content?.textContent ?? dataElement?.textContent ?? '{}';
+  const passLensData = JSON.parse(serializedData);
   const { trace, traceIssues, traceAnomalies, traceIssueSummary, sourcePath } = passLensData;
   let selectedIndex = initialSelectedIndex();
   let filterText = '';
   let showChangedOnly = false;
+  let showFullDiff = false;
   
   const timeline = document.getElementById('timeline');
   const details = document.getElementById('details');
@@ -32,17 +34,20 @@
     if (!button) {
       return;
     }
-    handleAction(button.dataset.action);
+    handleAction(button.dataset.action, button);
   });
   
   search.addEventListener('input', () => {
     filterText = search.value.trim().toLowerCase();
+    ensureVisibleSelection();
     renderTimeline();
   });
   changedOnly.addEventListener('change', () => {
     showChangedOnly = changedOnly.checked;
+    ensureVisibleSelection();
     renderTimeline();
   });
+  document.addEventListener('keydown', handleKeydown);
   
   function escapeHtml(value) {
     return String(value ?? '')
@@ -129,6 +134,47 @@
   function anomaliesForStage(stageIndex) {
     return traceAnomalies.filter((entry) => entry.stageIndex === stageIndex);
   }
+
+  function visibleStageEntries() {
+    return trace.stages
+      .map((stage, idx) => ({ stage, idx }))
+      .filter(({ stage }) => !showChangedOnly || stage.changed)
+      .filter(({ stage }) => matchesFilter(stage));
+  }
+
+  function matchesFilter(stage) {
+    if (!filterText) {
+      return true;
+    }
+    const haystack = [
+      stage.pass,
+      stage.scope,
+      stage.verifier,
+      ...Object.keys(stage.metricsBefore ?? {}),
+      ...Object.keys(stage.metricsAfter ?? {})
+    ].join(' ').toLowerCase();
+    return haystack.includes(filterText);
+  }
+
+  function ensureVisibleSelection() {
+    const visibleStages = visibleStageEntries();
+    if (!visibleStages.length || visibleStages.some(({ idx }) => idx === selectedIndex)) {
+      return;
+    }
+    selectedIndex = visibleStages[0].idx;
+    renderDetails();
+  }
+
+  function selectVisibleOffset(direction) {
+    const visibleStages = visibleStageEntries();
+    if (!visibleStages.length) {
+      return;
+    }
+    const current = visibleStages.findIndex(({ idx }) => idx === selectedIndex);
+    const base = current >= 0 ? current : 0;
+    const next = (base + direction + visibleStages.length) % visibleStages.length;
+    selectIndex(visibleStages[next].idx, { scrollIntoView: true });
+  }
   
   function nextChangedIndex(direction) {
     if (!trace.stages.length) {
@@ -143,13 +189,18 @@
     return -1;
   }
   
-  function selectIndex(index) {
+  function selectIndex(index, options = {}) {
     if (index < 0 || index >= trace.stages.length) {
       return;
     }
     selectedIndex = index;
     renderTimeline();
     renderDetails();
+    if (options.scrollIntoView) {
+      requestAnimationFrame(() => {
+        timeline.querySelector('.stage-card.active')?.scrollIntoView({ block: 'nearest' });
+      });
+    }
   }
   
   function jumpTo(target) {
@@ -164,7 +215,7 @@
     }
   }
   
-  function handleAction(action) {
+  function handleAction(action, button) {
     if (action === 'first-signal') {
       jumpTo('first-signal');
     } else if (action === 'prev-changed') {
@@ -186,7 +237,69 @@
     } else if (action === 'export-explanation') {
       const stage = trace.stages[selectedIndex];
       vscode.postMessage({ type: 'exportExplanation', selectedStageIndex: stage?.index });
+    } else if (action === 'open-artifact' && button?.dataset.artifactPath) {
+      vscode.postMessage({ type: 'openArtifact', path: button.dataset.artifactPath });
+    } else if (action === 'toggle-diff-context') {
+      showFullDiff = !showFullDiff;
+      renderDetails();
     }
+  }
+
+  function handleKeydown(event) {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
+      return;
+    }
+    if (isTextInput(event.target)) {
+      if (event.key === 'Escape') {
+        event.target.blur();
+      }
+      return;
+    }
+    if (event.key === 'ArrowDown' || event.key === 'j') {
+      event.preventDefault();
+      selectVisibleOffset(1);
+    } else if (event.key === 'ArrowUp' || event.key === 'k') {
+      event.preventDefault();
+      selectVisibleOffset(-1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      const first = visibleStageEntries()[0];
+      if (first) {
+        selectIndex(first.idx, { scrollIntoView: true });
+      }
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      const visibleStages = visibleStageEntries();
+      const last = visibleStages[visibleStages.length - 1];
+      if (last) {
+        selectIndex(last.idx, { scrollIntoView: true });
+      }
+    } else if (event.key === '/') {
+      event.preventDefault();
+      search.focus();
+      search.select();
+    } else if (event.key === 'f') {
+      event.preventDefault();
+      jumpTo('first-signal');
+    } else if (event.key === 'a') {
+      event.preventDefault();
+      jumpTo('first-anomaly');
+    } else if (event.key === 's') {
+      event.preventDefault();
+      jumpTo('slowest');
+    } else if (event.key === 'c') {
+      event.preventDefault();
+      changedOnly.checked = !changedOnly.checked;
+      showChangedOnly = changedOnly.checked;
+      ensureVisibleSelection();
+      renderTimeline();
+    }
+  }
+
+  function isTextInput(target) {
+    return target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target?.isContentEditable;
   }
   
   function renderSummary() {
@@ -199,9 +312,9 @@
     const firstAnomaly = traceAnomalies[0];
     document.getElementById('summary').innerHTML =
       summaryCard('Stages', String(trace.stages.length), 'first') +
-      summaryCard('Changed', changed.length + ' / ' + trace.stages.length, firstChanged ? 'first-signal' : undefined) +
-      summaryCard('First signal', failed ? 'verifier failed at #' + failed.index : firstChanged ? 'first change at #' + firstChanged.index : 'no IR changes', failed || firstChanged ? 'first-signal' : undefined) +
-      summaryCard('Anomalies', traceAnomalies.length ? traceAnomalies.length + ' suspicious metric delta(s)' : 'none', firstAnomaly ? 'first-anomaly' : undefined) +
+      summaryCard('Changed', changed.length + ' / ' + trace.stages.length, firstChanged ? 'first-signal' : undefined, firstChanged ? 'changed' : undefined) +
+      summaryCard('First signal', failed ? 'verifier failed at #' + failed.index : firstChanged ? 'first change at #' + firstChanged.index : 'no IR changes', failed || firstChanged ? 'first-signal' : undefined, failed ? 'failed' : firstChanged ? 'changed' : undefined) +
+      summaryCard('Anomalies', traceAnomalies.length ? traceAnomalies.length + ' suspicious metric delta(s)' : 'none', firstAnomaly ? 'first-anomaly' : undefined, traceAnomalies.length ? 'warning' : undefined) +
       summaryCard('Slowest', slowest ? slowest.pass + ' (' + fmtNumber(slowest.durationMs) + ' ms)' : 'not recorded', slowest ? 'slowest' : undefined);
     document.getElementById('stage-count').textContent = trace.stages.length + ' stages';
     document.getElementById('changed-count').textContent = changed.length + ' changed';
@@ -231,9 +344,10 @@
       '</ul>';
   }
   
-  function summaryCard(label, value, jump) {
+  function summaryCard(label, value, jump, tone) {
     const jumpAttr = jump ? ' data-jump="' + escapeHtml(jump) + '"' : '';
-    return '<button class="summary-card"' + jumpAttr + '><div class="summary-label">' + escapeHtml(label) + '</div>' +
+    const toneClass = tone ? ' ' + escapeHtml(tone) : '';
+    return '<button class="summary-card' + toneClass + '"' + jumpAttr + '><div class="summary-label">' + escapeHtml(label) + '</div>' +
       '<div class="summary-value" title="' + escapeHtml(value) + '">' + escapeHtml(value) + '</div></button>';
   }
   
@@ -245,22 +359,7 @@
       return;
     }
   
-    const visibleStages = trace.stages
-      .map((stage, idx) => ({ stage, idx }))
-      .filter(({ stage }) => !showChangedOnly || stage.changed)
-      .filter(({ stage }) => {
-        if (!filterText) {
-          return true;
-        }
-        const haystack = [
-          stage.pass,
-          stage.scope,
-          stage.verifier,
-          ...Object.keys(stage.metricsBefore ?? {}),
-          ...Object.keys(stage.metricsAfter ?? {})
-        ].join(' ').toLowerCase();
-        return haystack.includes(filterText);
-      });
+    const visibleStages = visibleStageEntries();
   
     if (!visibleStages.length) {
       timeline.innerHTML = '<div class="empty">No passes match the current filter.</div>';
@@ -280,7 +379,7 @@
         const anomalyText = anomalies.length ? anomalies.length + ' anomaly' + (anomalies.length === 1 ? '' : 'ies') : '';
         const impact = impactPercent(stage) + '%';
         const accent = stageAccent(stage);
-        return '<button class="stage-card' + active + '" data-index="' + idx + '" style="--accent: ' + accent + '; --impact: ' + impact + '">' +
+        return '<button class="stage-card ' + statusClass + active + '" data-index="' + idx + '" aria-current="' + (active ? 'true' : 'false') + '" style="--accent: ' + accent + '; --impact: ' + impact + '">' +
           '<div class="stage-line">' +
             '<span class="stage-index">#' + escapeHtml(stage.index) + '</span>' +
             '<span class="stage-pass">' + escapeHtml(stage.pass) + '</span>' +
@@ -305,7 +404,8 @@
   function renderOverview(visibleStages) {
     overview.innerHTML = visibleStages.map(({ stage, idx }) => {
       const active = idx === selectedIndex ? ' active' : '';
-      return '<button class="overview-segment' + active + '" data-index="' + idx + '" title="#' +
+      return '<button class="overview-segment' + active + '" data-index="' + idx + '" aria-label="Select pass #' +
+        escapeHtml(stage.index) + '" title="#' +
         escapeHtml(stage.index) + ' ' + escapeHtml(stage.pass) + '" style="--accent: ' +
         stageAccent(stage) + '; --impact: ' + impactPercent(stage) + '%"></button>';
     }).join('');
@@ -324,6 +424,7 @@
   
     details.innerHTML =
       renderPassHero(stage) +
+      renderShortcutStrip() +
       '<div class="details-grid">' +
         kv('Scope', stage.scope ?? 'unknown') +
         kv('Changed', stage.changed ? 'yes' : 'no') +
@@ -331,11 +432,15 @@
         kv('Verifier', stage.verifier ?? 'unknown') +
       '</div>' +
       renderMetricAnomalies(stage.index) +
-      renderExplanationPanel(stage) +
-      '<h2>Metric Delta</h2>' +
-      renderMetrics(stage.metricsBefore ?? {}, stage.metricsAfter ?? {}) +
-      '<h2>IR Diff</h2>' +
-      renderDiff(stage) +
+      sectionBlock('Suspicious Pass Explanation', renderExplanationPanel(stage), {
+        hint: 'Trace-grounded candidate, not a proof'
+      }) +
+      sectionBlock('Metric Delta', renderMetrics(stage.metricsBefore ?? {}, stage.metricsAfter ?? {}), {
+        hint: 'Before vs after counters for the selected pass.'
+      }) +
+      sectionBlock('IR Diff', renderDiff(stage), {
+        hint: stageIrSource(stage)
+      }) +
       renderCommandAndDiagnostics(stage);
   }
   
@@ -346,7 +451,7 @@
     const impact = impactPercent(stage);
     const anomalyCount = anomaliesForStage(stage.index).length;
     const irSource = stageIrSource(stage);
-    return '<div class="pass-hero" style="--accent: ' + stageAccent(stage) + '">' +
+    return '<div class="pass-hero ' + statusClass + '" style="--accent: ' + stageAccent(stage) + '">' +
       '<div>' +
         '<h2>' + escapeHtml(stage.pass) + '</h2>' +
         renderInsight(stage) +
@@ -364,15 +469,29 @@
   
   function renderActionRow() {
     return '<div class="action-row">' +
-      '<button class="action-button primary" data-action="first-signal">First signal</button>' +
-      '<button class="action-button" data-action="prev-changed">Prev changed</button>' +
-      '<button class="action-button" data-action="next-changed">Next changed</button>' +
-      '<button class="action-button" data-action="slowest">Slowest</button>' +
-      '<button class="action-button" data-action="export-explanation">Explain suspicious pass</button>' +
-      '<button class="action-button" data-action="export-agent-context">Export agent context</button>' +
+      '<button class="action-button primary" data-action="first-signal" title="Jump to first signal (f)">First signal</button>' +
+      '<button class="action-button" data-action="prev-changed" title="Previous changed pass">Prev changed</button>' +
+      '<button class="action-button" data-action="next-changed" title="Next changed pass">Next changed</button>' +
+      '<button class="action-button" data-action="slowest" title="Jump to slowest pass (s)">Slowest</button>' +
+      '<button class="action-button" data-action="export-explanation" title="Export evidence-grounded explanation">Explain suspicious pass</button>' +
+      '<button class="action-button" data-action="export-agent-context" title="Export bounded agent-ready context">Export agent context</button>' +
       '<button class="action-button" data-action="export-bundle">Export repro bundle</button>' +
       '<button class="action-button" data-action="open-trace">Open trace JSON</button>' +
     '</div>';
+  }
+
+  function renderShortcutStrip() {
+    return '<div class="shortcut-strip" aria-label="Keyboard shortcuts">' +
+      shortcutKey('j / ↓', 'next pass') +
+      shortcutKey('k / ↑', 'previous pass') +
+      shortcutKey('/', 'search') +
+      shortcutKey('c', 'changed only') +
+      shortcutKey('f', 'first signal') +
+    '</div>';
+  }
+
+  function shortcutKey(key, label) {
+    return '<span class="shortcut"><kbd>' + escapeHtml(key) + '</kbd>' + escapeHtml(label) + '</span>';
   }
   
   function renderInsight(stage) {
@@ -396,7 +515,7 @@
     if (!entries.length) {
       return '';
     }
-    return '<h2>Metric Anomalies</h2><div class="anomaly-panel"><div class="anomaly-list">' +
+    const body = '<div class="anomaly-panel"><div class="anomaly-list">' +
       entries.map((entry) => {
         const delta = entry.delta > 0 ? '+' + fmtNumber(entry.delta) : String(fmtNumber(entry.delta));
         return '<div class="anomaly-item">' +
@@ -406,6 +525,10 @@
         '</div>';
       }).join('') +
     '</div></div>';
+    return sectionBlock('Metric Anomalies', body, {
+      tone: 'warning',
+      hint: entries.length + ' suspicious signal' + (entries.length === 1 ? '' : 's')
+    });
   }
 
   function renderExplanationPanel(stage) {
@@ -416,25 +539,24 @@
       'Treat root-cause statements as candidates until a rerun, verifier output, or source inspection confirms them.',
       'Do not infer dialect-specific semantics that are not visible in diagnostics, metrics, IR, or artifacts.'
     ];
-    return '<h2>Suspicious Pass Explanation</h2>' +
-      '<div class="explanation-panel">' +
-        '<div class="explanation-section strong">' +
-          '<div class="explanation-label">Likely issue</div>' +
-          '<p>' + escapeHtml(explanationLikelyIssue(stage)) + '</p>' +
-        '</div>' +
-        '<div class="explanation-grid">' +
-          explanationList('Evidence', evidence.length ? evidence : ['No concrete evidence recorded for this stage.']) +
-          explanationList('Recommended next checks', checks) +
-        '</div>' +
-        '<div class="explanation-section">' +
-          '<div class="explanation-label">Confidence</div>' +
-          '<p>' + escapeHtml(explanationConfidence(stage, evidence)) + '</p>' +
-        '</div>' +
-        '<div class="explanation-section">' +
-          '<div class="explanation-label">Guardrails</div>' +
-          '<ul>' + guardrails.map((item) => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul>' +
-        '</div>' +
-      '</div>';
+    return '<div class="explanation-panel">' +
+      '<div class="explanation-section strong">' +
+        '<div class="explanation-label">Likely issue</div>' +
+        '<p>' + escapeHtml(explanationLikelyIssue(stage)) + '</p>' +
+      '</div>' +
+      '<div class="explanation-grid">' +
+        explanationList('Evidence', evidence.length ? evidence : ['No concrete evidence recorded for this stage.']) +
+        explanationList('Recommended next checks', checks) +
+      '</div>' +
+      '<div class="explanation-section">' +
+        '<div class="explanation-label">Confidence</div>' +
+        '<p>' + escapeHtml(explanationConfidence(stage, evidence)) + '</p>' +
+      '</div>' +
+      '<div class="explanation-section">' +
+        '<div class="explanation-label">Guardrails</div>' +
+        '<ul>' + guardrails.map((item) => '<li>' + escapeHtml(item) + '</li>').join('') + '</ul>' +
+      '</div>' +
+    '</div>';
   }
 
   function explanationList(label, items) {
@@ -545,6 +667,18 @@
     return trace.stages.slice(Math.max(0, position - 2), Math.min(trace.stages.length, position + 3))
       .filter((entry) => entry.index !== stage.index);
   }
+
+  function sectionBlock(title, body, options = {}) {
+    if (!body) {
+      return '';
+    }
+    const tone = options.tone ? ' ' + escapeHtml(options.tone) : '';
+    const hint = options.hint ? '<span class="section-hint">' + escapeHtml(options.hint) + '</span>' : '';
+    return '<section class="detail-section' + tone + '">' +
+      '<div class="section-heading"><h2>' + escapeHtml(title) + '</h2>' + hint + '</div>' +
+      body +
+    '</section>';
+  }
   
   function kv(label, value) {
     return '<div class="kv"><div class="kv-label">' + escapeHtml(label) + '</div>' +
@@ -563,7 +697,7 @@
       return Math.abs(a - b);
     }));
   
-    return '<table class="metrics"><thead><tr><th>metric</th><th>before</th><th>after</th><th>delta</th></tr></thead><tbody>' +
+    return '<div class="table-scroll"><table class="metrics"><thead><tr><th>metric</th><th>before</th><th>after</th><th>delta</th></tr></thead><tbody>' +
       keys.map((key) => {
         const b = before[key];
         const a = after[key];
@@ -579,7 +713,7 @@
           '</td><td>' + escapeHtml(fmtNumber(a)) + '</td><td class="' + deltaClass + '">' +
           escapeHtml(deltaLabel) + '</td></tr>';
       }).join('') +
-      '</tbody></table>';
+      '</tbody></table></div>';
   }
   
   function topMetricDeltas(before, after) {
@@ -596,16 +730,24 @@
   function signed(value) {
     return value > 0 ? '+' + fmtNumber(value) : String(fmtNumber(value));
   }
-  
+
   function renderCommandAndDiagnostics(stage) {
     const command = trace.command
-      ? '<h2>Repro Command</h2><div class="action-row"><button class="action-button" data-action="copy-command">Copy command</button></div><pre class="diagnostics">' + escapeHtml(trace.command) + '</pre>'
+      ? sectionBlock('Repro Command', '<div class="action-row compact"><button class="action-button" data-action="copy-command">Copy command</button></div><pre class="diagnostics">' + escapeHtml(trace.command) + '</pre>', {
+        hint: 'Copyable command context'
+      })
       : '';
     const stageDiagnostics = stage.diagnostics
-      ? '<h2>Stage Diagnostics</h2>' + renderSourceLine('diagnostics', stage.artifacts?.diagnosticsPath, stage.diagnostics) +
-        '<pre class="diagnostics">' + escapeHtml(stage.diagnostics) + '</pre>'
+      ? sectionBlock('Stage Diagnostics', renderSourceLine('diagnostics', stage.artifacts?.diagnosticsPath, stage.diagnostics) +
+        '<pre class="diagnostics">' + escapeHtml(stage.diagnostics) + '</pre>', {
+        hint: 'Selected pass output'
+      })
       : '';
-    const traceDiagnostics = trace.diagnostics ? '<h2>Trace Diagnostics</h2><pre class="diagnostics">' + escapeHtml(trace.diagnostics) + '</pre>' : '';
+    const traceDiagnostics = trace.diagnostics
+      ? sectionBlock('Trace Diagnostics', '<pre class="diagnostics">' + escapeHtml(trace.diagnostics) + '</pre>', {
+        hint: 'Collector-level context'
+      })
+      : '';
     return command + stageDiagnostics + traceDiagnostics;
   }
   
@@ -616,14 +758,21 @@
     if (!rows.length) {
       return '<div class="empty">No IR text recorded for this pass.</div>';
     }
+    const renderedRows = showFullDiff ? rows : collapseUnchangedRows(rows);
+    const stats = diffStats(rows, renderedRows);
   
-    return '<div class="diff-head"><div><div class="diff-title">Before pass</div>' +
-      renderSourceLine('before IR', stage.artifacts?.beforePath, beforeText) +
+    return renderDiffToolbar(stage, stats) +
+      '<div class="diff-head"><div><div class="diff-title">Before pass</div>' +
+      renderSourceLine('before IR', stage.artifacts?.beforePath, beforeText, { open: false }) +
       '</div><div><div class="diff-title">After pass</div>' +
-      renderSourceLine('after IR', stage.artifacts?.afterPath, afterText) +
+      renderSourceLine('after IR', stage.artifacts?.afterPath, afterText, { open: false }) +
       '</div></div>' +
-      '<table class="diff"><tbody>' +
-      rows.map((row) => {
+      '<div class="diff-scroll"><table class="diff"><tbody>' +
+      renderedRows.map((row) => {
+        if (row.kind === 'context') {
+          return '<tr class="context-row"><td class="line-no"></td><td class="context-cell" colspan="3">' +
+            escapeHtml(row.message) + '</td></tr>';
+        }
         return '<tr class="' + row.kind + '">' +
           '<td class="line-no">' + escapeHtml(row.leftNo ?? '') + '</td>' +
           '<td class="code">' + escapeHtml(row.left ?? '') + '</td>' +
@@ -631,15 +780,101 @@
           '<td class="code">' + escapeHtml(row.right ?? '') + '</td>' +
         '</tr>';
       }).join('') +
-      '</tbody></table>';
+      '</tbody></table></div>';
   }
   
-  function renderSourceLine(label, artifactPath, text) {
+  function renderDiffToolbar(stage, stats) {
+    const artifactButtons = [
+      artifactButton('Open before artifact', stage.artifacts?.beforePath),
+      artifactButton('Open after artifact', stage.artifacts?.afterPath),
+      artifactButton('Open diagnostics', stage.artifacts?.diagnosticsPath)
+    ].filter(Boolean).join('');
+    const artifactGroup = artifactButtons
+      ? '<div class="artifact-toolbar" aria-label="Diff artifacts"><span class="toolbar-label">Artifacts</span>' + artifactButtons + '</div>'
+      : '';
+    const contextLabel = showFullDiff
+      ? 'Collapse unchanged context'
+      : stats.hidden > 0 ? 'Show full context' : 'Full context shown';
+    const contextDisabled = !showFullDiff && stats.hidden === 0 ? ' disabled' : '';
+    const hidden = stats.hidden > 0
+      ? '<span class="diff-chip muted">' + escapeHtml(stats.hidden + ' unchanged hidden') + '</span>'
+      : '';
+    return '<div class="diff-toolbar">' +
+      '<div class="diff-stats">' +
+        '<span class="diff-chip add">+' + escapeHtml(stats.added) + '</span>' +
+        '<span class="diff-chip del">-' + escapeHtml(stats.deleted) + '</span>' +
+        '<span class="diff-chip">shown ' + escapeHtml(stats.shown) + ' / ' + escapeHtml(stats.total) + '</span>' +
+        hidden +
+      '</div>' +
+      '<div class="diff-actions">' +
+        artifactGroup +
+        '<button class="action-button compact" data-action="toggle-diff-context"' + contextDisabled + '>' + escapeHtml(contextLabel) + '</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function artifactButton(label, artifactPath) {
+    if (!artifactPath) {
+      return '';
+    }
+    return '<button class="artifact-button" data-action="open-artifact" data-artifact-path="' +
+      escapeHtml(artifactPath) + '" title="' + escapeHtml(artifactPath) + '">' + escapeHtml(label) + '</button>';
+  }
+
+  function renderSourceLine(label, artifactPath, text, options = {}) {
     const source = artifactPath
       ? 'artifact: ' + artifactPath
       : text ? 'inline ' + label : 'missing ' + label;
+    const open = artifactPath && options.open !== false
+      ? '<button class="artifact-open" data-action="open-artifact" data-artifact-path="' + escapeHtml(artifactPath) + '">Open ' + escapeHtml(label) + '</button>'
+      : '';
     return '<div class="source-line"><span class="source-path" title="' + escapeHtml(source) + '">' +
-      escapeHtml(source) + '</span></div>';
+      escapeHtml(source) + '</span>' + open + '</div>';
+  }
+
+  function diffStats(rows, renderedRows) {
+    const added = rows.filter((row) => row.kind === 'add').length;
+    const deleted = rows.filter((row) => row.kind === 'del').length;
+    const changed = rows.filter((row) => row.kind === 'changed').length;
+    const shown = renderedRows.filter((row) => row.kind !== 'context').length;
+    return {
+      added: added + changed,
+      deleted: deleted + changed,
+      shown,
+      total: rows.length,
+      hidden: Math.max(0, rows.length - shown)
+    };
+  }
+
+  function collapseUnchangedRows(rows, context = 3) {
+    if (showFullDiff || rows.length <= 80) {
+      return rows;
+    }
+    const collapsed = [];
+    let index = 0;
+    while (index < rows.length) {
+      if (rows[index].kind !== 'same') {
+        collapsed.push(rows[index]);
+        index++;
+        continue;
+      }
+      const start = index;
+      while (index < rows.length && rows[index].kind === 'same') {
+        index++;
+      }
+      const run = rows.slice(start, index);
+      if (run.length <= context * 2 + 3) {
+        collapsed.push(...run);
+        continue;
+      }
+      collapsed.push(...run.slice(0, context));
+      collapsed.push({
+        kind: 'context',
+        message: run.length - context * 2 + ' unchanged line(s) hidden'
+      });
+      collapsed.push(...run.slice(-context));
+    }
+    return collapsed;
   }
   
   function stageIrSource(stage) {
@@ -662,8 +897,8 @@
       return [];
     }
   
-    const a = beforeText.split(/\\r?\\n/);
-    const b = afterText.split(/\\r?\\n/);
+    const a = beforeText.split(/\r?\n/);
+    const b = afterText.split(/\r?\n/);
     if (a.length * b.length > 200000) {
       return pairedDiff(a, b);
     }

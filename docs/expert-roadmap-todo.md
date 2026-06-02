@@ -30,7 +30,7 @@ an execution checklist. The guiding principle is:
   - Output includes likely issue, evidence, next checks, confidence, guardrails,
     and repro command.
 - [x] Add an in-view "Explain suspicious pass" preview panel before export.
-  - Commit: pending.
+  - Commit: `ced3a5d Preview suspicious pass explanations`.
   - Preview renders likely issue, evidence, recommended checks, confidence, and
     guardrails in the selected-stage details view.
 - [ ] Add copy-to-clipboard actions for agent context and explanation.

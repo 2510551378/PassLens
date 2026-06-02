@@ -69,10 +69,22 @@ test('parseTracePanelMessage accepts export explanation messages with optional s
   });
 });
 
+test('parseTracePanelMessage accepts artifact open messages', () => {
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'openArtifact',
+    path: 'artifacts/0-before.mlir'
+  }), {
+    type: 'openArtifact',
+    path: 'artifacts/0-before.mlir'
+  });
+});
+
 test('parseTracePanelMessage rejects malformed or unknown messages', () => {
   assert.equal(parseTracePanelMessage(undefined), undefined);
   assert.equal(parseTracePanelMessage([]), undefined);
   assert.equal(parseTracePanelMessage({ type: 'copy' }), undefined);
   assert.equal(parseTracePanelMessage({ type: 'copy', text: 42 }), undefined);
+  assert.equal(parseTracePanelMessage({ type: 'openArtifact' }), undefined);
+  assert.equal(parseTracePanelMessage({ type: 'openArtifact', path: '' }), undefined);
   assert.equal(parseTracePanelMessage({ type: 'unknown' }), undefined);
 });

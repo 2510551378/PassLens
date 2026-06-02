@@ -17,6 +17,10 @@ export type TracePanelMessage =
   | {
       type: 'exportExplanation';
       selectedStageIndex?: number;
+    }
+  | {
+      type: 'openArtifact';
+      path: string;
     };
 
 export function parseTracePanelMessage(raw: unknown): TracePanelMessage | undefined {
@@ -70,6 +74,15 @@ export function parseTracePanelMessage(raw: unknown): TracePanelMessage | undefi
       : {
           type: 'exportExplanation'
         };
+  }
+
+  if (raw.type === 'openArtifact') {
+    return typeof raw.path === 'string' && raw.path.length > 0
+      ? {
+          type: 'openArtifact',
+          path: raw.path
+        }
+      : undefined;
   }
 
   return undefined;

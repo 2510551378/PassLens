@@ -1,0 +1,1 @@
+Generated from local npuir2ascendc sample rmsnorm_residual_cast/case_001 using python generate.py. This is a real captured TTAdapter IR input and generated AscendC kernel artifact.

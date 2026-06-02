@@ -45,6 +45,24 @@ const sampleTraces: SampleTraceEntry[] = [
     description: '2 passes, IR stored in sidecar files',
     detail: 'Trace that resolves before/after IR and diagnostics from artifact paths.',
     file: 'mlir-artifacts.json'
+  },
+  {
+    label: 'Triton NPU UB budget overflow',
+    description: 'AscendC resource budget anomaly',
+    detail: 'Case study trace where scratch queue planning exceeds UB live-slot and queue-depth budgets.',
+    file: 'triton-npu-ub-budget-overflow.json'
+  },
+  {
+    label: 'Triton NPU strict fallback',
+    description: 'AscendC strict-mode legality failure',
+    detail: 'Case study trace where a lowering pass introduces fallback and missing tile proof evidence.',
+    file: 'triton-npu-strict-fallback.json'
+  },
+  {
+    label: 'Real Triton NPU dual RMSNorm',
+    description: 'Captured TTAdapter IR to generated AscendC artifact',
+    detail: 'Real local npuir2ascendc sample generated from fused_dual_residual_rmsnorm_kernel.',
+    file: 'real-triton-npu-dual-rmsnorm.json'
   }
 ];
 
@@ -399,6 +417,9 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     if (parsed.type === 'exportExplanation') {
       await exportTraceExplanation(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
+    if (parsed.type === 'openArtifact') {
+      await openArtifact(sourceUri, parsed.path);
+    }
   });
 
   const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.css'));
@@ -507,6 +528,17 @@ async function exportTraceExplanation(
   if (open === 'Open') {
     await vscode.window.showTextDocument(target, { preview: false });
   }
+}
+
+async function openArtifact(sourceUri: vscode.Uri, artifactPath: string): Promise<void> {
+  const resolvedPath = path.normalize(path.isAbsolute(artifactPath)
+    ? artifactPath
+    : path.resolve(path.dirname(sourceUri.fsPath), artifactPath));
+  if (!await pathExists(resolvedPath)) {
+    vscode.window.showWarningMessage(`Pass Lens artifact does not exist: ${resolvedPath}`);
+    return;
+  }
+  await vscode.window.showTextDocument(vscode.Uri.file(resolvedPath), { preview: false });
 }
 
 function getWebviewHtml(
