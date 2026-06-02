@@ -92,7 +92,13 @@ an execution checklist. The guiding principle is:
 - [x] Add prefix bisection for MLIR textual pipelines.
   - Commit: this change.
   - MLIR textual pipeline wrappers are preserved while constructing prefixes.
-- [ ] Confirm behavior on L20 with `pass-lens-mlir-opt`.
+- [x] Confirm behavior on L20 with `pass-lens-mlir-opt`.
+  - Commit: this change.
+  - Verified `/home/ahc/PassLens/build/pass-lens-mlir/pass-lens-mlir-opt`
+    on L20 with prefix pipelines for `canonicalize` and `canonicalize,cse`;
+    traces contained 1 and 2 stages respectively.
+  - The current driver rejects `--verify-each`, so the VS Code runner does not
+    pass that flag.
 - [x] Record bisect attempts and results into a repro artifact.
   - Commit: this change.
   - `createMinimalFailingPrefixReport` renders attempts, command lines, traces,

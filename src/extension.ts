@@ -370,7 +370,6 @@ function createMlirPrefixRunner(driverPath: string, inputPath: string, cwd: stri
         inputPath,
         `--pass-pipeline=${request.pipeline}`,
         `--pass-lens-trace=${tracePath}`,
-        '--verify-each',
         '-o',
         outputPath
       ];
