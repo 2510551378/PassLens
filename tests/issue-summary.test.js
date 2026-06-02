@@ -2,6 +2,8 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const {
+  createCandidateRootCauses,
+  createCandidateRootCausesMarkdown,
   createGithubIssueDescription,
   createSuspiciousPassesMarkdown,
   explainFirstSignal,
@@ -116,6 +118,24 @@ test('issue summary markdown reports top suspicious passes', () => {
   assert.match(markdown, /# Pass Lens Top Suspicious Passes/);
   assert.match(markdown, /#1 convert-to-ac/);
   assert.match(markdown, /score/);
+});
+
+test('candidate root causes separate evidence, uncertainty, and next experiments', () => {
+  const candidates = createCandidateRootCauses(makeTrace(), makeIssues(), makeAnomalies(), 2);
+  assert.equal(candidates[0].stageIndex, 2);
+  assert.match(candidates[0].candidate, /candidate/i);
+  assert.ok(candidates[0].evidence.some((entry) => /failed status|verifier/i.test(entry)));
+  assert.ok(candidates[0].counterEvidence.some((entry) => /No rerun|prefix/i.test(entry)));
+  assert.ok(candidates[0].nextExperiments.some((entry) => /prefix bisection/i.test(entry)));
+
+  const markdown = createCandidateRootCausesMarkdown(makeTrace(), makeIssues(), makeAnomalies(), 2);
+  assert.match(markdown, /# Pass Lens Candidate Root Causes/);
+  assert.match(markdown, /\*\*Candidate:\*\*/);
+  assert.match(markdown, /\*\*Evidence:\*\*/);
+  assert.match(markdown, /\*\*Counter-evidence \/ uncertainty:\*\*/);
+  assert.match(markdown, /\*\*Next experiment:\*\*/);
+  assert.match(markdown, /not proven root causes or patch instructions/i);
+  assert.match(markdown, /Do not propose legality-check or rewrite-guard patches yet|inspect candidate legality checks or rewrite guards/);
 });
 
 test('explainFirstSignal covers fallback, legality, and budget signals', () => {

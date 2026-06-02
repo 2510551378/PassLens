@@ -122,16 +122,26 @@ an execution checklist. The guiding principle is:
 
 ## P3: Patch Suggestion / Test Generation
 
-- [ ] Keep patch suggestions explicitly framed as candidates, not proven root
+- [x] Keep patch suggestions explicitly framed as candidates, not proven root
   causes.
-- [ ] Add "candidate root causes" format:
-  - [ ] Candidate.
-  - [ ] Evidence.
-  - [ ] Counter-evidence / uncertainty.
-  - [ ] Next experiment.
+  - Commit: this change.
+  - The query workflow now generates candidate-root-cause reports that state
+    candidates are not proven root causes or patch instructions.
+- [x] Add "candidate root causes" format:
+  - [x] Candidate.
+  - [x] Evidence.
+  - [x] Counter-evidence / uncertainty.
+  - [x] Next experiment.
+  - Commit: this change.
+  - Implemented in `src/issueSummary.ts` and exposed through
+    `Pass Lens: Query Current Trace`.
 - [ ] Generate regression test sketches from repro bundles.
-- [ ] Suggest legality checks or rewrite guards only when diagnostics / IR diff
+- [x] Suggest legality checks or rewrite guards only when diagnostics / IR diff
   provide concrete evidence.
+  - Commit: this change.
+  - Candidate reports only mention legality/rewrite guard inspection when the
+    selected stage has concrete legality, verifier, invalid, rewrite,
+    diagnostic, or IR evidence; otherwise they explicitly defer patch ideas.
 - [ ] Do not auto-edit compiler source until rerun/bisect evidence is available.
 
 ## v0.2 Collector Credibility
