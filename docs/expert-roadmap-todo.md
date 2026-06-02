@@ -9,14 +9,18 @@ an execution checklist. The guiding principle is:
 
 ## Positioning
 
-- [ ] Update public positioning from "trace viewer" to "pass pipeline
+- [x] Update public positioning from "trace viewer" to "pass pipeline
   observability / debugging workbench".
-- [ ] Use the tagline: "evidence-driven postmortem debugger for MLIR/LLVM pass
+- [x] Use the tagline: "evidence-driven postmortem debugger for MLIR/LLVM pass
   pipelines".
-- [ ] Emphasize evidence chains: first signal, IR diff, diagnostics, metric
+- [x] Emphasize evidence chains: first signal, IR diff, diagnostics, metric
   anomalies, repro context, and artifact paths.
-- [ ] Avoid positioning AI as a generic chat feature; keep AI trace-grounded
+- [x] Avoid positioning AI as a generic chat feature; keep AI trace-grounded
   and tool-mediated.
+  - Commit: this change.
+  - Public README/package positioning now frames Pass Lens as a pass pipeline
+    observability/debugging workbench and describes AI exports as
+    trace-grounded, evidence-cited handoff artifacts rather than generic chat.
 
 ## P0: Trace-Grounded AI Foundation
 
@@ -53,38 +57,68 @@ an execution checklist. The guiding principle is:
 
 ## P1: Natural-Language Trace Query
 
-- [ ] Implement deterministic trace query primitives first:
-  - [ ] Find first failure stage.
-  - [ ] Find first changed stage.
-  - [ ] Find first metric jump for a metric name.
-  - [ ] Find stages over a metric budget.
-  - [ ] List slowest N passes.
-  - [ ] Search pass names, scopes, diagnostics, and IR text.
-- [ ] Add query results as structured objects before adding any LLM mapping.
-- [ ] Add command palette entry: `Pass Lens: Query Current Trace`.
-- [ ] Support issue-ready summaries:
-  - [ ] "Generate GitHub issue description".
-  - [ ] "Summarize top 3 suspicious passes".
-  - [ ] "Explain first fallback / legality breakage / budget overflow".
+- [x] Implement deterministic trace query primitives first:
+  - [x] Find first failure stage.
+  - [x] Find first changed stage.
+  - [x] Find first metric jump for a metric name.
+  - [x] Find stages over a metric budget.
+  - [x] List slowest N passes.
+  - [x] Search pass names, scopes, diagnostics, and IR text.
+  - Commit: this change.
+  - Implemented in `src/traceQuery.ts` with unit coverage.
+- [x] Add query results as structured objects before adding any LLM mapping.
+  - Commit: this change.
+  - `TraceQueryResult` and `TraceQueryMatch` carry labels, reasons, metrics,
+    snippets, and evidence IDs.
+- [x] Add command palette entry: `Pass Lens: Query Current Trace`.
+  - Commit: this change.
+  - The command runs deterministic queries against the current opened trace and
+    renders a Markdown result document.
+- [x] Support issue-ready summaries:
+  - [x] "Generate GitHub issue description".
+  - [x] "Summarize top 3 suspicious passes".
+  - [x] "Explain first fallback / legality breakage / budget overflow".
+  - Commit: this change.
+  - Implemented deterministic Markdown generators in `src/issueSummary.ts` and
+    exposed them through `Pass Lens: Query Current Trace`.
 - [ ] Only later map natural language to deterministic query primitives.
 
 ## P2: Agentic Rerun / Prefix Bisection
 
 - [ ] Design a rerun abstraction:
-  - [ ] `run_pipeline(prefix)`.
-  - [ ] `run_prefix_bisect()`.
-  - [ ] `run_with_verify_each()`.
-  - [ ] `export_repro_bundle()`.
-- [ ] Add prefix bisection for MLIR textual pipelines.
-- [ ] Confirm behavior on L20 with `pass-lens-mlir-opt`.
-- [ ] Record bisect attempts and results into a repro artifact.
-- [ ] Add UI command: `Run Prefix Bisect`.
-- [ ] Generate a minimal failing prefix report:
-  - [ ] Full pipeline.
-  - [ ] Shortest failing prefix.
-  - [ ] First verifier failure.
-  - [ ] Command lines used.
-  - [ ] Diagnostics and trace paths.
+  - [x] `run_pipeline(prefix)`.
+  - [x] `run_prefix_bisect()`.
+  - [x] `run_with_verify_each()`.
+  - [x] `export_repro_bundle()`.
+  - Commit: this change.
+  - `src/rerun.ts` defines a runner interface plus deterministic prefix and
+    verify-each orchestration; directory repro export is implemented in
+    `src/directoryReproBundle.ts`.
+- [x] Add prefix bisection for MLIR textual pipelines.
+  - Commit: this change.
+  - MLIR textual pipeline wrappers are preserved while constructing prefixes.
+- [x] Confirm behavior on L20 with `pass-lens-mlir-opt`.
+  - Commit: this change.
+  - Verified `/home/ahc/PassLens/build/pass-lens-mlir/pass-lens-mlir-opt`
+    on L20 with prefix pipelines for `canonicalize` and `canonicalize,cse`;
+    traces contained 1 and 2 stages respectively.
+  - The current driver rejects `--verify-each`, so the VS Code runner does not
+    pass that flag.
+- [x] Record bisect attempts and results into a repro artifact.
+  - Commit: this change.
+  - `createMinimalFailingPrefixReport` renders attempts, command lines, traces,
+    and diagnostics as Markdown.
+- [x] Add UI command: `Run Prefix Bisect`.
+  - Commit: this change.
+  - `Pass Lens: Run Prefix Bisect` prompts for an MLIR input and textual
+    pipeline, then opens a minimal failing prefix report.
+- [x] Generate a minimal failing prefix report:
+  - [x] Full pipeline.
+  - [x] Shortest failing prefix.
+  - [x] First verifier failure.
+  - [x] Command lines used.
+  - [x] Diagnostics and trace paths.
+  - Commit: this change.
 
 ## P3: Patch Suggestion / Test Generation
 
@@ -110,19 +144,27 @@ an execution checklist. The guiding principle is:
 - [ ] Replace or supplement synthetic samples with 2-3 real trace cases.
 - [ ] Document which samples are live `PassInstrumentation` output versus
   hand-authored / converted examples.
-- [ ] Add collector trace quality checks:
-  - [ ] Missing pass identity.
-  - [ ] Missing timing.
-  - [ ] Missing verifier status.
-  - [ ] Missing artifacts for large IR.
-  - [ ] Duplicate or non-monotonic stage indexes.
+- [x] Add collector trace quality checks:
+  - [x] Missing pass identity.
+  - [x] Missing timing.
+  - [x] Missing verifier status.
+  - [x] Missing artifacts for large IR.
+  - [x] Duplicate or non-monotonic stage indexes.
+  - Commit: this change.
+  - Implemented by `src/trace/quality.ts` and exposed through
+    `Pass Lens: Query Current Trace` as a trace quality report.
+  - L20 verified: real `pass-lens-mlir-opt` trace for
+    `canonicalize,cse` scored 100/100 with no collector quality issues.
 - [ ] Keep TypeScript `mlir-opt` dump parser as fallback, with clear timing
   limitations.
 
 ## Directory-Style Repro Bundle
 
-- [ ] Add directory export alongside the existing Markdown repro bundle.
-- [ ] Target structure:
+- [x] Add directory export alongside the existing Markdown repro bundle.
+  - Commit: this change.
+  - Trace panels now expose `Export repro directory`, backed by
+    `exportDirectoryReproBundle`.
+- [x] Target structure:
 
 ```text
 repro/
@@ -139,10 +181,26 @@ repro/
   agent-context.json
 ```
 
-- [ ] Preserve artifact references and optionally copy artifacts into the bundle.
-- [ ] Generate platform-specific rerun scripts.
-- [ ] Add bundle manifest with tool versions and capture mode.
-- [ ] Make bundle suitable for CI artifact upload and AI-agent tool input.
+  - Commit: this change.
+  - Implemented by `exportDirectoryReproBundle` and L20-verified via `run.sh`.
+
+- [x] Preserve artifact references and optionally copy artifacts into the bundle.
+  - Commit: this change.
+  - Copied artifact mappings are recorded in `manifest.json`.
+- [x] Generate platform-specific rerun scripts.
+  - Commit: this change.
+  - Bundles include `run.ps1` and `run.sh`.
+- [x] Add bundle manifest with tool versions and capture mode.
+  - Commit: this change.
+  - `manifest.json` records tool, collector version, capture mode, files, input
+    source, and copied artifact mappings.
+- [x] Make bundle suitable for CI artifact upload and AI-agent tool input.
+  - Commit: this change.
+  - Bundles include `summary.md`, `agent-context.json`, `trace.json`, rerun
+    scripts, diagnostics, and manifest metadata.
+  - L20 verified: generated a real structured trace with
+    `/home/ahc/PassLens/build/pass-lens-mlir/pass-lens-mlir-opt`, exported a
+    directory bundle, then reran `run.sh` to produce `trace.rerun.json`.
 
 ## Performance And Large Trace Support
 
@@ -150,13 +208,21 @@ repro/
   eagerly.
 - [ ] Add virtualized timeline/list rendering for large traces.
 - [ ] Add bounded / on-demand diff computation.
-- [ ] Add trace-level size summary:
-  - [ ] inline IR bytes.
-  - [ ] artifact bytes.
-  - [ ] number of stages.
-  - [ ] diagnostics bytes.
-- [ ] Add warnings and quick fixes for traces that should switch from inline IR
+- [x] Add trace-level size summary:
+  - [x] inline IR bytes.
+  - [x] artifact bytes.
+  - [x] number of stages.
+  - [x] diagnostics bytes.
+  - Commit: this change.
+  - Implemented by `src/trace/size.ts`, exposed in the webview summary as
+    `Trace size`, and available through `Pass Lens: Query Current Trace` as a
+    trace size report.
+- [x] Add warnings and quick fixes for traces that should switch from inline IR
   to artifact IR.
+  - Commit: this change.
+  - `TraceSizeSummary` now includes size warnings with explicit quick fixes,
+    including artifact-backed recapture via `--pass-lens-artifact-dir <dir>`
+    and repro directory export for missing artifact references.
 
 ## Schema And Collector Ecosystem
 
@@ -189,7 +255,11 @@ repro/
 - [ ] Add directory-style repro bundle.
 - [ ] Add at least 3 trace cases, with provenance labels.
 - [ ] Add demo GIF and workflow-focused README.
-- [ ] Add trace quality score.
+- [x] Add trace quality score.
+  - Commit: this change.
+  - The webview summary now displays `Trace quality` from
+    `evaluateTraceQuality(trace)`, and the query command can render the full
+    quality report.
 
 ### Month 1-3: Real Collector Workflow
 

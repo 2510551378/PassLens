@@ -11,6 +11,10 @@ export type TracePanelMessage =
       selectedStageIndex?: number;
     }
   | {
+      type: 'exportDirectoryBundle';
+      selectedStageIndex?: number;
+    }
+  | {
       type: 'exportAgentContext';
       selectedStageIndex?: number;
     }
@@ -59,6 +63,17 @@ export function parseTracePanelMessage(raw: unknown): TracePanelMessage | undefi
         }
       : {
           type: 'exportBundle'
+        };
+  }
+
+  if (raw.type === 'exportDirectoryBundle') {
+    return typeof raw.selectedStageIndex === 'number' && Number.isFinite(raw.selectedStageIndex)
+      ? {
+          type: 'exportDirectoryBundle',
+          selectedStageIndex: raw.selectedStageIndex
+        }
+      : {
+          type: 'exportDirectoryBundle'
         };
   }
 

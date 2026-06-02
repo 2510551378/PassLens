@@ -4,11 +4,29 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { createAgentContext, createAgentContextMarkdown } from './agentContext';
+import { exportDirectoryReproBundle } from './directoryReproBundle';
+import {
+  createGithubIssueDescription,
+  createSuspiciousPassesMarkdown,
+  explainFirstSignal,
+  renderFirstSignalExplanation,
+  type FirstSignalKind
+} from './issueSummary';
 import { collectMlirTrace } from './mlirCollector';
 import { createReproBundle } from './reproBundle';
+import {
+  createMinimalFailingPrefixReport,
+  runPrefixBisect,
+  type PipelineRunRequest,
+  type PipelineRunResult,
+  type PipelineRunner
+} from './rerun';
 import { computeTraceAnomalies } from './trace/anomalies';
 import { hydrateTraceArtifacts } from './trace/artifacts';
+import { evaluateTraceQuality, renderTraceQualityMarkdown } from './trace/quality';
+import { evaluateTraceSize, renderTraceSizeMarkdown, type TraceSizeSummary } from './trace/size';
 import { createTraceExplanation } from './traceExplanation';
+import { renderTraceQueryResultMarkdown, runTraceQuery, type TraceQuery } from './traceQuery';
 import { normalizeTrace } from './trace/schema';
 import { summarizeTraceIssues, validateTrace } from './trace/validation';
 import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
@@ -19,6 +37,12 @@ interface SampleTraceEntry {
   description: string;
   detail: string;
   file: string;
+}
+
+interface TraceQueryPick extends vscode.QuickPickItem {
+  query?: TraceQuery;
+  queryKind?: string;
+  summaryKind?: string;
 }
 
 const sampleTraces: SampleTraceEntry[] = [
@@ -66,6 +90,8 @@ const sampleTraces: SampleTraceEntry[] = [
   }
 ];
 
+let currentTraceSession: { loaded: LoadedTrace; sourceUri: vscode.Uri } | undefined;
+
 export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('passLens.openSampleTrace', async () => {
@@ -107,6 +133,12 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('passLens.checkMlirCollectorSetup', async () => {
       await checkMlirCollectorSetupCommand(context);
+    }),
+    vscode.commands.registerCommand('passLens.queryCurrentTrace', async () => {
+      await queryCurrentTraceCommand();
+    }),
+    vscode.commands.registerCommand('passLens.runPrefixBisect', async () => {
+      await runPrefixBisectCommand(context);
     })
   );
 }
@@ -165,7 +197,7 @@ async function runMlirOptTraceCommand(context: vscode.ExtensionContext): Promise
 
     await fs.writeFile(outputUri.fsPath, `${JSON.stringify(trace, null, 2)}\n`, 'utf8');
     vscode.window.showInformationMessage(`Pass Lens trace saved: ${outputUri.fsPath}`);
-    openTracePanel(context, toLoadedTrace(trace), outputUri);
+    openTracePanel(context, await toLoadedTrace(trace, outputUri.fsPath), outputUri);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const action = await vscode.window.showErrorMessage(
@@ -241,7 +273,7 @@ async function runStructuredMlirTraceCommand(context: vscode.ExtensionContext): 
         loaded.trace.command = loaded.trace.command ?? command;
         loaded.trace.exitCode = loaded.trace.exitCode ?? result.exitCode;
         loaded.trace.diagnostics = loaded.trace.diagnostics ?? trimOutput(`${result.stderr}\n${result.stdout}`);
-        openTracePanel(context, toLoadedTrace(loaded.trace), traceUri);
+        openTracePanel(context, await toLoadedTrace(loaded.trace, traceUri.fsPath), traceUri);
       }
       throw new Error(trimOutput(result.stderr || result.stdout || `collector exited with code ${result.exitCode}`));
     }
@@ -251,7 +283,7 @@ async function runStructuredMlirTraceCommand(context: vscode.ExtensionContext): 
     loaded.trace.exitCode = loaded.trace.exitCode ?? result.exitCode;
     loaded.trace.diagnostics = loaded.trace.diagnostics ?? trimOutput(result.stderr);
     vscode.window.showInformationMessage(`Pass Lens structured trace saved: ${traceUri.fsPath}`);
-    openTracePanel(context, toLoadedTrace(loaded.trace), traceUri);
+    openTracePanel(context, await toLoadedTrace(loaded.trace, traceUri.fsPath), traceUri);
   } catch (error) {
     await fs.rm(outputPath, { force: true }).catch(() => undefined);
     const message = error instanceof Error ? error.message : String(error);
@@ -269,6 +301,95 @@ async function runStructuredMlirTraceCommand(context: vscode.ExtensionContext): 
       await vscode.commands.executeCommand('passLens.runMlirOptTrace');
     }
   }
+}
+
+async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise<void> {
+  const selected = await vscode.window.showOpenDialog({
+    canSelectFiles: true,
+    canSelectFolders: false,
+    canSelectMany: false,
+    filters: {
+      'MLIR files': ['mlir'],
+      'All files': ['*']
+    },
+    title: 'Select MLIR input for prefix bisection'
+  });
+  if (!selected?.[0]) {
+    return;
+  }
+
+  const defaultPipeline = currentTraceSession?.loaded.trace.pipeline ?? 'builtin.module(func.func(canonicalize,cse))';
+  const pipeline = await vscode.window.showInputBox({
+    title: 'MLIR pass pipeline to bisect',
+    prompt: 'Pass Lens will rerun textual prefixes of this pipeline with verifier enabled.',
+    value: defaultPipeline,
+    ignoreFocusOut: true,
+    validateInput: (value) => value.trim().length > 0 ? undefined : 'Pipeline is required.'
+  });
+  if (!pipeline) {
+    return;
+  }
+
+  const configuration = vscode.workspace.getConfiguration('passLens');
+  const driverPath = configuration.get<string>('mlirDriverPath') || 'pass-lens-mlir-opt';
+  const inputPath = selected[0].fsPath;
+  const runner = createMlirPrefixRunner(driverPath, inputPath, path.dirname(inputPath));
+
+  try {
+    const result = await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: 'Pass Lens: running prefix bisection',
+        cancellable: false
+      },
+      async (progress) => {
+        progress.report({ message: driverPath });
+        return runPrefixBisect(pipeline.trim(), runner);
+      }
+    );
+    await showMarkdownDocument(createMinimalFailingPrefixReport(result, currentTraceSession?.loaded.trace));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const action = await vscode.window.showErrorMessage(
+      `Could not run prefix bisection. ${message}`,
+      'Set Driver Path',
+      'Check Setup'
+    );
+    if (action === 'Set Driver Path') {
+      await vscode.commands.executeCommand('workbench.action.openSettings', 'passLens.mlirDriverPath');
+    } else if (action === 'Check Setup') {
+      await vscode.commands.executeCommand('passLens.checkMlirCollectorSetup');
+    }
+  }
+}
+
+function createMlirPrefixRunner(driverPath: string, inputPath: string, cwd: string): PipelineRunner {
+  return {
+    async runPipeline(request: PipelineRunRequest): Promise<PipelineRunResult> {
+      const runId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const outputPath = path.join(os.tmpdir(), `pass-lens-bisect-${runId}.mlir`);
+      const tracePath = path.join(os.tmpdir(), `pass-lens-bisect-${runId}.json`);
+      const args = [
+        inputPath,
+        `--pass-pipeline=${request.pipeline}`,
+        `--pass-lens-trace=${tracePath}`,
+        '-o',
+        outputPath
+      ];
+      const result = await runProcess(driverPath, args, cwd);
+      await fs.rm(outputPath, { force: true }).catch(() => undefined);
+      return {
+        pipeline: request.pipeline,
+        passCount: request.passCount,
+        verifyEach: request.verifyEach,
+        exitCode: result.exitCode,
+        failed: result.exitCode !== 0,
+        commandLine: formatCommand(driverPath, args),
+        diagnostics: trimOutput(result.stderr || result.stdout),
+        tracePath: await pathExists(tracePath) ? tracePath : undefined
+      };
+    }
+  };
 }
 
 async function checkMlirCollectorSetupCommand(context: vscode.ExtensionContext): Promise<void> {
@@ -305,6 +426,223 @@ async function checkMlirCollectorSetupCommand(context: vscode.ExtensionContext):
   }
 }
 
+async function queryCurrentTraceCommand(): Promise<void> {
+  if (!currentTraceSession) {
+    const action = await vscode.window.showWarningMessage(
+      'Pass Lens has no current trace to query.',
+      'Open Trace File',
+      'Open Sample Trace'
+    );
+    if (action === 'Open Trace File') {
+      await vscode.commands.executeCommand('passLens.openTraceFile');
+    } else if (action === 'Open Sample Trace') {
+      await vscode.commands.executeCommand('passLens.openSampleTrace');
+    }
+    return;
+  }
+
+  const picked = await vscode.window.showQuickPick<TraceQueryPick>(
+    [
+      {
+        label: 'Find first failure stage',
+        detail: 'First failed status or verifier failure.',
+        query: { kind: 'firstFailure' } satisfies TraceQuery
+      },
+      {
+        label: 'Find first changed stage',
+        detail: 'First stage with changed=true.',
+        query: { kind: 'firstChanged' } satisfies TraceQuery
+      },
+      {
+        label: 'Find first metric jump',
+        detail: 'Ask for a metric name such as fallback.count.',
+        queryKind: 'firstMetricJump'
+      },
+      {
+        label: 'Find stages over a metric budget',
+        detail: 'Ask for a metric name and numeric budget.',
+        queryKind: 'metricBudget'
+      },
+      {
+        label: 'List slowest passes',
+        detail: 'Ask for N and sort timed stages by duration.',
+        queryKind: 'slowest'
+      },
+      {
+        label: 'Search trace text',
+        detail: 'Search pass names, scopes, diagnostics, and IR text.',
+        queryKind: 'search'
+      },
+      {
+        label: 'Generate GitHub issue description',
+        detail: 'Create a trace-grounded issue draft with evidence and guardrails.',
+        summaryKind: 'githubIssue'
+      },
+      {
+        label: 'Summarize top 3 suspicious passes',
+        detail: 'Rank suspicious pass candidates by failures, anomalies, diagnostics, and validation issues.',
+        summaryKind: 'topSuspicious'
+      },
+      {
+        label: 'Explain first fallback / legality / budget signal',
+        detail: 'Choose a signal family and generate a concise evidence summary.',
+        summaryKind: 'firstSignal'
+      },
+      {
+        label: 'Generate trace quality report',
+        detail: 'Check collector credibility: pass identity, timing, verifier, artifacts, and indexes.',
+        summaryKind: 'traceQuality'
+      },
+      {
+        label: 'Generate trace size report',
+        detail: 'Summarize inline IR, artifacts, diagnostics, and stage-count payload size.',
+        summaryKind: 'traceSize'
+      }
+    ],
+    {
+      title: 'Pass Lens: Query Current Trace',
+      placeHolder: 'Choose a deterministic trace query'
+    }
+  );
+  if (!picked) {
+    return;
+  }
+
+  const { loaded, sourceUri } = currentTraceSession;
+  if (picked.summaryKind) {
+    const content = await resolveIssueSummary(picked.summaryKind, loaded, sourceUri);
+    if (!content) {
+      return;
+    }
+    await showMarkdownDocument(content);
+    return;
+  }
+
+  const query = await resolveTraceQuery(picked);
+  if (!query) {
+    return;
+  }
+
+  const result = runTraceQuery(loaded.trace, query);
+  const content = [
+    renderTraceQueryResultMarkdown(result).trimEnd(),
+    '',
+    '## Source',
+    '',
+    `- Trace: ${sourceUri.fsPath}`,
+    `- Tool: ${loaded.trace.tool ?? 'unknown'}`,
+    `- Input: ${loaded.trace.input ?? 'unknown'}`
+  ].join('\n');
+  await showMarkdownDocument(`${content}\n`);
+}
+
+async function resolveIssueSummary(
+  summaryKind: string,
+  loaded: LoadedTrace,
+  sourceUri: vscode.Uri
+): Promise<string | undefined> {
+  if (summaryKind === 'githubIssue') {
+    return createGithubIssueDescription(loaded.trace, loaded.issues, loaded.anomalies, sourceUri.fsPath);
+  }
+  if (summaryKind === 'topSuspicious') {
+    return `${createSuspiciousPassesMarkdown(loaded.trace, loaded.issues, loaded.anomalies, 3)}\n`;
+  }
+  if (summaryKind === 'firstSignal') {
+    const picked = await vscode.window.showQuickPick(
+      [
+        { label: 'fallback', detail: 'First fallback metric, diagnostic, pass, or IR signal.' },
+        { label: 'legality', detail: 'First legality, verifier, or failed-status signal.' },
+        { label: 'budget', detail: 'First budget anomaly or budget-related metric signal.' }
+      ],
+      {
+        title: 'Pass Lens: First Signal Family',
+        placeHolder: 'Choose the signal family to explain'
+      }
+    );
+    if (!picked) {
+      return undefined;
+    }
+    return renderFirstSignalExplanation(explainFirstSignal(
+      loaded.trace,
+      loaded.issues,
+      loaded.anomalies,
+      picked.label as FirstSignalKind
+    ));
+  }
+  if (summaryKind === 'traceQuality') {
+    return renderTraceQualityMarkdown(evaluateTraceQuality(loaded.trace));
+  }
+  if (summaryKind === 'traceSize') {
+    return renderTraceSizeMarkdown(loaded.sizeSummary);
+  }
+  return undefined;
+}
+
+async function showMarkdownDocument(content: string): Promise<void> {
+  const document = await vscode.workspace.openTextDocument({
+    language: 'markdown',
+    content
+  });
+  await vscode.window.showTextDocument(document, { preview: true });
+}
+
+async function resolveTraceQuery(
+  picked: TraceQueryPick
+): Promise<TraceQuery | undefined> {
+  if (picked.query) {
+    return picked.query;
+  }
+
+  if (picked.queryKind === 'firstMetricJump') {
+    const metric = await askRequiredInput('Metric name', 'Example: fallback.count');
+    return metric ? { kind: 'firstMetricJump', metric } : undefined;
+  }
+  if (picked.queryKind === 'metricBudget') {
+    const metric = await askRequiredInput('Metric name', 'Example: ubBytes');
+    if (!metric) {
+      return undefined;
+    }
+    const budget = await askNumberInput('Metric budget', 'Example: 256');
+    return typeof budget === 'number' ? { kind: 'metricBudget', metric, budget } : undefined;
+  }
+  if (picked.queryKind === 'slowest') {
+    const count = await askNumberInput('Number of passes', 'Example: 5', '5');
+    return typeof count === 'number' ? { kind: 'slowest', count } : undefined;
+  }
+  if (picked.queryKind === 'search') {
+    const text = await askRequiredInput('Search text', 'Search pass names, scopes, diagnostics, and IR text');
+    return text ? { kind: 'search', text } : undefined;
+  }
+  return undefined;
+}
+
+async function askRequiredInput(title: string, prompt: string): Promise<string | undefined> {
+  const value = await vscode.window.showInputBox({
+    title,
+    prompt,
+    ignoreFocusOut: true,
+    validateInput: (input) => input.trim().length > 0 ? undefined : 'Value is required.'
+  });
+  return value?.trim();
+}
+
+async function askNumberInput(title: string, prompt: string, value?: string): Promise<number | undefined> {
+  const input = await vscode.window.showInputBox({
+    title,
+    prompt,
+    value,
+    ignoreFocusOut: true,
+    validateInput: (candidate) => {
+      const parsed = Number(candidate);
+      return Number.isFinite(parsed) ? undefined : 'Enter a finite number.';
+    }
+  });
+  if (input === undefined) {
+    return undefined;
+  }
+  return Number(input);
+}
+
 function getDefaultTraceUri(inputUri: vscode.Uri): vscode.Uri {
   const parsed = path.parse(inputUri.fsPath);
   return vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens.json`));
@@ -323,6 +661,7 @@ interface LoadedTrace {
   trace: PassTrace;
   issues: TraceIssue[];
   anomalies: MetricAnomaly[];
+  sizeSummary: TraceSizeSummary;
 }
 
 async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
@@ -333,7 +672,8 @@ async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
     return {
       trace,
       issues: [...validateTrace(trace), ...artifactIssues],
-      anomalies: computeTraceAnomalies(trace)
+      anomalies: computeTraceAnomalies(trace),
+      sizeSummary: await evaluateTraceSize(trace, uri.fsPath)
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -341,11 +681,12 @@ async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
   }
 }
 
-function toLoadedTrace(trace: PassTrace): LoadedTrace {
+async function toLoadedTrace(trace: PassTrace, tracePath?: string): Promise<LoadedTrace> {
   return {
     trace,
     issues: validateTrace(trace),
-    anomalies: computeTraceAnomalies(trace)
+    anomalies: computeTraceAnomalies(trace),
+    sizeSummary: await evaluateTraceSize(trace, tracePath)
   };
 }
 
@@ -385,7 +726,8 @@ function trimOutput(text: string): string | undefined {
 }
 
 function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, sourceUri: vscode.Uri): void {
-  const { trace, issues, anomalies } = loaded;
+  const { trace, issues, anomalies, sizeSummary } = loaded;
+  currentTraceSession = { loaded, sourceUri };
   const panel = vscode.window.createWebviewPanel(
     'passLens.trace',
     `Pass Lens: ${trace.input ?? sourceUri.path.split('/').pop() ?? 'trace'}`,
@@ -410,6 +752,9 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     }
     if (parsed.type === 'exportBundle') {
       await exportReproBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
+    }
+    if (parsed.type === 'exportDirectoryBundle') {
+      await exportReproDirectoryBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
     if (parsed.type === 'exportAgentContext') {
       await exportAgentContext(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
@@ -437,7 +782,7 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
 
   const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.css'));
   const scriptUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.js'));
-  panel.webview.html = getWebviewHtml(trace, issues, anomalies, sourceUri.fsPath, styleUri, scriptUri, panel.webview.cspSource);
+  panel.webview.html = getWebviewHtml(trace, issues, anomalies, sizeSummary, sourceUri.fsPath, styleUri, scriptUri, panel.webview.cspSource);
 }
 
 async function exportReproBundle(
@@ -470,6 +815,38 @@ async function exportReproBundle(
   const open = await vscode.window.showInformationMessage('Pass Lens exported repro bundle.', 'Open');
   if (open === 'Open') {
     await vscode.window.showTextDocument(target, { preview: false });
+  }
+}
+
+async function exportReproDirectoryBundle(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+): Promise<void> {
+  const parsed = path.parse(sourceUri.fsPath);
+  const target = await vscode.window.showOpenDialog({
+    canSelectFiles: false,
+    canSelectFolders: true,
+    canSelectMany: false,
+    defaultUri: vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-repro`)),
+    openLabel: 'Export Repro Directory',
+    title: 'Select Pass Lens repro directory'
+  });
+  if (!target?.[0]) {
+    return;
+  }
+
+  await exportDirectoryReproBundle(trace, issues, anomalies, {
+    targetDir: target[0].fsPath,
+    sourceTracePath: sourceUri.fsPath,
+    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
+  });
+  const manifestUri = vscode.Uri.file(path.join(target[0].fsPath, 'manifest.json'));
+  const open = await vscode.window.showInformationMessage('Pass Lens exported repro directory.', 'Open manifest');
+  if (open === 'Open manifest') {
+    await vscode.window.showTextDocument(manifestUri, { preview: false });
   }
 }
 
@@ -577,6 +954,7 @@ function getWebviewHtml(
   trace: PassTrace,
   issues: TraceIssue[],
   anomalies: MetricAnomaly[],
+  sizeSummary: TraceSizeSummary,
   sourcePath: string,
   styleUri: vscode.Uri,
   scriptUri: vscode.Uri,
@@ -587,6 +965,8 @@ function getWebviewHtml(
     traceIssues: issues,
     traceAnomalies: anomalies,
     traceIssueSummary: summarizeTraceIssues(issues),
+    traceQuality: evaluateTraceQuality(trace),
+    traceSize: sizeSummary,
     sourcePath
   }).replace(/</g, '\\u003c');
   const title = escapeHtml(trace.input ?? 'Pass Trace');

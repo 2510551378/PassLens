@@ -3,7 +3,7 @@
   const dataElement = document.getElementById('pass-lens-data');
   const serializedData = dataElement?.content?.textContent ?? dataElement?.textContent ?? '{}';
   const passLensData = JSON.parse(serializedData);
-  const { trace, traceIssues, traceAnomalies, traceIssueSummary, sourcePath } = passLensData;
+  const { trace, traceIssues, traceAnomalies, traceIssueSummary, traceQuality, traceSize, sourcePath } = passLensData;
   let selectedIndex = initialSelectedIndex();
   let filterText = '';
   let showChangedOnly = false;
@@ -62,6 +62,19 @@
     return typeof value === 'number' && Number.isFinite(value)
       ? Math.round(value * 100) / 100
       : '';
+  }
+
+  function fmtBytes(bytes) {
+    if (typeof bytes !== 'number' || !Number.isFinite(bytes)) {
+      return 'unknown';
+    }
+    if (bytes < 1024) {
+      return bytes + ' B';
+    }
+    if (bytes < 1024 * 1024) {
+      return fmtNumber(bytes / 1024) + ' KiB';
+    }
+    return fmtNumber(bytes / (1024 * 1024)) + ' MiB';
   }
   
   function initialSelectedIndex() {
@@ -231,6 +244,9 @@
     } else if (action === 'export-bundle') {
       const stage = trace.stages[selectedIndex];
       vscode.postMessage({ type: 'exportBundle', selectedStageIndex: stage?.index });
+    } else if (action === 'export-directory-bundle') {
+      const stage = trace.stages[selectedIndex];
+      vscode.postMessage({ type: 'exportDirectoryBundle', selectedStageIndex: stage?.index });
     } else if (action === 'export-agent-context') {
       const stage = trace.stages[selectedIndex];
       vscode.postMessage({ type: 'exportAgentContext', selectedStageIndex: stage?.index });
@@ -316,11 +332,15 @@
       .sort((a, b) => b.durationMs - a.durationMs)[0];
     const firstChanged = changed[0];
     const firstAnomaly = traceAnomalies[0];
+    const qualityTone = traceQuality?.score < 70 ? 'warning' : undefined;
+    const sizeTone = traceSize?.warnings?.some((entry) => entry.severity === 'warning') ? 'warning' : undefined;
     document.getElementById('summary').innerHTML =
       summaryCard('Stages', String(trace.stages.length), 'first') +
       summaryCard('Changed', changed.length + ' / ' + trace.stages.length, firstChanged ? 'first-signal' : undefined, firstChanged ? 'changed' : undefined) +
       summaryCard('First signal', failed ? 'verifier failed at #' + failed.index : firstChanged ? 'first change at #' + firstChanged.index : 'no IR changes', failed || firstChanged ? 'first-signal' : undefined, failed ? 'failed' : firstChanged ? 'changed' : undefined) +
       summaryCard('Anomalies', traceAnomalies.length ? traceAnomalies.length + ' suspicious metric delta(s)' : 'none', firstAnomaly ? 'first-anomaly' : undefined, traceAnomalies.length ? 'warning' : undefined) +
+      summaryCard('Trace quality', traceQuality ? traceQuality.score + '/100' : 'unknown', undefined, qualityTone) +
+      summaryCard('Trace size', traceSize ? fmtBytes(traceSize.totalKnownBytes) : 'unknown', undefined, sizeTone) +
       summaryCard('Slowest', slowest ? slowest.pass + ' (' + fmtNumber(slowest.durationMs) + ' ms)' : 'not recorded', slowest ? 'slowest' : undefined);
     document.getElementById('stage-count').textContent = trace.stages.length + ' stages';
     document.getElementById('changed-count').textContent = changed.length + ' changed';
@@ -482,6 +502,7 @@
       '<button class="action-button" data-action="export-explanation" title="Export evidence-grounded explanation">Explain suspicious pass</button>' +
       '<button class="action-button" data-action="export-agent-context" title="Export bounded agent-ready context">Export agent context</button>' +
       '<button class="action-button" data-action="export-bundle">Export repro bundle</button>' +
+      '<button class="action-button" data-action="export-directory-bundle">Export repro directory</button>' +
       '<button class="action-button" data-action="open-trace">Open trace JSON</button>' +
     '</div>';
   }

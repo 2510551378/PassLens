@@ -1,0 +1,87 @@
+<svg width="1280" height="560" viewBox="0 0 1280 560" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Pass Lens hero banner</title>
+  <desc id="desc">A compiler pass pipeline flows through an inspecting lens, exposing first signal, IR diff, metrics, diagnostics, and repro context.</desc>
+  <defs>
+    <radialGradient id="halo" cx="62%" cy="44%" r="58%">
+      <stop offset="0%" stop-color="#155b7a" stop-opacity="0.95"/>
+      <stop offset="42%" stop-color="#0d2236" stop-opacity="0.84"/>
+      <stop offset="100%" stop-color="#080c14"/>
+    </radialGradient>
+    <linearGradient id="rail" x1="129" y1="270" x2="1104" y2="270" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4ddfff" stop-opacity="0.06"/>
+      <stop offset="0.22" stop-color="#4ddfff"/>
+      <stop offset="0.48" stop-color="#ffbd5a"/>
+      <stop offset="0.76" stop-color="#4ddfff"/>
+      <stop offset="1" stop-color="#4ddfff" stop-opacity="0.08"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#18304a"/>
+      <stop offset="1" stop-color="#0d1828"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="11" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.05 0 0 0 0 0.76 0 0 0 0 1 0 0 0 0.58 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+  </defs>
+
+  <rect width="1280" height="560" rx="40" fill="#080c14"/>
+  <rect width="1280" height="560" rx="40" fill="url(#halo)"/>
+  <path d="M0 433C147 387 274 382 414 410C578 443 723 496 890 467C1017 445 1129 388 1280 394V560H0V433Z" fill="#050811" fill-opacity="0.62"/>
+
+  <g opacity="0.3">
+    <path d="M74 110H1194" stroke="#5edfff" stroke-opacity="0.16"/>
+    <path d="M74 178H1194" stroke="#5edfff" stroke-opacity="0.12"/>
+    <path d="M74 246H1194" stroke="#5edfff" stroke-opacity="0.1"/>
+    <path d="M74 314H1194" stroke="#5edfff" stroke-opacity="0.1"/>
+    <path d="M74 382H1194" stroke="#5edfff" stroke-opacity="0.12"/>
+    <path d="M142 68V486" stroke="#5edfff" stroke-opacity="0.1"/>
+    <path d="M320 68V486" stroke="#5edfff" stroke-opacity="0.1"/>
+    <path d="M498 68V486" stroke="#5edfff" stroke-opacity="0.1"/>
+    <path d="M676 68V486" stroke="#5edfff" stroke-opacity="0.1"/>
+    <path d="M854 68V486" stroke="#5edfff" stroke-opacity="0.1"/>
+    <path d="M1032 68V486" stroke="#5edfff" stroke-opacity="0.1"/>
+  </g>
+
+  <path d="M130 280C248 217 372 214 504 268C648 327 756 336 885 279C970 242 1045 241 1134 278" stroke="url(#rail)" stroke-width="9" stroke-linecap="round" filter="url(#glow)"/>
+  <path d="M130 330C270 374 399 364 508 316C642 256 762 241 890 307C973 349 1052 363 1134 331" stroke="#48dfff" stroke-opacity="0.36" stroke-width="4" stroke-linecap="round"/>
+
+  <g>
+    <rect x="125" y="235" width="154" height="82" rx="18" fill="url(#card)" stroke="#52dfff" stroke-opacity="0.7"/>
+    <rect x="318" y="198" width="154" height="82" rx="18" fill="url(#card)" stroke="#52dfff" stroke-opacity="0.7"/>
+    <rect x="512" y="279" width="154" height="82" rx="18" fill="url(#card)" stroke="#ffbd5a" stroke-opacity="0.8"/>
+    <rect x="807" y="234" width="154" height="82" rx="18" fill="url(#card)" stroke="#52dfff" stroke-opacity="0.7"/>
+    <rect x="1000" y="282" width="154" height="82" rx="18" fill="url(#card)" stroke="#52dfff" stroke-opacity="0.7"/>
+    <path d="M154 260H247M154 284H221" stroke="#b8f5ff" stroke-opacity="0.82" stroke-width="7" stroke-linecap="round"/>
+    <path d="M347 223H440M347 247H405" stroke="#b8f5ff" stroke-opacity="0.82" stroke-width="7" stroke-linecap="round"/>
+    <path d="M541 304H634M541 328H599" stroke="#ffd28a" stroke-opacity="0.94" stroke-width="7" stroke-linecap="round"/>
+    <path d="M836 259H929M836 283H894" stroke="#b8f5ff" stroke-opacity="0.82" stroke-width="7" stroke-linecap="round"/>
+    <path d="M1029 307H1122M1029 331H1087" stroke="#b8f5ff" stroke-opacity="0.82" stroke-width="7" stroke-linecap="round"/>
+  </g>
+
+  <g transform="translate(624 130)">
+    <path d="M0 145C55 82 114 50 178 50C241 50 298 82 352 145C298 208 241 240 178 240C114 240 55 208 0 145Z" fill="#07111d" stroke="#63e8ff" stroke-width="8"/>
+    <circle cx="178" cy="145" r="79" fill="#0e273b" stroke="#d1faff" stroke-width="5" filter="url(#glow)"/>
+    <circle cx="178" cy="145" r="48" fill="#06101b" stroke="#7eefff" stroke-width="2"/>
+    <circle cx="150" cy="110" r="17" fill="#f2feff" fill-opacity="0.9"/>
+    <path d="M128 192C158 215 209 210 231 177" stroke="#b9f7ff" stroke-width="7" stroke-linecap="round" opacity="0.55"/>
+  </g>
+
+  <g font-family="Segoe UI, Inter, Arial, sans-serif">
+    <text x="86" y="110" fill="#f1fbff" font-size="54" font-weight="750" letter-spacing="0">Pass Lens</text>
+    <text x="88" y="154" fill="#9eddec" font-size="22" font-weight="500">Evidence-driven postmortem debugger for MLIR / LLVM pass pipelines</text>
+    <text x="88" y="458" fill="#c7f7ff" font-size="20" font-weight="650">first signal</text>
+    <text x="238" y="458" fill="#c7f7ff" font-size="20" font-weight="650">IR diff</text>
+    <text x="342" y="458" fill="#ffd28a" font-size="20" font-weight="650">metric anomalies</text>
+    <text x="540" y="458" fill="#c7f7ff" font-size="20" font-weight="650">diagnostics</text>
+    <text x="692" y="458" fill="#c7f7ff" font-size="20" font-weight="650">repro bundle</text>
+    <text x="872" y="458" fill="#c7f7ff" font-size="20" font-weight="650">agent context</text>
+  </g>
+
+  <circle cx="76" cy="452" r="5" fill="#ffbd5a"/>
+  <circle cx="222" cy="452" r="5" fill="#ffbd5a"/>
+  <circle cx="326" cy="452" r="5" fill="#ffbd5a"/>
+  <circle cx="523" cy="452" r="5" fill="#ffbd5a"/>
+  <circle cx="676" cy="452" r="5" fill="#ffbd5a"/>
+  <circle cx="856" cy="452" r="5" fill="#ffbd5a"/>
+</svg>
