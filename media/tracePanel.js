@@ -183,6 +183,9 @@
     } else if (action === 'export-agent-context') {
       const stage = trace.stages[selectedIndex];
       vscode.postMessage({ type: 'exportAgentContext', selectedStageIndex: stage?.index });
+    } else if (action === 'export-explanation') {
+      const stage = trace.stages[selectedIndex];
+      vscode.postMessage({ type: 'exportExplanation', selectedStageIndex: stage?.index });
     }
   }
   
@@ -364,6 +367,7 @@
       '<button class="action-button" data-action="prev-changed">Prev changed</button>' +
       '<button class="action-button" data-action="next-changed">Next changed</button>' +
       '<button class="action-button" data-action="slowest">Slowest</button>' +
+      '<button class="action-button" data-action="export-explanation">Explain suspicious pass</button>' +
       '<button class="action-button" data-action="export-agent-context">Export agent context</button>' +
       '<button class="action-button" data-action="export-bundle">Export repro bundle</button>' +
       '<button class="action-button" data-action="open-trace">Open trace JSON</button>' +

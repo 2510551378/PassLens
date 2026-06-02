@@ -13,6 +13,10 @@ export type TracePanelMessage =
   | {
       type: 'exportAgentContext';
       selectedStageIndex?: number;
+    }
+  | {
+      type: 'exportExplanation';
+      selectedStageIndex?: number;
     };
 
 export function parseTracePanelMessage(raw: unknown): TracePanelMessage | undefined {
@@ -54,6 +58,17 @@ export function parseTracePanelMessage(raw: unknown): TracePanelMessage | undefi
         }
       : {
           type: 'exportAgentContext'
+        };
+  }
+
+  if (raw.type === 'exportExplanation') {
+    return typeof raw.selectedStageIndex === 'number' && Number.isFinite(raw.selectedStageIndex)
+      ? {
+          type: 'exportExplanation',
+          selectedStageIndex: raw.selectedStageIndex
+        }
+      : {
+          type: 'exportExplanation'
         };
   }
 

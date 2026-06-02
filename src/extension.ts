@@ -8,6 +8,7 @@ import { collectMlirTrace } from './mlirCollector';
 import { createReproBundle } from './reproBundle';
 import { computeTraceAnomalies } from './trace/anomalies';
 import { hydrateTraceArtifacts } from './trace/artifacts';
+import { createTraceExplanation } from './traceExplanation';
 import { normalizeTrace } from './trace/schema';
 import { summarizeTraceIssues, validateTrace } from './trace/validation';
 import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
@@ -395,6 +396,9 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     if (parsed.type === 'exportAgentContext') {
       await exportAgentContext(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
+    if (parsed.type === 'exportExplanation') {
+      await exportTraceExplanation(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
+    }
   });
 
   const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.css'));
@@ -467,6 +471,39 @@ async function exportAgentContext(
     : `${JSON.stringify(context, null, 2)}\n`;
   await fs.writeFile(target.fsPath, content, 'utf8');
   const open = await vscode.window.showInformationMessage('Pass Lens exported agent context.', 'Open');
+  if (open === 'Open') {
+    await vscode.window.showTextDocument(target, { preview: false });
+  }
+}
+
+async function exportTraceExplanation(
+  sourceUri: vscode.Uri,
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[],
+  selectedStageIndex: unknown
+): Promise<void> {
+  const parsed = path.parse(sourceUri.fsPath);
+  const defaultUri = vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-explanation.md`));
+  const target = await vscode.window.showSaveDialog({
+    defaultUri,
+    filters: {
+      Markdown: ['md'],
+      'All files': ['*']
+    },
+    saveLabel: 'Export Explanation',
+    title: 'Export Pass Lens suspicious pass explanation'
+  });
+  if (!target) {
+    return;
+  }
+
+  const content = createTraceExplanation(trace, issues, anomalies, {
+    sourcePath: sourceUri.fsPath,
+    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
+  });
+  await fs.writeFile(target.fsPath, content, 'utf8');
+  const open = await vscode.window.showInformationMessage('Pass Lens exported suspicious pass explanation.', 'Open');
   if (open === 'Open') {
     await vscode.window.showTextDocument(target, { preview: false });
   }

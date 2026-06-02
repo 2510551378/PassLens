@@ -53,6 +53,22 @@ test('parseTracePanelMessage accepts export agent context messages with optional
   });
 });
 
+test('parseTracePanelMessage accepts export explanation messages with optional selected stage', () => {
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'exportExplanation',
+    selectedStageIndex: 11
+  }), {
+    type: 'exportExplanation',
+    selectedStageIndex: 11
+  });
+
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'exportExplanation'
+  }), {
+    type: 'exportExplanation'
+  });
+});
+
 test('parseTracePanelMessage rejects malformed or unknown messages', () => {
   assert.equal(parseTracePanelMessage(undefined), undefined);
   assert.equal(parseTracePanelMessage([]), undefined);
