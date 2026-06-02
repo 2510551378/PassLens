@@ -3,7 +3,7 @@
   const dataElement = document.getElementById('pass-lens-data');
   const serializedData = dataElement?.content?.textContent ?? dataElement?.textContent ?? '{}';
   const passLensData = JSON.parse(serializedData);
-  const { trace, traceIssues, traceAnomalies, traceIssueSummary, sourcePath } = passLensData;
+  const { trace, traceIssues, traceAnomalies, traceIssueSummary, traceQuality, sourcePath } = passLensData;
   let selectedIndex = initialSelectedIndex();
   let filterText = '';
   let showChangedOnly = false;
@@ -319,11 +319,13 @@
       .sort((a, b) => b.durationMs - a.durationMs)[0];
     const firstChanged = changed[0];
     const firstAnomaly = traceAnomalies[0];
+    const qualityTone = traceQuality?.score < 70 ? 'warning' : undefined;
     document.getElementById('summary').innerHTML =
       summaryCard('Stages', String(trace.stages.length), 'first') +
       summaryCard('Changed', changed.length + ' / ' + trace.stages.length, firstChanged ? 'first-signal' : undefined, firstChanged ? 'changed' : undefined) +
       summaryCard('First signal', failed ? 'verifier failed at #' + failed.index : firstChanged ? 'first change at #' + firstChanged.index : 'no IR changes', failed || firstChanged ? 'first-signal' : undefined, failed ? 'failed' : firstChanged ? 'changed' : undefined) +
       summaryCard('Anomalies', traceAnomalies.length ? traceAnomalies.length + ' suspicious metric delta(s)' : 'none', firstAnomaly ? 'first-anomaly' : undefined, traceAnomalies.length ? 'warning' : undefined) +
+      summaryCard('Trace quality', traceQuality ? traceQuality.score + '/100' : 'unknown', undefined, qualityTone) +
       summaryCard('Slowest', slowest ? slowest.pass + ' (' + fmtNumber(slowest.durationMs) + ' ms)' : 'not recorded', slowest ? 'slowest' : undefined);
     document.getElementById('stage-count').textContent = trace.stages.length + ' stages';
     document.getElementById('changed-count').textContent = changed.length + ' changed';

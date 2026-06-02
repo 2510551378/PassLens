@@ -247,7 +247,11 @@ repro/
 - [ ] Add directory-style repro bundle.
 - [ ] Add at least 3 trace cases, with provenance labels.
 - [ ] Add demo GIF and workflow-focused README.
-- [ ] Add trace quality score.
+- [x] Add trace quality score.
+  - Commit: this change.
+  - The webview summary now displays `Trace quality` from
+    `evaluateTraceQuality(trace)`, and the query command can render the full
+    quality report.
 
 ### Month 1-3: Real Collector Workflow
 

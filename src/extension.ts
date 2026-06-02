@@ -952,6 +952,7 @@ function getWebviewHtml(
     traceIssues: issues,
     traceAnomalies: anomalies,
     traceIssueSummary: summarizeTraceIssues(issues),
+    traceQuality: evaluateTraceQuality(trace),
     sourcePath
   }).replace(/</g, '\\u003c');
   const title = escapeHtml(trace.input ?? 'Pass Trace');
