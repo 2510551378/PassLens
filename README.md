@@ -156,6 +156,8 @@ in that case. Other failures are configure/build failures worth inspecting.
 
 ## Roadmap
 
+See `docs/expert-roadmap-todo.md` for the expert-guided execution checklist.
+
 - Stabilize schema v1 with validation diagnostics.
 - Keep the structured MLIR collector as the primary path and the textual
   `mlir-opt` dump parser as a fallback.
