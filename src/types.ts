@@ -18,6 +18,20 @@ export interface CaptureInfo {
   timing?: boolean;
 }
 
+export type TraceProvenanceKind =
+  | 'live-pass-instrumentation'
+  | 'converted-dump'
+  | 'hand-authored'
+  | 'real-artifact-capture';
+
+export interface TraceProvenance {
+  kind?: TraceProvenanceKind;
+  description?: string;
+  source?: string;
+  generatedBy?: string;
+  capturedAt?: string;
+}
+
 export interface MetricProfile {
   critical?: string[];
   budgets?: Record<string, number>;
@@ -57,6 +71,7 @@ export interface PassTrace {
   collectorVersion?: string;
   compiler?: CompilerInfo;
   target?: TargetInfo;
+  provenance?: TraceProvenance;
   inputHash?: string;
   capture?: CaptureInfo;
   metricProfiles?: MetricProfiles;

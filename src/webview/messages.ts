@@ -33,6 +33,10 @@ export type TracePanelMessage =
   | {
       type: 'openArtifact';
       path: string;
+    }
+  | {
+      type: 'requestStageArtifacts';
+      stageIndex: number;
     };
 
 export function parseTracePanelMessage(raw: unknown): TracePanelMessage | undefined {
@@ -126,6 +130,15 @@ export function parseTracePanelMessage(raw: unknown): TracePanelMessage | undefi
       ? {
           type: 'openArtifact',
           path: raw.path
+        }
+      : undefined;
+  }
+
+  if (raw.type === 'requestStageArtifacts') {
+    return typeof raw.stageIndex === 'number' && Number.isFinite(raw.stageIndex)
+      ? {
+          type: 'requestStageArtifacts',
+          stageIndex: raw.stageIndex
         }
       : undefined;
   }

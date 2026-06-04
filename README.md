@@ -18,7 +18,11 @@
   ·
   <a href="docs/trace-schema.md">Trace Schema</a>
   ·
-  <a href="docs/expert-roadmap-todo.md">Roadmap</a>
+  <a href="docs/collector-author-guide.md">Collector Guide</a>
+  ·
+  <a href="docs/sample-provenance.md">Sample Provenance</a>
+  ·
+  <a href="docs/release-milestones.md">Milestones</a>
   ·
   <a href="collectors/mlir-pass-lens">MLIR Collector</a>
 </p>
@@ -50,13 +54,18 @@ Pass Lens gives compiler engineers a trace-grounded workflow:
 | Repro | Markdown repro, directory repro bundle, commands, artifacts |
 | Agent handoff | Bounded JSON/Markdown context with evidence IDs and guardrails |
 
+The Pass Lens trace schema is the public contract. The VS Code extension is one
+viewer, the MLIR collector is one reference producer, and downstream compilers
+can implement their own producers.
+
 ## Highlights
 
 - Pass-by-pass timeline with changed, unchanged, failed, anomalous, and slow
   stages.
+- Virtualized timeline rendering for long pass pipelines.
 - First-signal navigation for verifier failures, first IR changes, anomaly
   spikes, and slowest passes.
-- Side-by-side IR diff with inline or artifact-backed snapshots.
+- Side-by-side IR diff with inline snapshots or lazy-loaded artifact-backed IR.
 - Metric anomaly detection for zero-to-positive jumps, large relative changes,
   and domain-specific budget violations.
 - Trace quality score for collector credibility: pass identity, timing,
@@ -89,64 +98,66 @@ npm run package
 code --install-extension pass-lens-0.1.0.vsix
 ```
 
-Open VS Code and run:
-
-```text
-Pass Lens: Open Sample Trace
-```
+Open VS Code and run `Pass Lens: Open Sample Trace`.
 
 Good first samples:
 
-- `Verifier failure`
-- `External IR artifacts`
-- `Toy MLIR pipeline`
-- `Long lowering pipeline`
+- `Live MLIR PassInstrumentation`: real structured collector output with
+  artifact-backed IR.
+- `Verifier failure`: opens on the first failed pass.
+- `External IR artifacts`: demonstrates lazy artifact-backed IR loading.
+- `Toy MLIR pipeline`: smallest end-to-end viewer smoke test.
+- `Long lowering pipeline`: useful for filtering, navigation, and slow-pass UX.
 
-Open your own trace with:
+Open your own trace with `Pass Lens: Open Trace File`. The trace should follow
+[`docs/pass-lens.schema.json`](docs/pass-lens.schema.json).
+
+Validate a trace before sharing or uploading it from CI:
+
+```powershell
+npm run validate:trace -- path\to\trace.json
+```
+
+## Usage Guide
+
+### 1. Inspect a Trace
+
+Start with a sample or a local JSON trace:
 
 ```text
+Pass Lens: Open Sample Trace
 Pass Lens: Open Trace File
 ```
 
-The trace should follow [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json).
-Agent exports follow
-[`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json).
-Agent tool manifests follow
-[`docs/pass-lens-agent-tools.schema.json`](docs/pass-lens-agent-tools.schema.json).
-See [`docs/agent-tools.md`](docs/agent-tools.md) for the agent-facing contract.
-Collector examples live in [`docs/schema-examples.md`](docs/schema-examples.md).
+Read the top summary cards first:
 
-## Core Workflow
+- `First signal`: first verifier failure, or first changed pass if no failure
+  exists.
+- `Anomalies`: suspicious metric jumps or budget violations.
+- `Trace quality`: whether the collector provided pass identity, timing,
+  verifier status, artifacts, and stable stage indexes.
+- `Trace size`: inline IR bytes, artifact bytes, diagnostics bytes, and quick
+  fixes for traces that should switch to artifact-backed capture.
+- `Origin`: whether the trace is live instrumentation, a converted dump,
+  hand-authored, or a real artifact capture.
 
-1. Open a sample or local JSON trace.
-2. Read the summary cards: changed passes, first signal, anomalies, trace
-   quality, trace size, and slowest pass.
-3. Select a pass in the timeline.
-4. Inspect why the selected pass is interesting.
-5. Compare before/after IR and metric deltas.
-6. Open artifact sidecars or diagnostics when needed.
-7. Export a repro bundle, issue summary, suspicious-pass explanation, or agent
-   context.
-8. Use prefix bisection when you need a minimal failing pass prefix.
+Select a pass in the timeline to inspect:
 
-Useful shortcuts:
+- before/after IR diff;
+- metric deltas;
+- diagnostics;
+- artifact paths;
+- suspicious-pass explanation;
+- copy/export actions.
 
-| Shortcut | Action |
-| --- | --- |
-| `j` / `Down` | Next visible pass |
-| `k` / `Up` | Previous visible pass |
-| `/` | Focus search |
-| `c` | Toggle changed-only |
-| `f` | Jump to first signal |
-| `a` | Jump to first anomaly |
-| `s` | Jump to slowest pass |
+Artifact-backed IR is loaded lazily. Opening a large trace does not read every
+before/after artifact; Pass Lens reads artifact text for the selected stage when
+you inspect or export it.
 
-## Trace Producers
+### 2. Collect a Structured MLIR Trace
 
-### Structured MLIR Collector
-
-Use this path when you can build `pass-lens-mlir-opt` or integrate the
-collector into a downstream MLIR driver.
+Use this path when you can build `pass-lens-mlir-opt` or integrate the collector
+into a downstream MLIR driver:
 
 ```powershell
 pass-lens-mlir-opt input.mlir `
@@ -156,23 +167,42 @@ pass-lens-mlir-opt input.mlir `
   -o output.mlir
 ```
 
-This is the preferred path for timing, verifier attribution, pass identity, and
-artifact-backed IR snapshots.
+Then open `input.pass-lens.json` with `Pass Lens: Open Trace File`.
 
-### `mlir-opt` Dump Fallback
+This is the preferred path for:
 
-Use `Pass Lens: Run mlir-opt Trace` when only `mlir-opt` is available. This path
-reverse-parses textual dump markers, so it is useful for quick experiments but
-cannot provide reliable per-pass duration.
+- pass identity and nested pass scope;
+- verifier attribution;
+- per-pass timing;
+- metric capture;
+- artifact-backed before/after IR.
 
-### Downstream Compiler JSON
+### 3. Use the `mlir-opt` Dump Fallback
 
-Downstream compilers can emit the schema directly:
+When only `mlir-opt` is available, run:
+
+```text
+Pass Lens: Run mlir-opt Trace
+```
+
+This wrapper reverse-parses textual dump markers from `mlir-opt`. It is useful
+for quick experiments, but it cannot provide reliable per-pass duration. Pass
+Lens labels this limitation through trace quality reports instead of pretending
+the fallback is equivalent to structured instrumentation.
+
+### 4. Emit JSON From Another Compiler
+
+Downstream compilers can emit the schema directly. For real compiler pipelines,
+prefer artifact-backed IR:
 
 ```json
 {
   "schemaVersion": 1,
   "tool": "my-compiler",
+  "provenance": {
+    "kind": "live-pass-instrumentation",
+    "description": "Collected from the compiler pass instrumentation hook."
+  },
   "capture": {
     "ir": "artifact",
     "metrics": true,
@@ -200,12 +230,89 @@ Downstream compilers can emit the schema directly:
 }
 ```
 
-See [docs/trace-schema.md](docs/trace-schema.md) for the full viewer contract.
+Use [`docs/schema-examples.md`](docs/schema-examples.md) as collector-author
+templates for MLIR, LLVM New Pass Manager-style traces, and hardware backend
+metrics. The full schema lives at
+[`docs/pass-lens.schema.json`](docs/pass-lens.schema.json), and field semantics
+are documented in [`docs/trace-schema.md`](docs/trace-schema.md). For a
+step-by-step producer integration path, see
+[`docs/collector-author-guide.md`](docs/collector-author-guide.md).
+
+### 5. Generate Reports and Repro Artifacts
+
+After opening a trace, run:
+
+```text
+Pass Lens: Query Current Trace
+```
+
+Useful report actions include:
+
+- GitHub issue description;
+- top suspicious passes;
+- first fallback / legality / budget signal;
+- candidate root causes;
+- trace quality report;
+- trace size report.
+
+From the trace panel you can also export:
+
+- Markdown repro bundle;
+- directory repro bundle with `trace.json`, artifacts, `run.ps1`, `run.sh`,
+  `manifest.json`, `agent-context.json`, and `agent-tools.json`;
+- bounded agent context as JSON or Markdown;
+- suspicious-pass explanation.
+
+Agent exports follow
+[`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json).
+Agent tool manifests follow
+[`docs/pass-lens-agent-tools.schema.json`](docs/pass-lens-agent-tools.schema.json).
+See [`docs/agent-tools.md`](docs/agent-tools.md) for the agent-facing contract.
+
+### 6. Find a Minimal Failing Prefix
+
+If a pipeline fails and you need the smallest failing prefix, run:
+
+```text
+Pass Lens: Run Prefix Bisect
+```
+
+Pass Lens reruns textual MLIR pipeline prefixes with the configured structured
+collector driver and opens a minimal failing prefix report with command lines,
+attempt traces, diagnostics, and the shortest failing prefix if one is found.
+
+### 7. Work With Large Traces
+
+For real compiler pipelines:
+
+- prefer `capture.ir = "artifact"` over large inline IR strings;
+- keep before/after IR in sidecar files and reference them through
+  `artifacts.beforePath` / `artifacts.afterPath`;
+- include `provenance` so users know whether a trace came from live
+  instrumentation, converted dumps, hand-authored examples, or real artifact
+  captures;
+- use the trace size report to find inline payloads that should move to
+  artifacts;
+- use trace quality reports before trusting root-cause candidates.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+| --- | --- |
+| `j` / `Down` | Next visible pass |
+| `k` / `Up` | Previous visible pass |
+| `/` | Focus search |
+| `c` | Toggle changed-only |
+| `f` | Jump to first signal |
+| `a` | Jump to first anomaly |
+| `s` | Jump to slowest pass |
 
 ## Sample Gallery
 
 `Pass Lens: Open Sample Trace` includes:
 
+- `Live MLIR PassInstrumentation`: real structured collector output from L20,
+  with artifact-backed IR for `canonicalize,cse`.
 - `Toy MLIR pipeline`: small trace for checking the basic viewer layout.
 - `Long lowering pipeline`: longer trace for filters, changed-only view, and
   slowest-pass navigation.
@@ -222,6 +329,9 @@ See [docs/trace-schema.md](docs/trace-schema.md) for the full viewer contract.
 The Triton NPU / AscendC samples are not part of the core product contract.
 They are kept as optional case studies showing that the same schema can carry
 hardware-backend evidence.
+
+See [docs/sample-provenance.md](docs/sample-provenance.md) for which samples are
+live collector output, real artifact captures, or hand-authored examples.
 
 ## Commands
 
@@ -273,7 +383,9 @@ Current focus:
 - marketplace-ready packaging and demos.
 
 See [docs/expert-roadmap-todo.md](docs/expert-roadmap-todo.md) for the
-expert-guided execution checklist.
+expert-guided execution checklist and
+[docs/release-milestones.md](docs/release-milestones.md) for the release-level
+open-source roadmap.
 
 ## Known Limitations
 

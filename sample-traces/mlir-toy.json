@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "tool": "mlir-opt",
+  "provenance": {
+    "kind": "hand-authored",
+    "description": "Hand-authored minimal MLIR-style trace for basic viewer smoke testing."
+  },
   "input": "toy.mlir",
   "pipeline": "builtin.module(func.func(canonicalize,cse),convert-func-to-llvm)",
   "command": "mlir-opt toy.mlir --pass-pipeline=builtin.module(func.func(canonicalize,cse),convert-func-to-llvm) --mlir-disable-threading --mlir-print-ir-before-all --mlir-print-ir-after-all --verify-each",

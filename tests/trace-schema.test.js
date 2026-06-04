@@ -19,6 +19,13 @@ test('normalizeTrace fills defaults and preserves extension metadata', () => {
       backend: 'ascendc',
       platform: 'ascend-910b2'
     },
+    provenance: {
+      kind: 'live-pass-instrumentation',
+      description: 'Collected from a real structured collector run.',
+      source: 'collectors/mlir-pass-lens',
+      generatedBy: 'pass-lens-mlir-opt',
+      capturedAt: '2026-06-04'
+    },
     capture: {
       ir: 'omitted',
       metrics: true,
@@ -46,6 +53,13 @@ test('normalizeTrace fills defaults and preserves extension metadata', () => {
   assert.deepEqual(trace.target, {
     backend: 'ascendc',
     platform: 'ascend-910b2'
+  });
+  assert.deepEqual(trace.provenance, {
+    kind: 'live-pass-instrumentation',
+    description: 'Collected from a real structured collector run.',
+    source: 'collectors/mlir-pass-lens',
+    generatedBy: 'pass-lens-mlir-opt',
+    capturedAt: '2026-06-04'
   });
   assert.deepEqual(trace.capture, {
     ir: 'omitted',

@@ -3,9 +3,13 @@
 This TODO captures the expert guidance pasted on 2026-06-02 and turns it into
 an execution checklist. The guiding principle is:
 
-> Pass Lens is a trace-grounded debugging workbench for compiler pass
-> pipelines, with optional AI agents for evidence-based root-cause triage and
-> repro generation.
+> Pass Lens is a public pass-pipeline debugging evidence format, a reference
+> VS Code workbench, a reference MLIR collector, and an optional trace-grounded
+> agent handoff layer.
+
+Release-level milestones are tracked in
+[`docs/release-milestones.md`](release-milestones.md). This file remains the
+more detailed execution checklist.
 
 ## Positioning
 
@@ -26,6 +30,12 @@ an execution checklist. The guiding principle is:
   - README sample ordering now leads with generic MLIR/verifier/artifact
     examples, package keywords no longer mention AscendC, and Triton/NPU traces
     are documented as optional case studies rather than the product contract.
+- [x] Clarify that the trace schema is the public contract, the VS Code
+  extension is one viewer, and collectors are independent producers.
+  - Commit: this change.
+  - README now links the collector author guide and release milestones, and
+    public docs state that downstream compilers can implement their own
+    producers.
 
 ## P0: Trace-Grounded AI Foundation
 
@@ -182,8 +192,12 @@ an execution checklist. The guiding principle is:
   - [ ] Candidate: IREE lowering pipeline.
   - [ ] Candidate: torch-mlir lowering pipeline.
 - [ ] Replace or supplement synthetic samples with 2-3 real trace cases.
-- [ ] Document which samples are live `PassInstrumentation` output versus
+- [x] Document which samples are live `PassInstrumentation` output versus
   hand-authored / converted examples.
+  - Commit: this change.
+  - Added `provenance` to schema v1 and every bundled sample trace, plus
+    `docs/sample-provenance.md`. A new `mlir-live-pass-instrumentation.json`
+    sample is real L20 `pass-lens-mlir-opt` structured collector output.
 - [x] Add collector trace quality checks:
   - [x] Missing pass identity.
   - [x] Missing timing.
@@ -251,9 +265,18 @@ repro/
 
 ## Performance And Large Trace Support
 
-- [ ] Lazy-load artifact IR on stage selection instead of hydrating every stage
+- [x] Lazy-load artifact IR on stage selection instead of hydrating every stage
   eagerly.
-- [ ] Add virtualized timeline/list rendering for large traces.
+  - Commit: this change.
+  - Opening a trace no longer reads every before/after artifact. The webview
+    requests artifact IR for the selected stage, and export/copy actions hydrate
+    only the selected stage before generating context.
+- [x] Add virtualized timeline/list rendering for large traces.
+  - Commit: this change.
+  - The webview now renders only the visible timeline window with overscan,
+    preserves scroll height with spacers, buckets dense overview segments, and
+    caches metric-impact scores to avoid O(n^2) long-trace rendering.
+  - Covered by a 2000-stage webview smoke test.
 - [x] Add bounded / on-demand diff computation.
   - Commit: this change.
   - Diff rows are computed only for the selected stage and rendered through a
@@ -286,6 +309,16 @@ repro/
   - Commit: this change.
   - Added `docs/schema-examples.md` with collector authoring rules and mapping
     guidance for MLIR, LLVM New Pass Manager, and hardware backends.
+- [x] Add a full collector author guide.
+  - Commit: this change.
+  - `docs/collector-author-guide.md` documents minimal traces, pass mapping,
+    artifact-backed IR, diagnostics, metrics, status/timing, provenance, CI
+    validation, repro artifacts, and common mistakes.
+- [x] Add a trace validation CLI suitable for CI and collector authors.
+  - Commit: this change.
+  - `npm run validate:trace -- trace.json` reuses strict schema validation and
+    viewer-level validation, with `--strict-only`, `--warnings-as-errors`, and
+    `--json` modes.
 - [x] Add schema examples for:
   - [x] MLIR.
   - [x] LLVM New Pass Manager.
@@ -307,6 +340,11 @@ repro/
 - [ ] Publish VS Code Marketplace preview.
 - [ ] Publish Open VSX preview.
 - [ ] Add 30-second demo GIF to README.
+- [x] Add a minimal CI demo for trace validation and evidence artifact upload.
+  - Commit: this change.
+  - `.github/workflows/pass-lens-demo.yml` validates public trace artifacts and
+    uploads a small `pass-lens-demo-evidence` bundle containing `trace.json` and
+    artifact-backed IR sidecars.
 - [ ] Write "Finding the First Bad MLIR Pass with Pass Lens".
 - [ ] Write "From IR Dumps to Compiler Observability".
 - [ ] Prepare an MLIR discourse post with a concrete real trace demo.
@@ -318,7 +356,10 @@ repro/
 
 - [ ] Publish Marketplace preview.
 - [ ] Add directory-style repro bundle.
-- [ ] Add at least 3 trace cases, with provenance labels.
+- [x] Add at least 3 trace cases, with provenance labels.
+  - Commit: this change.
+  - All bundled sample traces now declare `provenance.kind` and
+    `provenance.description`; tests enforce this for future samples.
 - [ ] Add demo GIF and workflow-focused README.
 - [x] Add trace quality score.
   - Commit: this change.
@@ -329,7 +370,10 @@ repro/
 ### Month 1-3: Real Collector Workflow
 
 - [ ] Integrate structured collector into one real downstream compiler.
-- [ ] Add artifact lazy loading.
+- [x] Add artifact lazy loading.
+  - Commit: this change.
+  - Stage artifact IR is loaded on selection through a webview request instead
+    of eager trace-wide hydration.
 - [ ] Add prefix bisection.
 - [ ] Add first-failure localization report.
 - [ ] Validate large trace UX and performance.

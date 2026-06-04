@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "collectorVersion": "example-llvm-new-pass-manager/0.1.0",
+  "provenance": {
+    "kind": "hand-authored",
+    "description": "Hand-authored LLVM New Pass Manager collector contract example."
+  },
   "compiler": {
     "name": "opt",
     "version": "21.0.0",

@@ -2,6 +2,7 @@ import type { TraceIssue } from '../types';
 
 const knownStatuses = new Set(['ok', 'changed', 'verifier_failed', 'pass_failed', 'skipped']);
 const captureModes = new Set(['inline', 'artifact', 'omitted']);
+const provenanceKinds = new Set(['live-pass-instrumentation', 'converted-dump', 'hand-authored', 'real-artifact-capture']);
 
 export function validateTraceStrict(raw: unknown): TraceIssue[] {
   const issues: TraceIssue[] = [];
@@ -12,6 +13,7 @@ export function validateTraceStrict(raw: unknown): TraceIssue[] {
   requireExactNumber(raw, 'schemaVersion', '$.schemaVersion', 1, issues);
   validateOptionalObject(raw.compiler, '$.compiler', issues, validateCompilerInfo);
   validateOptionalObject(raw.target, '$.target', issues, validateTargetInfo);
+  validateOptionalObject(raw.provenance, '$.provenance', issues, validateTraceProvenance);
   validateOptionalObject(raw.capture, '$.capture', issues, validateCaptureInfo);
   validateMetricProfiles(raw.metricProfiles, '$.metricProfiles', issues);
   validateOptionalString(raw.collectorVersion, '$.collectorVersion', issues);
@@ -27,6 +29,7 @@ export function validateTraceStrict(raw: unknown): TraceIssue[] {
     'collectorVersion',
     'compiler',
     'target',
+    'provenance',
     'inputHash',
     'capture',
     'metricProfiles',
@@ -125,6 +128,21 @@ function validateTargetInfo(raw: Record<string, unknown>, path: string, issues: 
   validateOptionalString(raw.backend, `${path}.backend`, issues);
   validateOptionalString(raw.platform, `${path}.platform`, issues);
   validateOptionalString(raw.triple, `${path}.triple`, issues);
+}
+
+function validateTraceProvenance(raw: Record<string, unknown>, path: string, issues: TraceIssue[]): void {
+  validateAllowedProperties(raw, path, ['kind', 'description', 'source', 'generatedBy', 'capturedAt'], issues);
+  validateOptionalString(raw.description, `${path}.description`, issues);
+  validateOptionalString(raw.source, `${path}.source`, issues);
+  validateOptionalString(raw.generatedBy, `${path}.generatedBy`, issues);
+  validateOptionalString(raw.capturedAt, `${path}.capturedAt`, issues);
+  if (raw.kind !== undefined) {
+    if (typeof raw.kind !== 'string') {
+      issues.push(strictIssue(`${path}.kind`, 'provenance.kind must be a string.'));
+    } else if (!provenanceKinds.has(raw.kind)) {
+      issues.push(strictIssue(`${path}.kind`, `provenance.kind must be one of ${Array.from(provenanceKinds).join(', ')}.`));
+    }
+  }
 }
 
 function validateCaptureInfo(raw: Record<string, unknown>, path: string, issues: TraceIssue[]): void {

@@ -23,6 +23,7 @@ export interface AgentContext {
     command?: string;
     exitCode?: number;
     capture?: PassTrace['capture'];
+    provenance?: PassTrace['provenance'];
   };
   summary: {
     stageCount: number;
@@ -117,7 +118,8 @@ export function createAgentContext(
       pipeline: trace.pipeline,
       command: trace.command,
       exitCode: trace.exitCode,
-      capture: trace.capture
+      capture: trace.capture,
+      provenance: trace.provenance
     },
     summary: {
       stageCount: trace.stages.length,
@@ -149,6 +151,7 @@ export function createAgentContextMarkdown(context: AgentContext): string {
     `- Source trace: ${context.source.tracePath ?? 'unknown'}`,
     `- Tool: ${context.source.tool ?? 'unknown'}`,
     `- Collector: ${context.source.collectorVersion ?? 'unknown'}`,
+    `- Provenance: ${formatProvenance(context.source.provenance)}`,
     `- Input: ${context.source.input ?? 'unknown'}`,
     `- Pipeline: ${context.source.pipeline ?? 'unknown'}`,
     `- Exit code: ${context.source.exitCode ?? 'unknown'}`,
@@ -194,6 +197,15 @@ export function createAgentContextMarkdown(context: AgentContext): string {
   }
 
   return `${lines.join('\n')}\n`;
+}
+
+function formatProvenance(provenance: PassTrace['provenance']): string {
+  if (!provenance?.kind) {
+    return 'unknown';
+  }
+  return provenance.description
+    ? `${provenance.kind} (${provenance.description})`
+    : provenance.kind;
 }
 
 function findSelectedStage(trace: PassTrace, selectedStageIndex: number | undefined): TraceStage | undefined {

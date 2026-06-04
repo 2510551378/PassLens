@@ -1,8 +1,10 @@
 # Triton NPU / AscendC Case Studies
 
-These sample traces are synthetic but shaped like the debugging questions that
-show up in a Triton-to-AscendC lowering pipeline. They are meant to demonstrate
-Pass Lens as a postmortem debugger rather than a generic timeline viewer.
+The first two traces are hand-authored case studies shaped like debugging
+questions that show up in a Triton-to-AscendC lowering pipeline. The dual
+RMSNorm trace is a real local artifact capture from `npuir2ascendc`, but not
+live PassInstrumentation output. They are meant to demonstrate Pass Lens as a
+postmortem debugger rather than a generic timeline viewer.
 
 ## UB Budget Overflow
 

@@ -23,7 +23,7 @@ import {
   type PipelineRunner
 } from './rerun';
 import { computeTraceAnomalies } from './trace/anomalies';
-import { hydrateTraceArtifacts } from './trace/artifacts';
+import { hydrateTraceStageArtifacts } from './trace/artifacts';
 import { evaluateTraceQuality, renderTraceQualityMarkdown } from './trace/quality';
 import { evaluateTraceSize, renderTraceSizeMarkdown, type TraceSizeSummary } from './trace/size';
 import { createTraceExplanation } from './traceExplanation';
@@ -48,44 +48,50 @@ interface TraceQueryPick extends vscode.QuickPickItem {
 
 const sampleTraces: SampleTraceEntry[] = [
   {
+    label: 'Live MLIR PassInstrumentation',
+    description: 'Live structured collector output',
+    detail: 'Real L20 pass-lens-mlir-opt trace with artifact-backed IR for canonicalize,cse.',
+    file: 'mlir-live-pass-instrumentation.json'
+  },
+  {
     label: 'Toy MLIR pipeline',
-    description: '3 passes, simple IR diff',
+    description: 'Hand-authored, simple IR diff',
     detail: 'Small trace for checking the basic viewer layout.',
     file: 'mlir-toy.json'
   },
   {
     label: 'Long lowering pipeline',
-    description: '14 passes, mixed impact',
+    description: 'Hand-authored, 14 passes',
     detail: 'Longer pipeline for scanning changed/unchanged passes and slow passes.',
     file: 'mlir-long-pipeline.json'
   },
   {
     label: 'Verifier failure',
-    description: 'First-signal failure case',
+    description: 'Hand-authored first-signal failure',
     detail: 'Trace with a verifier failure after a lowering pass.',
     file: 'mlir-verifier-failure.json'
   },
   {
     label: 'External IR artifacts',
-    description: '2 passes, IR stored in sidecar files',
+    description: 'Hand-authored sidecar artifacts',
     detail: 'Trace that resolves before/after IR and diagnostics from artifact paths.',
     file: 'mlir-artifacts.json'
   },
   {
     label: 'Triton NPU UB budget overflow',
-    description: 'AscendC resource budget anomaly',
+    description: 'Hand-authored hardware case study',
     detail: 'Case study trace where scratch queue planning exceeds UB live-slot and queue-depth budgets.',
     file: 'triton-npu-ub-budget-overflow.json'
   },
   {
     label: 'Triton NPU strict fallback',
-    description: 'AscendC strict-mode legality failure',
+    description: 'Hand-authored hardware case study',
     detail: 'Case study trace where a lowering pass introduces fallback and missing tile proof evidence.',
     file: 'triton-npu-strict-fallback.json'
   },
   {
     label: 'Real Triton NPU dual RMSNorm',
-    description: 'Captured TTAdapter IR to generated AscendC artifact',
+    description: 'Real artifact capture',
     detail: 'Real local npuir2ascendc sample generated from fused_dual_residual_rmsnorm_kernel.',
     file: 'real-triton-npu-dual-rmsnorm.json'
   }
@@ -677,10 +683,9 @@ async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
   try {
     const content = await fs.readFile(uri.fsPath, 'utf8');
     const trace = normalizeTrace(JSON.parse(content));
-    const artifactIssues = await hydrateTraceArtifacts(trace, uri.fsPath);
     return {
       trace,
-      issues: [...validateTrace(trace), ...artifactIssues],
+      issues: validateTrace(trace),
       anomalies: computeTraceAnomalies(trace),
       sizeSummary: await evaluateTraceSize(trace, uri.fsPath)
     };
@@ -760,23 +765,29 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
       await vscode.window.showTextDocument(sourceUri, { preview: false });
     }
     if (parsed.type === 'exportBundle') {
+      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
       await exportReproBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
     if (parsed.type === 'exportDirectoryBundle') {
+      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
       await exportReproDirectoryBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
     if (parsed.type === 'exportAgentContext') {
+      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
       await exportAgentContext(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
     if (parsed.type === 'exportExplanation') {
+      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
       await exportTraceExplanation(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
     }
     if (parsed.type === 'copyAgentContext') {
+      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
       const content = createAgentContextJson(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
       await vscode.env.clipboard.writeText(content);
       vscode.window.showInformationMessage('Pass Lens copied agent context.');
     }
     if (parsed.type === 'copyExplanation') {
+      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
       const content = createTraceExplanation(trace, issues, anomalies, {
         sourcePath: sourceUri.fsPath,
         selectedStageIndex: typeof parsed.selectedStageIndex === 'number' ? parsed.selectedStageIndex : undefined
@@ -787,11 +798,49 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     if (parsed.type === 'openArtifact') {
       await openArtifact(sourceUri, parsed.path);
     }
+    if (parsed.type === 'requestStageArtifacts') {
+      const artifactIssues = await hydrateTraceStageArtifacts(trace, sourceUri.fsPath, parsed.stageIndex);
+      appendTraceIssues(issues, artifactIssues);
+      const stage = trace.stages.find((entry) => entry.index === parsed.stageIndex);
+      await panel.webview.postMessage({
+        type: 'stageArtifacts',
+        stageIndex: parsed.stageIndex,
+        stage,
+        issues: artifactIssues
+      });
+    }
   });
 
   const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.css'));
   const scriptUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.js'));
   panel.webview.html = getWebviewHtml(trace, issues, anomalies, sizeSummary, sourceUri.fsPath, styleUri, scriptUri, panel.webview.cspSource);
+}
+
+async function hydrateSelectedStageForExport(
+  trace: PassTrace,
+  issues: TraceIssue[],
+  sourceUri: vscode.Uri,
+  selectedStageIndex: unknown
+): Promise<void> {
+  if (typeof selectedStageIndex !== 'number' || !Number.isFinite(selectedStageIndex)) {
+    return;
+  }
+  const artifactIssues = await hydrateTraceStageArtifacts(trace, sourceUri.fsPath, selectedStageIndex);
+  appendTraceIssues(issues, artifactIssues);
+}
+
+function appendTraceIssues(target: TraceIssue[], additions: TraceIssue[]): void {
+  for (const issue of additions) {
+    const exists = target.some((entry) =>
+      entry.severity === issue.severity &&
+      entry.stageIndex === issue.stageIndex &&
+      entry.field === issue.field &&
+      entry.message === issue.message
+    );
+    if (!exists) {
+      target.push(issue);
+    }
+  }
 }
 
 async function exportReproBundle(
@@ -994,6 +1043,7 @@ function getWebviewHtml(
     <h1>${title}</h1>
     <div class="meta">
       <span id="tool"></span>
+      <span id="provenance"></span>
       <span id="pipeline"></span>
       <span id="source"></span>
     </div>

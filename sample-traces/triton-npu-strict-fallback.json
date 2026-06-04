@@ -10,6 +10,10 @@
     "backend": "ascendc",
     "platform": "ascend-910b"
   },
+  "provenance": {
+    "kind": "hand-authored",
+    "description": "Hand-authored hardware-backend case study shaped like a Triton/NPU strict-mode legality failure."
+  },
   "capture": {
     "ir": "inline",
     "metrics": true,

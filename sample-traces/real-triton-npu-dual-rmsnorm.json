@@ -10,6 +10,13 @@
     "backend": "ascendc",
     "platform": "ascend-910b"
   },
+  "provenance": {
+    "kind": "real-artifact-capture",
+    "description": "Real local npuir2ascendc run from captured TTAdapter IR to generated AscendC artifacts; not live PassInstrumentation output.",
+    "source": "sample-traces/artifacts/real-triton-npu-dual-rmsnorm/metadata.json",
+    "generatedBy": "python generate.py",
+    "capturedAt": "2026-06-01"
+  },
   "capture": {
     "ir": "artifact",
     "metrics": true,

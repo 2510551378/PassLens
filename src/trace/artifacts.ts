@@ -33,6 +33,41 @@ export async function hydrateTraceArtifacts(
   return issues;
 }
 
+export async function hydrateTraceStageArtifacts(
+  trace: PassTrace,
+  tracePath: string,
+  stageIndex: number,
+  options: HydrateTraceArtifactsOptions = {}
+): Promise<TraceIssue[]> {
+  const issues: TraceIssue[] = [];
+  const stage = trace.stages.find((entry) => entry.index === stageIndex);
+  if (!stage) {
+    return [{
+      severity: 'warning',
+      stageIndex,
+      field: 'stages',
+      message: `Could not hydrate artifacts for missing stage #${stageIndex}.`
+    }];
+  }
+
+  const hydrated = await hydrateStageArtifact(
+    stage,
+    path.dirname(tracePath),
+    options.maxArtifactBytes ?? defaultMaxArtifactBytes,
+    issues
+  );
+  if (hydrated && stage.irBefore && stage.irAfter) {
+    const changed = stage.irBefore !== stage.irAfter;
+    stage.changed = changed;
+    if (changed && stage.status === 'ok') {
+      stage.status = 'changed';
+    } else if (!changed && stage.status === 'changed') {
+      stage.status = 'ok';
+    }
+  }
+  return issues;
+}
+
 async function hydrateStageArtifact(
   stage: TraceStage,
   baseDir: string,

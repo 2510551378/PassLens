@@ -263,14 +263,37 @@ section {
   outline-offset: 1px;
 }
 
+.overview-segment.bucket {
+  border-radius: 5px;
+}
+
 .stage-list {
   padding: 10px 8px 14px;
+}
+
+.virtual-list-meta {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin: 0 0 8px;
+  padding: 5px 8px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 11px;
+}
+
+.stage-spacer {
+  flex: 0 0 auto;
+  pointer-events: none;
 }
 
 .stage-card {
   width: 100%;
   position: relative;
   margin: 0 0 8px;
+  min-height: calc(var(--virtual-row-height, 72px) - 8px);
   padding: 10px 12px 10px 15px;
   color: inherit;
   background: color-mix(in srgb, var(--surface) 92%, transparent);

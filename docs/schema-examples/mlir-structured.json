@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "collectorVersion": "example-mlir-pass-instrumentation/0.1.0",
+  "provenance": {
+    "kind": "live-pass-instrumentation",
+    "description": "Minimal MLIR PassInstrumentation-style collector contract example."
+  },
   "compiler": {
     "name": "pass-lens-mlir-opt",
     "version": "21.0.0",

@@ -2,6 +2,11 @@
   "schemaVersion": 1,
   "collectorVersion": "0.1.0",
   "tool": "pass-lens-mlir-opt",
+  "provenance": {
+    "kind": "hand-authored",
+    "description": "Hand-authored artifact-backed MLIR sample for exercising sidecar IR loading.",
+    "source": "sample-traces/artifacts/artifact-toy-*.mlir"
+  },
   "input": "artifact-toy.mlir",
   "pipeline": "builtin.module(func.func(canonicalize),convert-func-to-llvm)",
   "command": "pass-lens-mlir-opt artifact-toy.mlir --pass-pipeline=builtin.module(func.func(canonicalize),convert-func-to-llvm) --pass-lens-trace=mlir-artifacts.json",

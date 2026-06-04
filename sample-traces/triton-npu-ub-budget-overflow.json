@@ -10,6 +10,10 @@
     "backend": "ascendc",
     "platform": "ascend-910b"
   },
+  "provenance": {
+    "kind": "hand-authored",
+    "description": "Hand-authored hardware-backend case study for resource-budget anomaly triage."
+  },
   "capture": {
     "ir": "inline",
     "metrics": true,

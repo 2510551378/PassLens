@@ -18,7 +18,11 @@
   ·
   <a href="docs/trace-schema.md">Trace Schema</a>
   ·
-  <a href="docs/expert-roadmap-todo.md">Roadmap</a>
+  <a href="docs/collector-author-guide.md">Collector Guide</a>
+  ·
+  <a href="docs/sample-provenance.md">Sample Provenance</a>
+  ·
+  <a href="docs/release-milestones.md">Milestones</a>
   ·
   <a href="collectors/mlir-pass-lens">MLIR Collector</a>
 </p>
@@ -49,13 +53,18 @@ Pass Lens 提供的是 trace-grounded 的排障链路：
 | Repro | Markdown repro、directory repro bundle、commands、artifacts |
 | Agent handoff | 带 evidence IDs 和 guardrails 的 bounded JSON/Markdown context |
 
+Pass Lens trace schema 是公共契约。VS Code extension 是一个 viewer，MLIR
+collector 是一个 reference producer，downstream compilers 可以实现自己的
+producer。
+
 ## 功能亮点
 
 - pass-by-pass timeline，区分 changed、unchanged、failed、anomalous 和 slow
   stages。
+- long pass pipeline 使用 virtualized timeline rendering。
 - first-signal 导航，支持 verifier failure、first IR change、anomaly spike 和
   slowest pass。
-- side-by-side IR diff，支持 inline IR 和 artifact-backed snapshots。
+- side-by-side IR diff，支持 inline IR 和 lazy-loaded artifact-backed IR。
 - metric anomaly 检测：zero-to-positive jump、大比例变化、domain-specific
   budget violation。
 - trace quality score：检查 pass identity、timing、verifier status、artifact
@@ -95,6 +104,7 @@ Pass Lens: Open Sample Trace
 
 建议先看这些 sample：
 
+- `Live MLIR PassInstrumentation`
 - `Verifier failure`
 - `External IR artifacts`
 - `Toy MLIR pipeline`
@@ -107,44 +117,53 @@ Pass Lens: Open Trace File
 ```
 
 trace 应符合 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json)。
-Agent exports 遵循
-[`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json)。
-Agent tool manifests 遵循
-[`docs/pass-lens-agent-tools.schema.json`](docs/pass-lens-agent-tools.schema.json)。
-agent-facing contract 见 [`docs/agent-tools.md`](docs/agent-tools.md)。
-collector examples 见 [`docs/schema-examples.md`](docs/schema-examples.md)。
 
-## 核心工作流
+在分享 trace 或从 CI 上传之前，可以先验证：
 
-1. 打开 sample 或本地 JSON trace。
-2. 先读顶部 summary cards：changed passes、first signal、anomalies、trace
-   quality、trace size 和 slowest pass。
-3. 在 timeline 中选择一个 pass。
-4. 看 selected-pass card，确认这个 pass 为什么值得看。
-5. 对比 before/after IR 和 metric deltas。
-6. 需要时打开 artifact sidecars 或 diagnostics。
-7. 导出 repro bundle、issue summary、suspicious-pass explanation 或 agent
-   context。
-8. 需要最小失败前缀时，运行 prefix bisection。
+```powershell
+npm run validate:trace -- path\to\trace.json
+```
 
-常用快捷键：
+## 使用指南
 
-| 快捷键 | 动作 |
-| --- | --- |
-| `j` / `Down` | 下一个可见 pass |
-| `k` / `Up` | 上一个可见 pass |
-| `/` | 聚焦搜索 |
-| `c` | 切换 changed-only |
-| `f` | 跳到 first signal |
-| `a` | 跳到 first anomaly |
-| `s` | 跳到 slowest pass |
+### 1. 查看 trace
 
-## Trace 生成方式
+可以从 sample 或本地 JSON trace 开始：
 
-### Structured MLIR Collector
+```text
+Pass Lens: Open Sample Trace
+Pass Lens: Open Trace File
+```
+
+先读顶部 summary cards：
+
+- `First signal`：第一个 verifier failure；如果没有 failure，则显示第一个
+  changed pass。
+- `Anomalies`：可疑 metric jump 或 budget violation。
+- `Trace quality`：collector 是否提供了 pass identity、timing、verifier
+  status、artifacts 和稳定的 stage indexes。
+- `Trace size`：inline IR bytes、artifact bytes、diagnostics bytes，以及需要从
+  inline IR 切换到 artifact-backed capture 的 quick fixes。
+- `Origin`：trace 是 live instrumentation、converted dump、hand-authored
+  example，还是 real artifact capture。
+
+在 timeline 中选择一个 pass 后，重点看：
+
+- before/after IR diff；
+- metric deltas；
+- diagnostics；
+- artifact paths；
+- suspicious-pass explanation；
+- copy/export actions。
+
+artifact-backed IR 是 lazy-loaded。打开大 trace 时，Pass Lens 不会一次性读取所有
+before/after artifacts；只有当你选择某个 stage 并查看或导出它时，才会读取对应
+artifact text。
+
+### 2. 采集 structured MLIR trace
 
 如果可以构建 `pass-lens-mlir-opt`，或者可以把 collector 接入 downstream MLIR
-driver，推荐使用这条路径。
+driver，推荐使用这条路径：
 
 ```powershell
 pass-lens-mlir-opt input.mlir `
@@ -154,22 +173,41 @@ pass-lens-mlir-opt input.mlir `
   -o output.mlir
 ```
 
-这是 timing、verifier attribution、pass identity 和 artifact-backed IR snapshots
-更可靠的路径。
+然后用 `Pass Lens: Open Trace File` 打开 `input.pass-lens.json`。
 
-### `mlir-opt` Dump Fallback
+这条路径最适合提供：
 
-当只有 `mlir-opt` 可用时，可以使用 `Pass Lens: Run mlir-opt Trace`。这条路径会
-反向解析 textual dump marker，适合快速实验，但不能提供可靠的 per-pass duration。
+- pass identity 和 nested pass scope；
+- verifier attribution；
+- per-pass timing；
+- metric capture；
+- artifact-backed before/after IR。
 
-### Downstream Compiler 直接输出 JSON
+### 3. 使用 `mlir-opt` dump fallback
 
-downstream compiler 可以直接输出 Pass Lens schema：
+当只有 `mlir-opt` 可用时，运行：
+
+```text
+Pass Lens: Run mlir-opt Trace
+```
+
+这个 wrapper 会反向解析 `mlir-opt` textual dump markers。它适合快速实验，但不能
+提供可靠的 per-pass duration。Pass Lens 会通过 trace quality reports 标注这个
+限制，而不是把 fallback 伪装成 structured instrumentation。
+
+### 4. 让其他 compiler 直接输出 JSON
+
+downstream compiler 可以直接输出 Pass Lens schema。真实 compiler pipeline
+建议优先使用 artifact-backed IR：
 
 ```json
 {
   "schemaVersion": 1,
   "tool": "my-compiler",
+  "provenance": {
+    "kind": "live-pass-instrumentation",
+    "description": "Collected from the compiler pass instrumentation hook."
+  },
   "capture": {
     "ir": "artifact",
     "metrics": true,
@@ -197,12 +235,87 @@ downstream compiler 可以直接输出 Pass Lens schema：
 }
 ```
 
-完整 viewer contract 见 [docs/trace-schema.md](docs/trace-schema.md)。
+collector-author templates 见
+[`docs/schema-examples.md`](docs/schema-examples.md)，覆盖 MLIR、LLVM New
+Pass Manager-style traces 和 hardware backend metrics。完整 schema 位于
+[`docs/pass-lens.schema.json`](docs/pass-lens.schema.json)，字段语义见
+[`docs/trace-schema.md`](docs/trace-schema.md)。外部 producer 接入步骤见
+[`docs/collector-author-guide.md`](docs/collector-author-guide.md)。
+
+### 5. 生成 reports 和 repro artifacts
+
+打开 trace 后，运行：
+
+```text
+Pass Lens: Query Current Trace
+```
+
+常用 report actions 包括：
+
+- GitHub issue description；
+- top suspicious passes；
+- first fallback / legality / budget signal；
+- candidate root causes；
+- trace quality report；
+- trace size report。
+
+在 trace panel 中也可以导出：
+
+- Markdown repro bundle；
+- directory repro bundle，包含 `trace.json`、artifacts、`run.ps1`、`run.sh`、
+  `manifest.json`、`agent-context.json` 和 `agent-tools.json`；
+- bounded agent context JSON 或 Markdown；
+- suspicious-pass explanation。
+
+Agent exports 遵循
+[`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json)。
+Agent tool manifests 遵循
+[`docs/pass-lens-agent-tools.schema.json`](docs/pass-lens-agent-tools.schema.json)。
+agent-facing contract 见 [`docs/agent-tools.md`](docs/agent-tools.md)。
+
+### 6. 寻找最小失败前缀
+
+如果 pipeline 失败，并且你需要最小 failing prefix，运行：
+
+```text
+Pass Lens: Run Prefix Bisect
+```
+
+Pass Lens 会用配置好的 structured collector driver 重新运行 textual MLIR
+pipeline prefixes，并打开 minimal failing prefix report。报告包含 command lines、
+attempt traces、diagnostics，以及找到时的 shortest failing prefix。
+
+### 7. 处理 large traces
+
+真实 compiler pipeline 建议：
+
+- 优先使用 `capture.ir = "artifact"`，避免把大段 IR 放进 inline strings；
+- 将 before/after IR 放到 sidecar files，并通过 `artifacts.beforePath` /
+  `artifacts.afterPath` 引用；
+- 填写 `provenance`，让用户知道 trace 来自 live instrumentation、converted
+  dumps、hand-authored examples，还是 real artifact captures；
+- 用 trace size report 找出应该迁移到 artifacts 的 inline payload；
+- 用 trace quality report 确认 pass identity、verifier status、timing 和 artifact
+  coverage 是否可信。
+
+## 快捷键
+
+| 快捷键 | 动作 |
+| --- | --- |
+| `j` / `Down` | 下一个可见 pass |
+| `k` / `Up` | 上一个可见 pass |
+| `/` | 聚焦搜索 |
+| `c` | 切换 changed-only |
+| `f` | 跳到 first signal |
+| `a` | 跳到 first anomaly |
+| `s` | 跳到 slowest pass |
 
 ## Sample Gallery
 
 `Pass Lens: Open Sample Trace` 包含：
 
+- `Live MLIR PassInstrumentation`：来自 L20 的真实 structured collector
+  output，使用 artifact-backed IR 展示 `canonicalize,cse`。
 - `Toy MLIR pipeline`：用于检查基础 viewer layout 的小 trace。
 - `Long lowering pipeline`：用于验证 filter、changed-only view 和 slowest-pass
   navigation 的长 trace。
@@ -217,6 +330,9 @@ downstream compiler 可以直接输出 Pass Lens schema：
 
 Triton NPU / AscendC samples 不是核心产品契约的一部分，只作为 optional case
 studies 保留，用来说明同一套 schema 可以承载 hardware-backend evidence。
+
+哪些 sample 是 live collector output、real artifact capture 或 hand-authored
+example，见 [`docs/sample-provenance.md`](docs/sample-provenance.md)。
 
 ## Commands
 
@@ -268,6 +384,8 @@ scaffold 都已经可用。
 - Marketplace-ready packaging 和 demos。
 
 完整计划见 [docs/expert-roadmap-todo.md](docs/expert-roadmap-todo.md)。
+release-level 开源路线图见
+[docs/release-milestones.md](docs/release-milestones.md)。
 
 ## 已知限制
 

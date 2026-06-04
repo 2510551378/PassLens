@@ -17,6 +17,9 @@ fields. Each example should pass strict schema validation.
 ## Authoring Rules
 
 - Always set `schemaVersion` to `1`.
+- Set `provenance` for published samples so users can distinguish live
+  instrumentation, converted dumps, hand-authored examples, and real artifact
+  captures.
 - Use stable pass identifiers in `stage.pass` and `stage.argument`.
 - Keep metrics numeric. Put text in `diagnostics`, artifacts, or external files.
 - Prefer `capture.ir = "artifact"` and `artifacts.beforePath/afterPath` for real
