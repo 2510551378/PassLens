@@ -1,6 +1,8 @@
 # Pass Lens Trace Schema
 
 Machine-readable schema: [`pass-lens.schema.json`](pass-lens.schema.json).
+Valid examples for collector authors:
+[`schema-examples.md`](schema-examples.md).
 
 Pass Lens uses two validation levels:
 
@@ -12,6 +14,11 @@ Pass Lens uses two validation levels:
 Pass Lens consumes a JSON object with a top-level `stages` array. The schema is
 intentionally small so collectors can be implemented by compiler drivers,
 instrumentation callbacks, or temporary wrappers.
+
+The JSON trace schema is a public compatibility contract. Collector authors
+should not add ad hoc top-level or stage-level fields. Put domain-specific data
+in numeric metrics, diagnostics, target metadata, or artifact sidecars so traces
+remain portable across MLIR, LLVM, hardware backends, and other compiler stacks.
 
 ```json
 {
@@ -109,6 +116,18 @@ instrumentation callbacks, or temporary wrappers.
 - `exitCode`: process exit code for wrapper collectors.
 - `diagnostics`: bounded diagnostic text for failures or warnings.
 - `stages`: ordered pass events.
+
+## Compatibility Rules
+
+- `schemaVersion = 1` is the only stable version today.
+- Unknown fields are rejected by strict validation.
+- Relative artifact paths are resolved relative to the trace JSON file.
+- Backend-specific evidence should live in `target`, `metricProfiles`,
+  `metricsBefore` / `metricsAfter`, `diagnostics`, or artifact files.
+- If timing, metrics, or IR are intentionally unavailable, declare that through
+  `capture` instead of leaving readers to guess.
+- Prefer additive schema evolution through a future `schemaVersion` bump rather
+  than collector-specific extension fields.
 
 ## Stage Semantics
 

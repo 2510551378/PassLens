@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 1,
+  "collectorVersion": "example-hardware-backend/0.1.0",
+  "compiler": {
+    "name": "example-backend-opt",
+    "version": "0.1.0",
+    "gitSha": "example"
+  },
+  "target": {
+    "backend": "example-accelerator",
+    "platform": "example-device-v1"
+  },
+  "inputHash": "sha256:example",
+  "capture": {
+    "ir": "artifact",
+    "metrics": true,
+    "timing": true
+  },
+  "metricProfiles": {
+    "example-accelerator": {
+      "critical": [
+        "fallback.count",
+        "legality.violations",
+        "spill.bytes"
+      ],
+      "budgets": {
+        "scratchpad.bytes": 65536,
+        "dma.queue.depth": 8,
+        "register.pressure.max": 128
+      }
+    }
+  },
+  "tool": "example-backend-opt",
+  "input": "kernel.backend-ir",
+  "pipeline": "legalize-layout,allocate-memory,schedule-kernel",
+  "command": "example-backend-opt kernel.backend-ir --pipeline=legalize-layout,allocate-memory,schedule-kernel --pass-lens-trace=trace.json",
+  "exitCode": 1,
+  "diagnostics": "schedule-kernel rejected fallback path: missing legality proof for async copy",
+  "stages": [
+    {
+      "index": 0,
+      "pass": "legalize-layout",
+      "argument": "legalize-layout",
+      "opName": "module",
+      "scope": "module",
+      "changed": true,
+      "status": "changed",
+      "durationMs": 4.1,
+      "verifier": "ok",
+      "artifacts": {
+        "beforePath": "artifacts/000-before.ir",
+        "afterPath": "artifacts/000-after.ir"
+      },
+      "metricsBefore": {
+        "fallback.count": 0,
+        "scratchpad.bytes": 32768,
+        "register.pressure.max": 72
+      },
+      "metricsAfter": {
+        "fallback.count": 1,
+        "scratchpad.bytes": 49152,
+        "register.pressure.max": 96
+      }
+    },
+    {
+      "index": 1,
+      "pass": "allocate-memory",
+      "argument": "allocate-memory",
+      "opName": "module",
+      "scope": "module",
+      "changed": true,
+      "status": "changed",
+      "durationMs": 3.6,
+      "verifier": "ok",
+      "artifacts": {
+        "beforePath": "artifacts/001-before.ir",
+        "afterPath": "artifacts/001-after.ir"
+      },
+      "metricsBefore": {
+        "scratchpad.bytes": 49152,
+        "spill.bytes": 0,
+        "dma.queue.depth": 4
+      },
+      "metricsAfter": {
+        "scratchpad.bytes": 73728,
+        "spill.bytes": 1024,
+        "dma.queue.depth": 9
+      }
+    },
+    {
+      "index": 2,
+      "pass": "schedule-kernel",
+      "argument": "schedule-kernel",
+      "opName": "module",
+      "scope": "module",
+      "changed": false,
+      "status": "verifier_failed",
+      "durationMs": 1.4,
+      "verifier": "failed",
+      "diagnostics": "missing legality proof for async copy on fallback path",
+      "artifacts": {
+        "beforePath": "artifacts/002-before.ir",
+        "afterPath": "artifacts/002-after.ir",
+        "diagnosticsPath": "artifacts/002-diagnostics.txt"
+      },
+      "metricsBefore": {
+        "legality.violations": 1,
+        "fallback.count": 1
+      },
+      "metricsAfter": {
+        "legality.violations": 1,
+        "fallback.count": 1
+      }
+    }
+  ]
+}

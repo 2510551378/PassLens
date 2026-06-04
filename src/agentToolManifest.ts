@@ -51,6 +51,19 @@ export function createAgentToolManifest(
       'Prefer artifact-backed IR for large traces and request bounded context when using an LLM.'
     ],
     tools: [
+      {
+        id: 'pass-lens.query.planNaturalLanguage',
+        title: 'Plan Natural Language Query',
+        category: 'query',
+        stability: 'preview',
+        description: 'Map a natural-language request to one deterministic Pass Lens query primitive when the intent is unambiguous.',
+        inputSchema: objectSchema({
+          request: stringSchema('Natural-language request to map, for example "find the first verifier failure".')
+        }),
+        output: {
+          format: 'json'
+        }
+      },
       queryTool('pass-lens.query.firstFailure', 'Find First Failure Stage', 'Find the first stage with failed status or verifier result.', {}),
       queryTool('pass-lens.query.firstChanged', 'Find First Changed Stage', 'Find the first stage with changed=true.', {}),
       queryTool('pass-lens.query.firstMetricJump', 'Find First Metric Jump', 'Find the first stage where a named metric changes.', {

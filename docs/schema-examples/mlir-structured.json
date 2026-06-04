@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "collectorVersion": "example-mlir-pass-instrumentation/0.1.0",
+  "compiler": {
+    "name": "pass-lens-mlir-opt",
+    "version": "21.0.0",
+    "gitSha": "example"
+  },
+  "target": {
+    "backend": "generic-mlir",
+    "platform": "developer-workstation"
+  },
+  "inputHash": "sha256:example",
+  "capture": {
+    "ir": "artifact",
+    "metrics": true,
+    "timing": true
+  },
+  "tool": "pass-lens-mlir-opt",
+  "input": "input.mlir",
+  "pipeline": "builtin.module(func.func(canonicalize,cse))",
+  "command": "pass-lens-mlir-opt input.mlir --pass-pipeline=builtin.module(func.func(canonicalize,cse)) --pass-lens-trace=trace.json --pass-lens-artifact-dir=artifacts -o output.mlir",
+  "exitCode": 0,
+  "stages": [
+    {
+      "index": 0,
+      "pass": "canonicalize",
+      "argument": "canonicalize",
+      "opName": "func.func",
+      "symbol": "@main",
+      "nestingDepth": 2,
+      "scope": "func.func @main",
+      "changed": true,
+      "status": "changed",
+      "durationMs": 1.2,
+      "verifier": "ok",
+      "artifacts": {
+        "beforePath": "artifacts/000-before.mlir",
+        "afterPath": "artifacts/000-after.mlir",
+        "diagnosticsPath": "artifacts/000-diagnostics.txt"
+      },
+      "metricsBefore": {
+        "lines": 12,
+        "ops": 7
+      },
+      "metricsAfter": {
+        "lines": 10,
+        "ops": 6
+      }
+    },
+    {
+      "index": 1,
+      "pass": "cse",
+      "argument": "cse",
+      "opName": "func.func",
+      "symbol": "@main",
+      "nestingDepth": 2,
+      "scope": "func.func @main",
+      "changed": false,
+      "status": "ok",
+      "durationMs": 0.8,
+      "verifier": "ok",
+      "artifacts": {
+        "beforePath": "artifacts/001-before.mlir",
+        "afterPath": "artifacts/001-after.mlir"
+      },
+      "metricsBefore": {
+        "lines": 10,
+        "ops": 6
+      },
+      "metricsAfter": {
+        "lines": 10,
+        "ops": 6
+      }
+    }
+  ]
+}
