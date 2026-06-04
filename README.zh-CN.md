@@ -61,6 +61,7 @@ producer。
 
 - pass-by-pass timeline，区分 changed、unchanged、failed、anomalous 和 slow
   stages。
+- long pass pipeline 使用 virtualized timeline rendering。
 - first-signal 导航，支持 verifier failure、first IR change、anomaly spike 和
   slowest pass。
 - side-by-side IR diff，支持 inline IR 和 lazy-loaded artifact-backed IR。

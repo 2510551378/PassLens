@@ -12,12 +12,20 @@
   const attemptedArtifactLoads = new Set();
   const maxRenderedDiffRows = 700;
   const diffEdgeRows = 300;
+  const virtualRowHeight = 72;
+  const virtualOverscanRows = 8;
+  const maxOverviewSegments = 600;
+  const stageImpactCache = new WeakMap(trace.stages.map((stage) => [stage, metricImpact(stage)]));
+  const maxMetricImpact = Math.max(1, ...trace.stages.map((stage) => stageImpactCache.get(stage) ?? 0));
+  let latestVisibleStages = [];
+  let pendingTimelineRender = false;
   
   const timeline = document.getElementById('timeline');
   const details = document.getElementById('details');
   const overview = document.getElementById('overview');
   const search = document.getElementById('search');
   const changedOnly = document.getElementById('changed-only');
+  const timelineScrollContainer = timeline.closest?.('aside') ?? timeline;
   
   document.getElementById('tool').textContent = trace.tool ? 'tool: ' + trace.tool : 'tool: unknown';
   document.getElementById('provenance').textContent = 'origin: ' + provenanceLabel(trace.provenance);
@@ -56,7 +64,9 @@
     window.addEventListener('message', (event) => {
       handleExtensionMessage(event.data);
     });
+    window.addEventListener('resize', scheduleTimelineWindowRender);
   }
+  timelineScrollContainer.addEventListener('scroll', scheduleTimelineWindowRender, { passive: true });
   document.addEventListener('keydown', handleKeydown);
   
   function escapeHtml(value) {
@@ -131,10 +141,9 @@
   }
   
   function impactPercent(stage) {
-    const impacts = trace.stages.map(metricImpact);
-    const maxImpact = Math.max(1, ...impacts);
     const base = stage.changed ? 18 : 6;
-    return Math.min(100, base + Math.round((metricImpact(stage) / maxImpact) * 82));
+    const impact = stageImpactCache.get(stage) ?? metricImpact(stage);
+    return Math.min(100, base + Math.round((impact / maxMetricImpact) * 82));
   }
   
   function firstSignalIndex() {
@@ -234,6 +243,9 @@
       return;
     }
     selectedIndex = index;
+    if (options.scrollIntoView) {
+      scrollSelectedIntoVirtualWindow();
+    }
     renderTimeline();
     renderDetails();
     if (options.scrollIntoView) {
@@ -245,13 +257,13 @@
   
   function jumpTo(target) {
     if (target === 'first-signal') {
-      selectIndex(firstSignalIndex());
+      selectIndex(firstSignalIndex(), { scrollIntoView: true });
     } else if (target === 'first-anomaly') {
-      selectIndex(firstAnomalyIndex());
+      selectIndex(firstAnomalyIndex(), { scrollIntoView: true });
     } else if (target === 'slowest') {
-      selectIndex(slowestIndex());
+      selectIndex(slowestIndex(), { scrollIntoView: true });
     } else if (target === 'first') {
-      selectIndex(0);
+      selectIndex(0, { scrollIntoView: true });
     }
   }
   
@@ -443,45 +455,115 @@
     }
   
     renderOverview(visibleStages);
-    timeline.innerHTML = '<div class="stage-list">' +
-      visibleStages.map(({ stage, idx }) => {
-        const active = idx === selectedIndex ? ' active' : '';
-        const failed = isFailedStage(stage);
-        const statusClass = failed ? 'failed' : stage.changed ? 'changed' : 'unchanged';
-        const statusText = failed ? 'failed' : stage.changed ? 'changed' : 'unchanged';
-        const duration = typeof stage.durationMs === 'number' ? fmtNumber(stage.durationMs) + ' ms' : '';
-        const anomalies = anomaliesForStage(stage.index);
-        const anomalyText = anomalies.length ? anomalies.length + ' anomaly' + (anomalies.length === 1 ? '' : 'ies') : '';
-        const impact = impactPercent(stage) + '%';
-        const accent = stageAccent(stage);
-        return '<button class="stage-card ' + statusClass + active + '" data-index="' + idx + '" aria-current="' + (active ? 'true' : 'false') + '" style="--accent: ' + accent + '; --impact: ' + impact + '">' +
-          '<div class="stage-line">' +
-            '<span class="stage-index">#' + escapeHtml(stage.index) + '</span>' +
-            '<span class="stage-pass">' + escapeHtml(stage.pass) + '</span>' +
-            '<span class="status ' + statusClass + '">' + statusText + '</span>' +
-          '</div>' +
-          '<div class="stage-line">' +
-            '<span></span>' +
-            '<span class="scope">' + escapeHtml(stage.scope ?? '') + '</span>' +
-            '<span class="duration">' + escapeHtml(anomalyText || duration) + '</span>' +
-          '</div>' +
-        '</button>';
-      }).join('') +
+    latestVisibleStages = visibleStages;
+    renderTimelineWindow();
+  }
+
+  function scheduleTimelineWindowRender() {
+    if (pendingTimelineRender) {
+      return;
+    }
+    pendingTimelineRender = true;
+    requestAnimationFrame(() => {
+      pendingTimelineRender = false;
+      renderTimelineWindow();
+    });
+  }
+
+  function renderTimelineWindow() {
+    if (!latestVisibleStages.length) {
+      return;
+    }
+    const windowRange = visibleTimelineRange(latestVisibleStages.length);
+    const renderedStages = latestVisibleStages.slice(windowRange.start, windowRange.end);
+    const topSpacer = '<div class="stage-spacer" style="height: ' + (windowRange.start * virtualRowHeight) + 'px"></div>';
+    const bottomSpacer = '<div class="stage-spacer" style="height: ' + ((latestVisibleStages.length - windowRange.end) * virtualRowHeight) + 'px"></div>';
+    const meta = latestVisibleStages.length > renderedStages.length
+      ? '<div class="virtual-list-meta">Showing passes ' + escapeHtml(windowRange.start + 1) + '-' + escapeHtml(windowRange.end) +
+        ' of ' + escapeHtml(latestVisibleStages.length) + ' visible</div>'
+      : '';
+    timeline.innerHTML = '<div class="stage-list" style="--virtual-row-height: ' + virtualRowHeight + 'px">' +
+      meta +
+      topSpacer +
+      renderedStages.map(({ stage, idx }) => renderStageCard(stage, idx)).join('') +
+      bottomSpacer +
       '</div>';
-  
+
     timeline.querySelectorAll('button[data-index]').forEach((button) => {
       button.addEventListener('click', () => {
         selectIndex(Number(button.dataset.index));
       });
     });
   }
+
+  function visibleTimelineRange(count) {
+    const scrollTop = Math.max(0, Number(timelineScrollContainer.scrollTop) || 0);
+    const viewportHeight = Math.max(virtualRowHeight * 4, Number(timelineScrollContainer.clientHeight) || 600);
+    const timelineTop = Math.max(0, Number(timeline.offsetTop) || 0);
+    const listScrollTop = Math.max(0, scrollTop - timelineTop);
+    const first = Math.max(0, Math.floor(listScrollTop / virtualRowHeight) - virtualOverscanRows);
+    const visibleCount = Math.ceil(viewportHeight / virtualRowHeight) + virtualOverscanRows * 2;
+    return {
+      start: first,
+      end: Math.min(count, first + visibleCount)
+    };
+  }
+
+  function scrollSelectedIntoVirtualWindow() {
+    const visibleStages = visibleStageEntries();
+    const offset = visibleStages.findIndex(({ idx }) => idx === selectedIndex);
+    if (offset < 0) {
+      return;
+    }
+    const viewportHeight = Math.max(virtualRowHeight * 4, Number(timelineScrollContainer.clientHeight) || 600);
+    const itemTop = Math.max(0, Number(timeline.offsetTop) || 0) + offset * virtualRowHeight;
+    const itemBottom = itemTop + virtualRowHeight;
+    const currentTop = Math.max(0, Number(timelineScrollContainer.scrollTop) || 0);
+    const currentBottom = currentTop + viewportHeight;
+    if (itemTop < currentTop) {
+      timelineScrollContainer.scrollTop = itemTop;
+    } else if (itemBottom > currentBottom) {
+      timelineScrollContainer.scrollTop = Math.max(0, itemBottom - viewportHeight);
+    }
+  }
+
+  function renderStageCard(stage, idx) {
+    const active = idx === selectedIndex ? ' active' : '';
+    const failed = isFailedStage(stage);
+    const statusClass = failed ? 'failed' : stage.changed ? 'changed' : 'unchanged';
+    const statusText = failed ? 'failed' : stage.changed ? 'changed' : 'unchanged';
+    const duration = typeof stage.durationMs === 'number' ? fmtNumber(stage.durationMs) + ' ms' : '';
+    const anomalies = anomaliesForStage(stage.index);
+    const anomalyText = anomalies.length ? anomalies.length + ' anomaly' + (anomalies.length === 1 ? '' : 'ies') : '';
+    const impact = impactPercent(stage) + '%';
+    const accent = stageAccent(stage);
+    return '<button class="stage-card ' + statusClass + active + '" data-index="' + idx + '" aria-current="' + (active ? 'true' : 'false') + '" style="--accent: ' + accent + '; --impact: ' + impact + '">' +
+      '<div class="stage-line">' +
+        '<span class="stage-index">#' + escapeHtml(stage.index) + '</span>' +
+        '<span class="stage-pass">' + escapeHtml(stage.pass) + '</span>' +
+        '<span class="status ' + statusClass + '">' + statusText + '</span>' +
+      '</div>' +
+      '<div class="stage-line">' +
+        '<span></span>' +
+        '<span class="scope">' + escapeHtml(stage.scope ?? '') + '</span>' +
+        '<span class="duration">' + escapeHtml(anomalyText || duration) + '</span>' +
+      '</div>' +
+    '</button>';
+  }
   
   function renderOverview(visibleStages) {
-    overview.innerHTML = visibleStages.map(({ stage, idx }) => {
-      const active = idx === selectedIndex ? ' active' : '';
-      return '<button class="overview-segment' + active + '" data-index="' + idx + '" aria-label="Select pass #' +
-        escapeHtml(stage.index) + '" title="#' +
-        escapeHtml(stage.index) + ' ' + escapeHtml(stage.pass) + '" style="--accent: ' +
+    const segments = overviewSegments(visibleStages);
+    overview.innerHTML = segments.map(({ stage, idx, active, count, startStage, endStage }) => {
+      const activeClass = active ? ' active' : '';
+      const bucketClass = count > 1 ? ' bucket' : '';
+      const title = count > 1
+        ? '#' + startStage.index + '-' + endStage.index + ' (' + count + ' passes)'
+        : '#' + stage.index + ' ' + stage.pass;
+      const label = count > 1
+        ? 'Select pass bucket #' + startStage.index + ' to #' + endStage.index
+        : 'Select pass #' + stage.index;
+      return '<button class="overview-segment' + bucketClass + activeClass + '" data-index="' + idx + '" aria-label="' +
+        escapeHtml(label) + '" title="' + escapeHtml(title) + '" style="--accent: ' +
         stageAccent(stage) + '; --impact: ' + impactPercent(stage) + '%"></button>';
     }).join('');
     overview.querySelectorAll('button[data-index]').forEach((button) => {
@@ -489,6 +571,34 @@
         selectIndex(Number(button.dataset.index));
       });
     });
+  }
+
+  function overviewSegments(visibleStages) {
+    if (visibleStages.length <= maxOverviewSegments) {
+      return visibleStages.map((entry) => ({
+        ...entry,
+        active: entry.idx === selectedIndex,
+        count: 1,
+        startStage: entry.stage,
+        endStage: entry.stage
+      }));
+    }
+    const bucketSize = Math.ceil(visibleStages.length / maxOverviewSegments);
+    const segments = [];
+    for (let start = 0; start < visibleStages.length; start += bucketSize) {
+      const bucket = visibleStages.slice(start, Math.min(visibleStages.length, start + bucketSize));
+      const activeEntry = bucket.find((entry) => entry.idx === selectedIndex);
+      const representative = activeEntry ?? bucket.find((entry) => isFailedStage(entry.stage)) ??
+        bucket.find((entry) => entry.stage.changed) ?? bucket[0];
+      segments.push({
+        ...representative,
+        active: Boolean(activeEntry),
+        count: bucket.length,
+        startStage: bucket[0].stage,
+        endStage: bucket[bucket.length - 1].stage
+      });
+    }
+    return segments;
   }
   
   function renderDetails() {

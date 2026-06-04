@@ -271,7 +271,12 @@ repro/
   - Opening a trace no longer reads every before/after artifact. The webview
     requests artifact IR for the selected stage, and export/copy actions hydrate
     only the selected stage before generating context.
-- [ ] Add virtualized timeline/list rendering for large traces.
+- [x] Add virtualized timeline/list rendering for large traces.
+  - Commit: this change.
+  - The webview now renders only the visible timeline window with overscan,
+    preserves scroll height with spacers, buckets dense overview segments, and
+    caches metric-impact scores to avoid O(n^2) long-trace rendering.
+  - Covered by a 2000-stage webview smoke test.
 - [x] Add bounded / on-demand diff computation.
   - Commit: this change.
   - Diff rows are computed only for the selected stage and rendered through a

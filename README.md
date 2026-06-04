@@ -62,6 +62,7 @@ can implement their own producers.
 
 - Pass-by-pass timeline with changed, unchanged, failed, anomalous, and slow
   stages.
+- Virtualized timeline rendering for long pass pipelines.
 - First-signal navigation for verifier failures, first IR changes, anomaly
   spikes, and slowest passes.
 - Side-by-side IR diff with inline snapshots or lazy-loaded artifact-backed IR.
