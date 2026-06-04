@@ -63,11 +63,13 @@ Pass Lens 提供的是 trace-grounded 的排障链路：
 - trace size report：识别应该从 inline IR 切到 artifact-backed capture 的
   trace，并给出 quick fixes。
 - directory-style repro bundle：包含 `trace.json`、artifacts、diagnostics、
-  `run.ps1`、`run.sh`、`manifest.json` 和 agent context。
+  `run.ps1`、`run.sh`、`manifest.json`、agent context 和 agent tool manifest。
 - 在任何 model call 之前，先生成 deterministic issue summaries 和
   suspicious-pass explanations。
 - AI-facing exports 坚持 trace-grounded：输出带引用的 evidence 和 bounded
   context，而不是 generic chat surface。
+- 预留 agent-ready deterministic tool contracts：覆盖 queries、reports、
+  exports 和本地 rerun/bisect workflows。
 - MLIR 支持两条路径：`mlir-opt` dump fallback 和基于 `PassInstrumentation`
   的 structured collector。
 
@@ -91,10 +93,10 @@ Pass Lens: Open Sample Trace
 
 建议先看这些 sample：
 
-- `Triton NPU strict fallback`
-- `Real Triton NPU dual RMSNorm`
 - `Verifier failure`
 - `External IR artifacts`
+- `Toy MLIR pipeline`
+- `Long lowering pipeline`
 
 打开自己的 trace：
 
@@ -105,6 +107,9 @@ Pass Lens: Open Trace File
 trace 应符合 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json)。
 Agent exports 遵循
 [`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json)。
+Agent tool manifests 遵循
+[`docs/pass-lens-agent-tools.schema.json`](docs/pass-lens-agent-tools.schema.json)。
+agent-facing contract 见 [`docs/agent-tools.md`](docs/agent-tools.md)。
 
 ## 核心工作流
 
@@ -200,13 +205,15 @@ downstream compiler 可以直接输出 Pass Lens schema：
   navigation 的长 trace。
 - `Verifier failure`：failure-focused trace，会直接打开到第一个失败 pass。
 - `External IR artifacts`：从 sidecar 文件加载 before/after IR 和 diagnostics。
-- `Triton NPU UB budget overflow`：AscendC resource-budget anomaly case study。
-- `Triton NPU strict fallback`：strict-mode legality 和 fallback case study。
-- `Real Triton NPU dual RMSNorm`：来自本地 `npuir2ascendc` 的真实 trace，从
+- `Triton NPU UB budget overflow`：可选 hardware-backend metric anomaly case
+  study。
+- `Triton NPU strict fallback`：可选 strict-mode legality 和 fallback case
+  study。
+- `Real Triton NPU dual RMSNorm`：可选真实本地 `npuir2ascendc` trace，从
   captured TTAdapter IR 到生成的 AscendC kernel artifacts。
 
-Triton NPU / AscendC samples 背后的调试故事见
-[docs/examples/triton-npu.md](docs/examples/triton-npu.md)。
+Triton NPU / AscendC samples 不是核心产品契约的一部分，只作为 optional case
+studies 保留，用来说明同一套 schema 可以承载 hardware-backend evidence。
 
 ## Commands
 
@@ -245,13 +252,16 @@ npm run check:mlir-collector
 
 Pass Lens 目前是 preview extension。viewer、schema validation、sample
 gallery、artifact opening、trace quality/size reports、repro bundle export、
-agent context export、prefix bisection 和 MLIR collector scaffold 都已经可用。
+agent context export、agent tool manifests、prefix bisection 和 MLIR collector
+scaffold 都已经可用。
 
 当前重点：
 
-- 真实 downstream MLIR / Triton / IREE / torch-mlir collector workflow；
+- 面向 MLIR、LLVM、IREE、torch-mlir、Triton、XLA、TVM 和 hardware backends
+  的真实 downstream compiler collector workflows；
 - lazy artifact loading 和 large-trace UX；
 - 面向 external collector authors 的稳定 schema docs；
+- 面向 agent 的 deterministic tool contracts；
 - Marketplace-ready packaging 和 demos。
 
 完整计划见 [docs/expert-roadmap-todo.md](docs/expert-roadmap-todo.md)。

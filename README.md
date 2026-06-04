@@ -64,11 +64,14 @@ Pass Lens gives compiler engineers a trace-grounded workflow:
 - Trace size report with quick fixes for traces that should switch from inline
   IR to artifact-backed capture.
 - Directory-style repro bundle with `trace.json`, artifacts, diagnostics,
-  `run.ps1`, `run.sh`, `manifest.json`, and agent context.
+  `run.ps1`, `run.sh`, `manifest.json`, agent context, and an agent tool
+  manifest.
 - Deterministic issue summaries and suspicious-pass explanations before any
   model call.
 - Trace-grounded AI exports: cited evidence and bounded context, not a generic
   chat surface.
+- Agent-ready deterministic tool contracts for queries, reports, exports, and
+  local rerun/bisect workflows.
 - MLIR support through both `mlir-opt` dump fallback and structured
   `PassInstrumentation` collection.
 
@@ -92,10 +95,10 @@ Pass Lens: Open Sample Trace
 
 Good first samples:
 
-- `Triton NPU strict fallback`
-- `Real Triton NPU dual RMSNorm`
 - `Verifier failure`
 - `External IR artifacts`
+- `Toy MLIR pipeline`
+- `Long lowering pipeline`
 
 Open your own trace with:
 
@@ -106,6 +109,9 @@ Pass Lens: Open Trace File
 The trace should follow [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json).
 Agent exports follow
 [`docs/pass-lens-agent-context.schema.json`](docs/pass-lens-agent-context.schema.json).
+Agent tool manifests follow
+[`docs/pass-lens-agent-tools.schema.json`](docs/pass-lens-agent-tools.schema.json).
+See [`docs/agent-tools.md`](docs/agent-tools.md) for the agent-facing contract.
 
 ## Core Workflow
 
@@ -203,13 +209,16 @@ See [docs/trace-schema.md](docs/trace-schema.md) for the full viewer contract.
 - `Verifier failure`: opens directly at the first failing pass.
 - `External IR artifacts`: before/after IR and diagnostics loaded from sidecar
   files.
-- `Triton NPU UB budget overflow`: AscendC resource-budget anomaly case study.
-- `Triton NPU strict fallback`: strict-mode legality and fallback case study.
-- `Real Triton NPU dual RMSNorm`: real local `npuir2ascendc` trace from
+- `Triton NPU UB budget overflow`: optional hardware-backend metric anomaly
+  case study.
+- `Triton NPU strict fallback`: optional strict-mode legality and fallback case
+  study.
+- `Real Triton NPU dual RMSNorm`: optional real local `npuir2ascendc` trace from
   captured TTAdapter IR to generated AscendC kernel artifacts.
 
-See [docs/examples/triton-npu.md](docs/examples/triton-npu.md) for the intended
-debugging story behind the Triton NPU / AscendC samples.
+The Triton NPU / AscendC samples are not part of the core product contract.
+They are kept as optional case studies showing that the same schema can carry
+hardware-backend evidence.
 
 ## Commands
 
@@ -248,13 +257,16 @@ npm run check:mlir-collector
 
 Pass Lens is a preview extension. The viewer, schema validation, sample gallery,
 artifact opening, trace quality and size reports, repro bundle export, agent
-context export, prefix bisection, and MLIR collector scaffold are usable today.
+context export, agent tool manifests, prefix bisection, and MLIR collector
+scaffold are usable today.
 
 Current focus:
 
-- real downstream MLIR / Triton / IREE / torch-mlir collector workflows;
+- real downstream compiler collector workflows across MLIR, LLVM, IREE,
+  torch-mlir, Triton, XLA, TVM, and hardware backends;
 - lazy artifact loading and large-trace UX;
 - stronger schema docs for external collector authors;
+- stable agent-facing deterministic tool contracts;
 - marketplace-ready packaging and demos.
 
 See [docs/expert-roadmap-todo.md](docs/expert-roadmap-todo.md) for the

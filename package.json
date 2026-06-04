@@ -16,7 +16,8 @@
     "debugger",
     "trace",
     "passes",
-    "AscendC"
+    "observability",
+    "compiler-passes"
   ],
   "galleryBanner": {
     "color": "#101722",

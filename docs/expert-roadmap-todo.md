@@ -21,6 +21,11 @@ an execution checklist. The guiding principle is:
   - Public README/package positioning now frames Pass Lens as a pass pipeline
     observability/debugging workbench and describes AI exports as
     trace-grounded, evidence-cited handoff artifacts rather than generic chat.
+- [x] Keep public positioning compiler-agnostic instead of Triton/NPU-specific.
+  - Commit: this change.
+  - README sample ordering now leads with generic MLIR/verifier/artifact
+    examples, package keywords no longer mention AscendC, and Triton/NPU traces
+    are documented as optional case studies rather than the product contract.
 
 ## P0: Trace-Grounded AI Foundation
 
@@ -54,6 +59,12 @@ an execution checklist. The guiding principle is:
   - Commit: this change.
   - Stage summaries and metric deltas now expose `evidenceIds`; suspicious-pass
     explanations cite those IDs inline.
+- [x] Add an agent-facing deterministic tool manifest.
+  - Commit: this change.
+  - Directory repro bundles now include `agent-tools.json`, generated from
+    `src/agentToolManifest.ts`, with a public schema at
+    `docs/pass-lens-agent-tools.schema.json` and docs at
+    `docs/agent-tools.md`.
 
 ## P1: Natural-Language Trace Query
 
@@ -203,6 +214,7 @@ repro/
   summary.md
   regression-test-sketch.md
   agent-context.json
+  agent-tools.json
 ```
 
   - Commit: this change.
@@ -220,8 +232,8 @@ repro/
     source, and copied artifact mappings.
 - [x] Make bundle suitable for CI artifact upload and AI-agent tool input.
   - Commit: this change.
-  - Bundles include `summary.md`, `agent-context.json`, `trace.json`, rerun
-    scripts, diagnostics, and manifest metadata.
+  - Bundles include `summary.md`, `agent-context.json`, `agent-tools.json`,
+    `trace.json`, rerun scripts, diagnostics, and manifest metadata.
   - L20 verified: generated a real structured trace with
     `/home/ahc/PassLens/build/pass-lens-mlir/pass-lens-mlir-opt`, exported a
     directory bundle, then reran `run.sh` to produce `trace.rerun.json`.
@@ -260,7 +272,11 @@ repro/
   - [ ] LLVM New Pass Manager.
   - [ ] Triton / hardware backend metrics.
 - [ ] Build a small MLIR collector SDK surface around `PassInstrumentation`.
-- [ ] Keep the schema compiler-agnostic enough for non-MLIR compilers.
+- [x] Keep the schema compiler-agnostic enough for non-MLIR compilers.
+  - Commit: this change.
+  - Public docs and agent contracts now describe Pass Lens as a generic compiler
+    pass evidence schema; backend-specific samples are optional examples, and
+    agent tools avoid Triton/NPU-specific inputs.
 - [ ] Investigate LLVM New Pass Manager integration.
 - [ ] Investigate LLVM optimization remarks ingestion as complementary evidence.
 
@@ -300,9 +316,12 @@ repro/
 
 - [x] Export agent context.
 - [x] Export deterministic suspicious-pass explanation.
-- [ ] Add deterministic trace query tools.
+- [x] Add deterministic trace query tools.
 - [ ] Add issue generator.
-- [ ] Add rerun / bisect agent tools.
+- [x] Add rerun / bisect agent tools.
+  - Commit: this change.
+  - `pass-lens.rerun.prefixBisect` is declared as a preview local tool contract
+    requiring filesystem and compiler-driver access.
 - [ ] Defer patch suggestion until evidence and rerun tools are mature.
 
 ## Risks To Revisit

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://2510551378.github.io/PassLens/schemas/pass-lens-agent-tools.schema.json",
+  "title": "Pass Lens Agent Tools Manifest v1",
+  "description": "Deterministic, trace-grounded tool contracts exposed to AI agents and automation wrappers.",
+  "type": "object",
+  "required": ["schemaVersion", "kind", "source", "guardrails", "tools"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": {
+      "const": 1
+    },
+    "kind": {
+      "const": "pass-lens-agent-tools"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stageCount"],
+      "properties": {
+        "trace": {
+          "type": "string"
+        },
+        "tool": {
+          "type": "string"
+        },
+        "compiler": {
+          "type": "string"
+        },
+        "stageCount": {
+          "type": "number"
+        }
+      }
+    },
+    "guardrails": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/tool"
+      }
+    }
+  },
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "required": ["id", "title", "category", "stability", "description", "inputSchema", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "category": {
+          "enum": ["query", "report", "export", "rerun"]
+        },
+        "stability": {
+          "enum": ["stable", "preview"]
+        },
+        "description": {
+          "type": "string"
+        },
+        "inputSchema": {
+          "type": "object"
+        },
+        "output": {
+          "type": "object",
+          "required": ["format"],
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "enum": ["json", "markdown", "directory"]
+            },
+            "schemaRef": {
+              "type": "string"
+            }
+          }
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
