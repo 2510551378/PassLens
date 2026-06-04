@@ -173,8 +173,13 @@ an execution checklist. The guiding principle is:
     `Pass Lens: Query Current Trace` as a trace quality report.
   - L20 verified: real `pass-lens-mlir-opt` trace for
     `canonicalize,cse` scored 100/100 with no collector quality issues.
-- [ ] Keep TypeScript `mlir-opt` dump parser as fallback, with clear timing
+- [x] Keep TypeScript `mlir-opt` dump parser as fallback, with clear timing
   limitations.
+  - Commit: this change.
+  - The fallback collector now records
+    `collectorVersion = "typescript-mlir-dump-fallback/0.1.0"` and
+    `capture.timing = false`; trace quality reports this as a single
+    `timing-unavailable` limitation instead of per-stage missing timing noise.
 
 ## Directory-Style Repro Bundle
 

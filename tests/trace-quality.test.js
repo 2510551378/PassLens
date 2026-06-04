@@ -64,6 +64,34 @@ test('evaluateTraceQuality reports missing identity timing verifier and artifact
   assert.ok(report.score < 100);
 });
 
+test('evaluateTraceQuality treats explicit timing=false as fallback limitation', () => {
+  const report = evaluateTraceQuality({
+    schemaVersion: 1,
+    tool: 'mlir-opt',
+    collectorVersion: 'typescript-mlir-dump-fallback/0.1.0',
+    capture: {
+      ir: 'inline',
+      metrics: true,
+      timing: false
+    },
+    stages: [
+      {
+        index: 0,
+        pass: 'canonicalize',
+        status: 'ok',
+        changed: true,
+        irBefore: 'module {}',
+        irAfter: 'module {}'
+      }
+    ]
+  });
+  const ids = report.checks.map((entry) => entry.id);
+
+  assert.ok(ids.includes('timing-unavailable'));
+  assert.ok(!ids.includes('missing-timing'));
+  assert.match(renderTraceQualityMarkdown(report), /textual mlir-opt dump fallback/);
+});
+
 test('evaluateTraceQuality reports duplicate and non-monotonic stage indexes', () => {
   const report = evaluateTraceQuality({
     schemaVersion: 1,
