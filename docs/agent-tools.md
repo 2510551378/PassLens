@@ -52,3 +52,27 @@ Agents consuming this contract should follow the same rules as Pass Lens:
 The contract is compiler-agnostic. Triton, IREE, torch-mlir, LLVM, XLA, TVM, and
 hardware backends should all map their pass pipeline evidence into the same trace
 schema instead of relying on backend-specific agent behavior.
+
+## DeepSeek Smoke Test
+
+For live model checks, Pass Lens includes an optional DeepSeek smoke script. It
+sends a synthetic compiler trace plus `agent-tools` manifest to an
+OpenAI-compatible DeepSeek Chat Completions endpoint, asks the model to choose a
+single deterministic Pass Lens tool, then validates the returned JSON locally.
+
+```powershell
+$env:DEEPSEEK_API_PASS_LENS = [Environment]::GetEnvironmentVariable("DEEPSEEK_API_PASS_LENS", "User")
+npm run smoke:deepseek-agent -- --model deepseek-v4-flash
+npm run smoke:deepseek-agent -- --model deepseek-v4-pro
+```
+
+The script does not print the API key. A successful run prints a compact JSON
+object containing `selectedToolId`, validated arguments, cited evidence IDs, and
+the next action proposed by the model.
+
+Validated on 2026-06-04:
+
+- `deepseek-v4-flash` selected `pass-lens.query.firstFailure` with no arguments
+  and cited `stages[2].status`.
+- `deepseek-v4-pro` selected `pass-lens.query.firstFailure` with no arguments
+  and cited `stages[2].status`.

@@ -125,6 +125,7 @@
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node --test tests/*.test.js",
     "check:mlir-collector": "node scripts/check-mlir-collector.js",
+    "smoke:deepseek-agent": "npm run compile && node scripts/deepseek-agent-smoke.js",
     "package": "vsce package",
     "vscode:prepublish": "npm run compile"
   },

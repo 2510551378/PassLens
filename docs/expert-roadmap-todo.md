@@ -65,6 +65,11 @@ an execution checklist. The guiding principle is:
     `src/agentToolManifest.ts`, with a public schema at
     `docs/pass-lens-agent-tools.schema.json` and docs at
     `docs/agent-tools.md`.
+- [x] Smoke-test agent tool selection with external LLMs through the manifest.
+  - Commit: this change.
+  - `scripts/deepseek-agent-smoke.js` validates that DeepSeek V4 Flash/Pro can
+    read `agent-context` plus `agent-tools`, choose a legal deterministic tool,
+    cite evidence IDs, and avoid source-edit guardrail violations.
 
 ## P1: Natural-Language Trace Query
 
