@@ -18,9 +18,11 @@
   ·
   <a href="docs/trace-schema.md">Trace Schema</a>
   ·
+  <a href="docs/collector-author-guide.md">Collector Guide</a>
+  ·
   <a href="docs/sample-provenance.md">Sample Provenance</a>
   ·
-  <a href="docs/expert-roadmap-todo.md">Roadmap</a>
+  <a href="docs/release-milestones.md">Milestones</a>
   ·
   <a href="collectors/mlir-pass-lens">MLIR Collector</a>
 </p>
@@ -50,6 +52,10 @@ Pass Lens 提供的是 trace-grounded 的排障链路：
 | Evidence | before/after IR、diagnostics、metric deltas、validation issues |
 | Repro | Markdown repro、directory repro bundle、commands、artifacts |
 | Agent handoff | 带 evidence IDs 和 guardrails 的 bounded JSON/Markdown context |
+
+Pass Lens trace schema 是公共契约。VS Code extension 是一个 viewer，MLIR
+collector 是一个 reference producer，downstream compilers 可以实现自己的
+producer。
 
 ## 功能亮点
 
@@ -110,6 +116,12 @@ Pass Lens: Open Trace File
 ```
 
 trace 应符合 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json)。
+
+在分享 trace 或从 CI 上传之前，可以先验证：
+
+```powershell
+npm run validate:trace -- path\to\trace.json
+```
 
 ## 使用指南
 
@@ -226,7 +238,8 @@ collector-author templates 见
 [`docs/schema-examples.md`](docs/schema-examples.md)，覆盖 MLIR、LLVM New
 Pass Manager-style traces 和 hardware backend metrics。完整 schema 位于
 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json)，字段语义见
-[`docs/trace-schema.md`](docs/trace-schema.md)。
+[`docs/trace-schema.md`](docs/trace-schema.md)。外部 producer 接入步骤见
+[`docs/collector-author-guide.md`](docs/collector-author-guide.md)。
 
 ### 5. 生成 reports 和 repro artifacts
 
@@ -370,6 +383,8 @@ scaffold 都已经可用。
 - Marketplace-ready packaging 和 demos。
 
 完整计划见 [docs/expert-roadmap-todo.md](docs/expert-roadmap-todo.md)。
+release-level 开源路线图见
+[docs/release-milestones.md](docs/release-milestones.md)。
 
 ## 已知限制
 

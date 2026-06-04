@@ -1,0 +1,74 @@
+name: Pass Lens Demo
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - sample-traces/**
+      - docs/pass-lens.schema.json
+      - docs/schema-examples/**
+      - scripts/validate-trace.js
+      - src/trace/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/pass-lens-demo.yml
+  push:
+    branches:
+      - main
+      - codex/**
+    paths:
+      - sample-traces/**
+      - docs/pass-lens.schema.json
+      - docs/schema-examples/**
+      - scripts/validate-trace.js
+      - src/trace/**
+      - package.json
+      - package-lock.json
+      - .github/workflows/pass-lens-demo.yml
+
+jobs:
+  validate-and-upload-trace:
+    name: Validate and upload trace evidence
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate public trace artifacts
+        run: |
+          npm run validate:trace -- --strict-only \
+            sample-traces/mlir-live-pass-instrumentation.json \
+            docs/schema-examples/mlir-structured.json \
+            docs/schema-examples/llvm-new-pass-manager.json \
+            docs/schema-examples/hardware-backend-metrics.json
+
+      - name: Assemble demo evidence bundle
+        run: |
+          mkdir -p pass-lens-demo/artifacts
+          cp sample-traces/mlir-live-pass-instrumentation.json pass-lens-demo/trace.json
+          cp sample-traces/artifacts/mlir-live-pass-instrumentation/* pass-lens-demo/artifacts/
+          cat > pass-lens-demo/README.md <<'EOF'
+          # Pass Lens Demo Evidence
+
+          Open `trace.json` with `Pass Lens: Open Trace File`.
+
+          This bundle demonstrates the public trace contract, provenance labels,
+          and artifact-backed IR sidecars. It is intentionally small so a new
+          contributor can inspect the complete evidence shape from a CI artifact.
+          EOF
+
+      - name: Upload Pass Lens demo evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: pass-lens-demo-evidence
+          path: pass-lens-demo

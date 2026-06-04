@@ -18,9 +18,11 @@
   ·
   <a href="docs/trace-schema.md">Trace Schema</a>
   ·
+  <a href="docs/collector-author-guide.md">Collector Guide</a>
+  ·
   <a href="docs/sample-provenance.md">Sample Provenance</a>
   ·
-  <a href="docs/expert-roadmap-todo.md">Roadmap</a>
+  <a href="docs/release-milestones.md">Milestones</a>
   ·
   <a href="collectors/mlir-pass-lens">MLIR Collector</a>
 </p>
@@ -51,6 +53,10 @@ Pass Lens gives compiler engineers a trace-grounded workflow:
 | Evidence | Before/after IR, diagnostics, metric deltas, validation issues |
 | Repro | Markdown repro, directory repro bundle, commands, artifacts |
 | Agent handoff | Bounded JSON/Markdown context with evidence IDs and guardrails |
+
+The Pass Lens trace schema is the public contract. The VS Code extension is one
+viewer, the MLIR collector is one reference producer, and downstream compilers
+can implement their own producers.
 
 ## Highlights
 
@@ -104,6 +110,12 @@ Good first samples:
 
 Open your own trace with `Pass Lens: Open Trace File`. The trace should follow
 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json).
+
+Validate a trace before sharing or uploading it from CI:
+
+```powershell
+npm run validate:trace -- path\to\trace.json
+```
 
 ## Usage Guide
 
@@ -221,7 +233,9 @@ Use [`docs/schema-examples.md`](docs/schema-examples.md) as collector-author
 templates for MLIR, LLVM New Pass Manager-style traces, and hardware backend
 metrics. The full schema lives at
 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json), and field semantics
-are documented in [`docs/trace-schema.md`](docs/trace-schema.md).
+are documented in [`docs/trace-schema.md`](docs/trace-schema.md). For a
+step-by-step producer integration path, see
+[`docs/collector-author-guide.md`](docs/collector-author-guide.md).
 
 ### 5. Generate Reports and Repro Artifacts
 
@@ -368,7 +382,9 @@ Current focus:
 - marketplace-ready packaging and demos.
 
 See [docs/expert-roadmap-todo.md](docs/expert-roadmap-todo.md) for the
-expert-guided execution checklist.
+expert-guided execution checklist and
+[docs/release-milestones.md](docs/release-milestones.md) for the release-level
+open-source roadmap.
 
 ## Known Limitations
 

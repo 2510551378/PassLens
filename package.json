@@ -124,6 +124,7 @@
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "test": "npm run compile && node --test tests/*.test.js",
+    "validate:trace": "npm run compile && node scripts/validate-trace.js",
     "check:mlir-collector": "node scripts/check-mlir-collector.js",
     "smoke:deepseek-agent": "npm run compile && node scripts/deepseek-agent-smoke.js",
     "package": "vsce package",
