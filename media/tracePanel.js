@@ -8,6 +8,8 @@
   let filterText = '';
   let showChangedOnly = false;
   let showFullDiff = false;
+  const maxRenderedDiffRows = 700;
+  const diffEdgeRows = 300;
   
   const timeline = document.getElementById('timeline');
   const details = document.getElementById('details');
@@ -789,7 +791,8 @@
     if (!rows.length) {
       return '<div class="empty">No IR text recorded for this pass.</div>';
     }
-    const renderedRows = showFullDiff ? rows : collapseUnchangedRows(rows);
+    const contextRows = showFullDiff ? rows : collapseUnchangedRows(rows);
+    const renderedRows = boundDiffRows(contextRows);
     const stats = diffStats(rows, renderedRows);
   
     return renderDiffToolbar(stage, stats) +
@@ -827,8 +830,11 @@
       ? 'Collapse unchanged context'
       : stats.hidden > 0 ? 'Show full context' : 'Full context shown';
     const contextDisabled = !showFullDiff && stats.hidden === 0 ? ' disabled' : '';
-    const hidden = stats.hidden > 0
-      ? '<span class="diff-chip muted">' + escapeHtml(stats.hidden + ' unchanged hidden') + '</span>'
+    const hidden = stats.unchangedHidden > 0
+      ? '<span class="diff-chip muted">' + escapeHtml(stats.unchangedHidden + ' unchanged hidden') + '</span>'
+      : '';
+    const bounded = stats.boundedHidden > 0
+      ? '<span class="diff-chip warning">' + escapeHtml(stats.boundedHidden + ' omitted by render cap') + '</span>'
       : '';
     return '<div class="diff-toolbar">' +
       '<div class="diff-stats">' +
@@ -836,6 +842,7 @@
         '<span class="diff-chip del">-' + escapeHtml(stats.deleted) + '</span>' +
         '<span class="diff-chip">shown ' + escapeHtml(stats.shown) + ' / ' + escapeHtml(stats.total) + '</span>' +
         hidden +
+        bounded +
       '</div>' +
       '<div class="diff-actions">' +
         artifactGroup +
@@ -868,12 +875,20 @@
     const deleted = rows.filter((row) => row.kind === 'del').length;
     const changed = rows.filter((row) => row.kind === 'changed').length;
     const shown = renderedRows.filter((row) => row.kind !== 'context').length;
+    const unchangedHidden = renderedRows
+      .filter((row) => row.kind === 'context' && row.hiddenKind === 'unchanged')
+      .reduce((total, row) => total + row.hidden, 0);
+    const boundedHidden = renderedRows
+      .filter((row) => row.kind === 'context' && row.hiddenKind === 'bounded')
+      .reduce((total, row) => total + row.hidden, 0);
     return {
       added: added + changed,
       deleted: deleted + changed,
       shown,
       total: rows.length,
-      hidden: Math.max(0, rows.length - shown)
+      hidden: unchangedHidden + boundedHidden,
+      unchangedHidden,
+      boundedHidden
     };
   }
 
@@ -901,11 +916,37 @@
       collapsed.push(...run.slice(0, context));
       collapsed.push({
         kind: 'context',
+        hidden: run.length - context * 2,
+        hiddenKind: 'unchanged',
         message: run.length - context * 2 + ' unchanged line(s) hidden'
       });
       collapsed.push(...run.slice(-context));
     }
     return collapsed;
+  }
+
+  function boundDiffRows(rows) {
+    if (rows.length <= maxRenderedDiffRows) {
+      return rows;
+    }
+    const head = rows.slice(0, diffEdgeRows);
+    const tail = rows.slice(-diffEdgeRows);
+    const omittedRows = rows.slice(head.length, rows.length - tail.length);
+    const omitted = omittedRows.reduce((total, row) => total + representedRowCount(row), 0);
+    return [
+      ...head,
+      {
+        kind: 'context',
+        hidden: omitted,
+        hiddenKind: 'bounded',
+        message: omitted + ' diff row(s) omitted by render cap'
+      },
+      ...tail
+    ];
+  }
+
+  function representedRowCount(row) {
+    return row.kind === 'context' && typeof row.hidden === 'number' ? row.hidden : 1;
   }
   
   function stageIrSource(stage) {

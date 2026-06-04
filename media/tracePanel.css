@@ -758,6 +758,12 @@ table.metrics {
   background: color-mix(in srgb, var(--failed) 9%, transparent);
 }
 
+.diff-chip.warning {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 40%, var(--border));
+  background: color-mix(in srgb, var(--warning) 9%, transparent);
+}
+
 .diff-chip.muted {
   color: var(--muted);
 }

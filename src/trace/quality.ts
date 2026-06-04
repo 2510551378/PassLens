@@ -29,9 +29,18 @@ export function evaluateTraceQuality(trace: PassTrace): TraceQualityReport {
   if (!trace.collectorVersion) {
     checks.push(check('missing-collector-version', 'info', 'Trace does not record collectorVersion.', undefined, 'collectorVersion'));
   }
+  if (trace.capture?.timing === false) {
+    checks.push(check(
+      'timing-unavailable',
+      'info',
+      'Trace explicitly declares that per-pass timing is unavailable; this is expected for textual mlir-opt dump fallback traces.',
+      undefined,
+      'capture.timing'
+    ));
+  }
 
   for (const [position, stage] of trace.stages.entries()) {
-    checks.push(...evaluateStageQuality(stage, position, seenIndexes, previousIndex, trace.capture?.ir));
+    checks.push(...evaluateStageQuality(stage, position, seenIndexes, previousIndex, trace.capture?.ir, trace.capture?.timing));
     previousIndex = stage.index;
   }
 
@@ -71,14 +80,15 @@ function evaluateStageQuality(
   position: number,
   seenIndexes: Set<number>,
   previousIndex: number,
-  captureIr: string | undefined
+  captureIr: string | undefined,
+  captureTiming: boolean | undefined
 ): TraceQualityCheck[] {
   const checks: TraceQualityCheck[] = [];
 
   if (!stage.pass || stage.pass.startsWith('pass-')) {
     checks.push(check('missing-pass-identity', 'warning', 'Stage does not provide a stable pass name.', stage.index, 'pass'));
   }
-  if (typeof stage.durationMs !== 'number') {
+  if (captureTiming !== false && typeof stage.durationMs !== 'number') {
     checks.push(check('missing-timing', 'info', 'Stage does not record durationMs.', stage.index, 'durationMs'));
   }
   if (!stage.verifier && !stage.status) {

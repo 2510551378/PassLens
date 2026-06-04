@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import { createAgentContext, createAgentContextMarkdown } from './agentContext';
 import { exportDirectoryReproBundle } from './directoryReproBundle';
 import {
+  createCandidateRootCausesMarkdown,
   createGithubIssueDescription,
   createSuspiciousPassesMarkdown,
   explainFirstSignal,
@@ -484,6 +485,11 @@ async function queryCurrentTraceCommand(): Promise<void> {
         summaryKind: 'topSuspicious'
       },
       {
+        label: 'Generate candidate root causes',
+        detail: 'Frame candidates with evidence, uncertainty, and next experiments before patch suggestions.',
+        summaryKind: 'candidateRootCauses'
+      },
+      {
         label: 'Explain first fallback / legality / budget signal',
         detail: 'Choose a signal family and generate a concise evidence summary.',
         summaryKind: 'firstSignal'
@@ -546,6 +552,9 @@ async function resolveIssueSummary(
   }
   if (summaryKind === 'topSuspicious') {
     return `${createSuspiciousPassesMarkdown(loaded.trace, loaded.issues, loaded.anomalies, 3)}\n`;
+  }
+  if (summaryKind === 'candidateRootCauses') {
+    return createCandidateRootCausesMarkdown(loaded.trace, loaded.issues, loaded.anomalies, 3);
   }
   if (summaryKind === 'firstSignal') {
     const picked = await vscode.window.showQuickPick(

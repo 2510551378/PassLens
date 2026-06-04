@@ -1,6 +1,8 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { createAgentContext } from './agentContext';
+import { createAgentToolManifest } from './agentToolManifest';
+import { createRegressionTestSketch } from './regressionTestSketch';
 import { createReproBundle } from './reproBundle';
 import type { MetricAnomaly, PassTrace, TraceIssue, TraceStage } from './types';
 
@@ -72,11 +74,22 @@ export async function exportDirectoryReproBundle(
   }));
   files.summary = 'summary.md';
 
+  await writeText(path.join(targetDir, 'regression-test-sketch.md'), createRegressionTestSketch(trace, issues, anomalies, {
+    sourcePath: options.sourceTracePath,
+    selectedStageIndex: options.selectedStageIndex
+  }));
+  files.regressionTestSketch = 'regression-test-sketch.md';
+
   await writeJson(path.join(targetDir, 'agent-context.json'), createAgentContext(trace, issues, anomalies, {
     sourcePath: options.sourceTracePath,
     selectedStageIndex: options.selectedStageIndex
   }));
   files.agentContext = 'agent-context.json';
+
+  await writeJson(path.join(targetDir, 'agent-tools.json'), createAgentToolManifest(trace, {
+    sourcePath: options.sourceTracePath
+  }));
+  files.agentTools = 'agent-tools.json';
 
   if (copyArtifacts) {
     for (const stage of trace.stages) {

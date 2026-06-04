@@ -62,16 +62,20 @@ export async function collectMlirTrace(options: CollectMlirOptions): Promise<Pas
 
   return {
     schemaVersion: 1,
+    collectorVersion: 'typescript-mlir-dump-fallback/0.1.0',
     tool: 'mlir-opt',
     input: path.basename(options.inputPath),
     pipeline: options.pipeline,
     command: formatCommand(options.mlirOptPath, args),
     exitCode: result.exitCode,
+    capture: {
+      ir: 'inline',
+      metrics: true,
+      timing: false
+    },
     diagnostics: appendCollectorNote(
       diagnostics,
-      stages.length > 1
-        ? 'Textual mlir-opt dump collection does not provide reliable per-pass duration. Use the structured pass-lens-mlir-opt collector for timing.'
-        : undefined
+      'Textual mlir-opt dump collection is a best-effort fallback and does not provide reliable per-pass duration. Use the structured pass-lens-mlir-opt collector for timing, verifier attribution, and artifact-backed IR.'
     ),
     stages
   };

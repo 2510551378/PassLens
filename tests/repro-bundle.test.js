@@ -60,6 +60,8 @@ test('createReproBundle includes selected pass, anomaly, and command context', (
   assert.match(bundle, /\[warning\] #3 convert-to-ac: ops increased/);
   assert.match(bundle, /pass-lens-mlir-opt kernel\.mlir/);
   assert.match(bundle, /module \{ ac\.launch @kernel \}/);
+  assert.match(bundle, /## Regression Test Sketch/);
+  assert.match(bundle, /# Pass Lens Regression Test Sketch/);
 });
 
 test('createReproBundle truncates large inline trace JSON', () => {

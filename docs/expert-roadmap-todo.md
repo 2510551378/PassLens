@@ -21,6 +21,11 @@ an execution checklist. The guiding principle is:
   - Public README/package positioning now frames Pass Lens as a pass pipeline
     observability/debugging workbench and describes AI exports as
     trace-grounded, evidence-cited handoff artifacts rather than generic chat.
+- [x] Keep public positioning compiler-agnostic instead of Triton/NPU-specific.
+  - Commit: this change.
+  - README sample ordering now leads with generic MLIR/verifier/artifact
+    examples, package keywords no longer mention AscendC, and Triton/NPU traces
+    are documented as optional case studies rather than the product contract.
 
 ## P0: Trace-Grounded AI Foundation
 
@@ -54,6 +59,17 @@ an execution checklist. The guiding principle is:
   - Commit: this change.
   - Stage summaries and metric deltas now expose `evidenceIds`; suspicious-pass
     explanations cite those IDs inline.
+- [x] Add an agent-facing deterministic tool manifest.
+  - Commit: this change.
+  - Directory repro bundles now include `agent-tools.json`, generated from
+    `src/agentToolManifest.ts`, with a public schema at
+    `docs/pass-lens-agent-tools.schema.json` and docs at
+    `docs/agent-tools.md`.
+- [x] Smoke-test agent tool selection with external LLMs through the manifest.
+  - Commit: this change.
+  - `scripts/deepseek-agent-smoke.js` validates that DeepSeek V4 Flash/Pro can
+    read `agent-context` plus `agent-tools`, choose a legal deterministic tool,
+    cite evidence IDs, and avoid source-edit guardrail violations.
 
 ## P1: Natural-Language Trace Query
 
@@ -122,17 +138,35 @@ an execution checklist. The guiding principle is:
 
 ## P3: Patch Suggestion / Test Generation
 
-- [ ] Keep patch suggestions explicitly framed as candidates, not proven root
+- [x] Keep patch suggestions explicitly framed as candidates, not proven root
   causes.
-- [ ] Add "candidate root causes" format:
-  - [ ] Candidate.
-  - [ ] Evidence.
-  - [ ] Counter-evidence / uncertainty.
-  - [ ] Next experiment.
-- [ ] Generate regression test sketches from repro bundles.
-- [ ] Suggest legality checks or rewrite guards only when diagnostics / IR diff
+  - Commit: this change.
+  - The query workflow now generates candidate-root-cause reports that state
+    candidates are not proven root causes or patch instructions.
+- [x] Add "candidate root causes" format:
+  - [x] Candidate.
+  - [x] Evidence.
+  - [x] Counter-evidence / uncertainty.
+  - [x] Next experiment.
+  - Commit: this change.
+  - Implemented in `src/issueSummary.ts` and exposed through
+    `Pass Lens: Query Current Trace`.
+- [x] Generate regression test sketches from repro bundles.
+  - Commit: this change.
+  - `createRegressionTestSketch` generates a conservative MLIR/FileCheck-style
+    test draft from trace evidence, and directory repro bundles now include
+    `regression-test-sketch.md`.
+- [x] Suggest legality checks or rewrite guards only when diagnostics / IR diff
   provide concrete evidence.
-- [ ] Do not auto-edit compiler source until rerun/bisect evidence is available.
+  - Commit: this change.
+  - Candidate reports only mention legality/rewrite guard inspection when the
+    selected stage has concrete legality, verifier, invalid, rewrite,
+    diagnostic, or IR evidence; otherwise they explicitly defer patch ideas.
+- [x] Do not auto-edit compiler source until rerun/bisect evidence is available.
+  - Commit: this change.
+  - Regression sketches and candidate-root-cause reports explicitly frame source
+    edits as post-confirmation work after rerun, prefix bisection, or verifier
+    evidence.
 
 ## v0.2 Collector Credibility
 
@@ -155,8 +189,13 @@ an execution checklist. The guiding principle is:
     `Pass Lens: Query Current Trace` as a trace quality report.
   - L20 verified: real `pass-lens-mlir-opt` trace for
     `canonicalize,cse` scored 100/100 with no collector quality issues.
-- [ ] Keep TypeScript `mlir-opt` dump parser as fallback, with clear timing
+- [x] Keep TypeScript `mlir-opt` dump parser as fallback, with clear timing
   limitations.
+  - Commit: this change.
+  - The fallback collector now records
+    `collectorVersion = "typescript-mlir-dump-fallback/0.1.0"` and
+    `capture.timing = false`; trace quality reports this as a single
+    `timing-unavailable` limitation instead of per-stage missing timing noise.
 
 ## Directory-Style Repro Bundle
 
@@ -178,7 +217,9 @@ repro/
   run.ps1
   run.sh
   summary.md
+  regression-test-sketch.md
   agent-context.json
+  agent-tools.json
 ```
 
   - Commit: this change.
@@ -196,8 +237,8 @@ repro/
     source, and copied artifact mappings.
 - [x] Make bundle suitable for CI artifact upload and AI-agent tool input.
   - Commit: this change.
-  - Bundles include `summary.md`, `agent-context.json`, `trace.json`, rerun
-    scripts, diagnostics, and manifest metadata.
+  - Bundles include `summary.md`, `agent-context.json`, `agent-tools.json`,
+    `trace.json`, rerun scripts, diagnostics, and manifest metadata.
   - L20 verified: generated a real structured trace with
     `/home/ahc/PassLens/build/pass-lens-mlir/pass-lens-mlir-opt`, exported a
     directory bundle, then reran `run.sh` to produce `trace.rerun.json`.
@@ -207,7 +248,10 @@ repro/
 - [ ] Lazy-load artifact IR on stage selection instead of hydrating every stage
   eagerly.
 - [ ] Add virtualized timeline/list rendering for large traces.
-- [ ] Add bounded / on-demand diff computation.
+- [x] Add bounded / on-demand diff computation.
+  - Commit: this change.
+  - Diff rows are computed only for the selected stage and rendered through a
+    hard row cap, with explicit omitted-row chips for large IR.
 - [x] Add trace-level size summary:
   - [x] inline IR bytes.
   - [x] artifact bytes.
@@ -233,7 +277,11 @@ repro/
   - [ ] LLVM New Pass Manager.
   - [ ] Triton / hardware backend metrics.
 - [ ] Build a small MLIR collector SDK surface around `PassInstrumentation`.
-- [ ] Keep the schema compiler-agnostic enough for non-MLIR compilers.
+- [x] Keep the schema compiler-agnostic enough for non-MLIR compilers.
+  - Commit: this change.
+  - Public docs and agent contracts now describe Pass Lens as a generic compiler
+    pass evidence schema; backend-specific samples are optional examples, and
+    agent tools avoid Triton/NPU-specific inputs.
 - [ ] Investigate LLVM New Pass Manager integration.
 - [ ] Investigate LLVM optimization remarks ingestion as complementary evidence.
 
@@ -273,9 +321,12 @@ repro/
 
 - [x] Export agent context.
 - [x] Export deterministic suspicious-pass explanation.
-- [ ] Add deterministic trace query tools.
+- [x] Add deterministic trace query tools.
 - [ ] Add issue generator.
-- [ ] Add rerun / bisect agent tools.
+- [x] Add rerun / bisect agent tools.
+  - Commit: this change.
+  - `pass-lens.rerun.prefixBisect` is declared as a preview local tool contract
+    requiring filesystem and compiler-driver access.
 - [ ] Defer patch suggestion until evidence and rerun tools are mature.
 
 ## Risks To Revisit
