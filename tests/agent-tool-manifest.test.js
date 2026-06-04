@@ -29,6 +29,7 @@ test('createAgentToolManifest declares generic deterministic agent tools', () =>
   assert.equal(manifest.source.tool, 'generic-compiler');
   assert.equal(manifest.source.compiler, 'ExampleCompiler');
   assert.equal(manifest.source.stageCount, 1);
+  assert.ok(ids.includes('pass-lens.query.planNaturalLanguage'));
   assert.ok(ids.includes('pass-lens.query.firstFailure'));
   assert.ok(ids.includes('pass-lens.report.candidateRootCauses'));
   assert.ok(ids.includes('pass-lens.export.agentContext'));
@@ -36,6 +37,7 @@ test('createAgentToolManifest declares generic deterministic agent tools', () =>
   assert.ok(manifest.guardrails.some((entry) => /Do not auto-edit compiler source/.test(entry)));
   assert.equal(manifest.tools.find((tool) => tool.id === 'pass-lens.export.agentContext').output.schemaRef, '#/schemas/pass-lens-agent-context');
   assert.deepEqual(manifest.tools.find((tool) => tool.id === 'pass-lens.export.agentContext').inputSchema.required, []);
+  assert.equal(manifest.tools.find((tool) => tool.id === 'pass-lens.query.planNaturalLanguage').stability, 'preview');
 });
 
 test('agent tools schema declares the public contract', () => {

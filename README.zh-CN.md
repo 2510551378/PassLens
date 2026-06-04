@@ -70,6 +70,8 @@ Pass Lens 提供的是 trace-grounded 的排障链路：
   context，而不是 generic chat surface。
 - 预留 agent-ready deterministic tool contracts：覆盖 queries、reports、
   exports 和本地 rerun/bisect workflows。
+- preview natural-language query planning 只把明确请求映射到 deterministic
+  Pass Lens tools，不开放 generic chat surface。
 - MLIR 支持两条路径：`mlir-opt` dump fallback 和基于 `PassInstrumentation`
   的 structured collector。
 

@@ -42,7 +42,7 @@ Agents consuming this contract should follow the same rules as Pass Lens:
 ## Current Tool Families
 
 - Query tools: first failure, first changed stage, metric jumps, metric budgets,
-  slowest passes, and text search.
+  slowest passes, text search, and a preview natural-language planner.
 - Report tools: GitHub issue draft, suspicious-pass summary, first-signal
   explanation, candidate root causes, trace quality, and trace size.
 - Export tools: agent context, Markdown repro bundle, and directory repro
@@ -52,6 +52,18 @@ Agents consuming this contract should follow the same rules as Pass Lens:
 The contract is compiler-agnostic. Triton, IREE, torch-mlir, LLVM, XLA, TVM, and
 hardware backends should all map their pass pipeline evidence into the same trace
 schema instead of relying on backend-specific agent behavior.
+
+## Natural-Language Planning
+
+`pass-lens.query.planNaturalLanguage` is intentionally a planner, not a chat
+endpoint. It maps a bounded request such as "find the first verifier failure" or
+"where does fallback.count jump first?" to an existing deterministic query tool
+and arguments. If the request is unclear or matches multiple primitives, the
+planner returns `unsupported` or `ambiguous` with candidate tool calls instead of
+guessing.
+
+Automation wrappers should run the selected deterministic query after planning
+and cite that query result's evidence IDs in any user-facing explanation.
 
 ## DeepSeek Smoke Test
 

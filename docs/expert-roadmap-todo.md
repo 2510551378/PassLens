@@ -97,7 +97,13 @@ an execution checklist. The guiding principle is:
   - Commit: this change.
   - Implemented deterministic Markdown generators in `src/issueSummary.ts` and
     exposed them through `Pass Lens: Query Current Trace`.
-- [ ] Only later map natural language to deterministic query primitives.
+- [x] Only later map natural language to deterministic query primitives.
+  - Commit: this change.
+  - Added `src/traceQueryPlanner.ts`, which maps clear English/Chinese requests
+    to existing `TraceQuery` primitives and returns `ambiguous` / `unsupported`
+    instead of guessing.
+  - Exposed the preview planner as `pass-lens.query.planNaturalLanguage` in the
+    agent tool manifest.
 
 ## P2: Agentic Rerun / Prefix Bisection
 

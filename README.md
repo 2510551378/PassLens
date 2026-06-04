@@ -72,6 +72,8 @@ Pass Lens gives compiler engineers a trace-grounded workflow:
   chat surface.
 - Agent-ready deterministic tool contracts for queries, reports, exports, and
   local rerun/bisect workflows.
+- Preview natural-language query planning maps clear requests to deterministic
+  Pass Lens tools instead of opening a generic chat surface.
 - MLIR support through both `mlir-opt` dump fallback and structured
   `PassInstrumentation` collection.
 
