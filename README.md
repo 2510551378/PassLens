@@ -112,6 +112,7 @@ Agent exports follow
 Agent tool manifests follow
 [`docs/pass-lens-agent-tools.schema.json`](docs/pass-lens-agent-tools.schema.json).
 See [`docs/agent-tools.md`](docs/agent-tools.md) for the agent-facing contract.
+Collector examples live in [`docs/schema-examples.md`](docs/schema-examples.md).
 
 ## Core Workflow
 

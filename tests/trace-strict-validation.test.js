@@ -78,3 +78,34 @@ test('pass-lens JSON Schema document is valid JSON and declares v1', async () =>
   assert.equal(schema.properties.schemaVersion.const, 1);
   assert.deepEqual(schema.$defs.stage.required, ['index', 'pass']);
 });
+
+test('schema examples are strict-valid public collector contracts', async () => {
+  const examplesDir = path.join(process.cwd(), 'docs', 'schema-examples');
+  const files = (await fs.readdir(examplesDir))
+    .filter((entry) => entry.endsWith('.json'))
+    .sort();
+
+  assert.deepEqual(files, [
+    'hardware-backend-metrics.json',
+    'llvm-new-pass-manager.json',
+    'mlir-structured.json'
+  ]);
+
+  for (const file of files) {
+    const raw = JSON.parse(await fs.readFile(path.join(examplesDir, file), 'utf8'));
+    const issues = validateTraceStrict(raw);
+    assert.deepEqual(issues, [], `${file} should pass strict schema validation`);
+  }
+});
+
+test('schema examples documentation references existing files', async () => {
+  const docsDir = path.join(process.cwd(), 'docs');
+  const markdown = await fs.readFile(path.join(docsDir, 'schema-examples.md'), 'utf8');
+  const links = Array.from(markdown.matchAll(/\]\((schema-examples\/[^)]+\.json)\)/g))
+    .map((match) => match[1]);
+
+  assert.equal(links.length, 3);
+  for (const link of links) {
+    await fs.access(path.join(docsDir, link));
+  }
+});

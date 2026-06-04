@@ -270,12 +270,23 @@ repro/
 
 ## Schema And Collector Ecosystem
 
-- [ ] Treat the JSON trace schema as a core public contract.
-- [ ] Publish stable schema docs for external collector authors.
-- [ ] Add schema examples for:
-  - [ ] MLIR.
-  - [ ] LLVM New Pass Manager.
-  - [ ] Triton / hardware backend metrics.
+- [x] Treat the JSON trace schema as a core public contract.
+  - Commit: this change.
+  - `docs/trace-schema.md` now states compatibility rules for schema v1:
+    strict validation rejects unknown fields, backend-specific data should live
+    in metrics/diagnostics/target/artifacts, and future extension should use a
+    schema version bump.
+- [x] Publish stable schema docs for external collector authors.
+  - Commit: this change.
+  - Added `docs/schema-examples.md` with collector authoring rules and mapping
+    guidance for MLIR, LLVM New Pass Manager, and hardware backends.
+- [x] Add schema examples for:
+  - [x] MLIR.
+  - [x] LLVM New Pass Manager.
+  - [x] Generic hardware backend metrics.
+  - Commit: this change.
+  - Strict-valid examples live under `docs/schema-examples/` and are covered by
+    `tests/trace-strict-validation.test.js`.
 - [ ] Build a small MLIR collector SDK surface around `PassInstrumentation`.
 - [x] Keep the schema compiler-agnostic enough for non-MLIR compilers.
   - Commit: this change.

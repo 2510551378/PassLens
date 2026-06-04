@@ -110,6 +110,7 @@ Agent exports 遵循
 Agent tool manifests 遵循
 [`docs/pass-lens-agent-tools.schema.json`](docs/pass-lens-agent-tools.schema.json)。
 agent-facing contract 见 [`docs/agent-tools.md`](docs/agent-tools.md)。
+collector examples 见 [`docs/schema-examples.md`](docs/schema-examples.md)。
 
 ## 核心工作流
 
