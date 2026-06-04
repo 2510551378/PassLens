@@ -4,7 +4,10 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const { hydrateTraceArtifacts } = require('../out/trace/artifacts.js');
+const {
+  hydrateTraceArtifacts,
+  hydrateTraceStageArtifacts
+} = require('../out/trace/artifacts.js');
 const { normalizeTrace } = require('../out/trace/schema.js');
 
 test('hydrateTraceArtifacts reads relative before, after, and diagnostics artifacts', async () => {
@@ -115,4 +118,45 @@ test('hydrateTraceArtifacts bounds large artifact reads', async () => {
   assert.deepEqual(issues, []);
   assert.match(trace.stages[0].irBefore, /^0123/);
   assert.match(trace.stages[0].irBefore, /Pass Lens truncated artifact: 6 bytes omitted/);
+});
+
+test('hydrateTraceStageArtifacts reads only the selected stage artifacts', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-artifacts-'));
+  await fs.writeFile(path.join(root, '0-before.mlir'), 'module { func.func @a() }', 'utf8');
+  await fs.writeFile(path.join(root, '0-after.mlir'), 'module { func.func @a() }', 'utf8');
+  await fs.writeFile(path.join(root, '1-before.mlir'), 'module { func.func @b() }', 'utf8');
+  await fs.writeFile(path.join(root, '1-after.mlir'), 'module { func.func @b() { ac.launch } }', 'utf8');
+
+  const trace = normalizeTrace({
+    capture: { ir: 'artifact' },
+    stages: [
+      {
+        index: 0,
+        pass: 'first',
+        artifacts: {
+          beforePath: '0-before.mlir',
+          afterPath: '0-after.mlir'
+        }
+      },
+      {
+        index: 1,
+        pass: 'second',
+        status: 'ok',
+        artifacts: {
+          beforePath: '1-before.mlir',
+          afterPath: '1-after.mlir'
+        }
+      }
+    ]
+  });
+
+  const issues = await hydrateTraceStageArtifacts(trace, path.join(root, 'trace.json'), 1);
+
+  assert.deepEqual(issues, []);
+  assert.equal(trace.stages[0].irBefore, '');
+  assert.equal(trace.stages[0].irAfter, '');
+  assert.equal(trace.stages[1].irBefore, 'module { func.func @b() }');
+  assert.equal(trace.stages[1].irAfter, 'module { func.func @b() { ac.launch } }');
+  assert.equal(trace.stages[1].changed, true);
+  assert.equal(trace.stages[1].status, 'changed');
 });

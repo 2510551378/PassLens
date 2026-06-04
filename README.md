@@ -58,7 +58,7 @@ Pass Lens gives compiler engineers a trace-grounded workflow:
   stages.
 - First-signal navigation for verifier failures, first IR changes, anomaly
   spikes, and slowest passes.
-- Side-by-side IR diff with inline or artifact-backed snapshots.
+- Side-by-side IR diff with inline snapshots or lazy-loaded artifact-backed IR.
 - Metric anomaly detection for zero-to-positive jumps, large relative changes,
   and domain-specific budget violations.
 - Trace quality score for collector credibility: pass identity, timing,

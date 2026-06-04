@@ -126,6 +126,16 @@ test('parseTracePanelMessage accepts artifact open messages', () => {
   });
 });
 
+test('parseTracePanelMessage accepts stage artifact hydration requests', () => {
+  assert.deepEqual(parseTracePanelMessage({
+    type: 'requestStageArtifacts',
+    stageIndex: 7
+  }), {
+    type: 'requestStageArtifacts',
+    stageIndex: 7
+  });
+});
+
 test('parseTracePanelMessage rejects malformed or unknown messages', () => {
   assert.equal(parseTracePanelMessage(undefined), undefined);
   assert.equal(parseTracePanelMessage([]), undefined);
@@ -133,5 +143,7 @@ test('parseTracePanelMessage rejects malformed or unknown messages', () => {
   assert.equal(parseTracePanelMessage({ type: 'copy', text: 42 }), undefined);
   assert.equal(parseTracePanelMessage({ type: 'openArtifact' }), undefined);
   assert.equal(parseTracePanelMessage({ type: 'openArtifact', path: '' }), undefined);
+  assert.equal(parseTracePanelMessage({ type: 'requestStageArtifacts' }), undefined);
+  assert.equal(parseTracePanelMessage({ type: 'requestStageArtifacts', stageIndex: '7' }), undefined);
   assert.equal(parseTracePanelMessage({ type: 'unknown' }), undefined);
 });

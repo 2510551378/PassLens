@@ -255,8 +255,12 @@ repro/
 
 ## Performance And Large Trace Support
 
-- [ ] Lazy-load artifact IR on stage selection instead of hydrating every stage
+- [x] Lazy-load artifact IR on stage selection instead of hydrating every stage
   eagerly.
+  - Commit: this change.
+  - Opening a trace no longer reads every before/after artifact. The webview
+    requests artifact IR for the selected stage, and export/copy actions hydrate
+    only the selected stage before generating context.
 - [ ] Add virtualized timeline/list rendering for large traces.
 - [x] Add bounded / on-demand diff computation.
   - Commit: this change.
@@ -336,7 +340,10 @@ repro/
 ### Month 1-3: Real Collector Workflow
 
 - [ ] Integrate structured collector into one real downstream compiler.
-- [ ] Add artifact lazy loading.
+- [x] Add artifact lazy loading.
+  - Commit: this change.
+  - Stage artifact IR is loaded on selection through a webview request instead
+    of eager trace-wide hydration.
 - [ ] Add prefix bisection.
 - [ ] Add first-failure localization report.
 - [ ] Validate large trace UX and performance.

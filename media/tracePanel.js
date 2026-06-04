@@ -8,6 +8,8 @@
   let filterText = '';
   let showChangedOnly = false;
   let showFullDiff = false;
+  const pendingArtifactLoads = new Set();
+  const attemptedArtifactLoads = new Set();
   const maxRenderedDiffRows = 700;
   const diffEdgeRows = 300;
   
@@ -50,6 +52,11 @@
     ensureVisibleSelection();
     renderTimeline();
   });
+  if (typeof window.addEventListener === 'function') {
+    window.addEventListener('message', (event) => {
+      handleExtensionMessage(event.data);
+    });
+  }
   document.addEventListener('keydown', handleKeydown);
   
   function escapeHtml(value) {
@@ -287,6 +294,27 @@
     }
   }
 
+  function handleExtensionMessage(message) {
+    if (!message || message.type !== 'stageArtifacts' || typeof message.stageIndex !== 'number') {
+      return;
+    }
+    pendingArtifactLoads.delete(message.stageIndex);
+    if (Array.isArray(message.issues) && message.issues.length) {
+      traceIssues.push(...message.issues);
+    }
+    const index = trace.stages.findIndex((stage) => stage.index === message.stageIndex);
+    if (index >= 0 && message.stage) {
+      trace.stages[index] = {
+        ...trace.stages[index],
+        ...message.stage
+      };
+    }
+    renderSummary();
+    renderIssuePanel();
+    renderTimeline();
+    renderDetails();
+  }
+
   function handleKeydown(event) {
     if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey) {
       return;
@@ -468,6 +496,7 @@
     if (!stage) {
       return;
     }
+    requestStageArtifactsIfNeeded(stage);
   
     details.innerHTML =
       renderPassHero(stage) +
@@ -806,9 +835,14 @@
   function renderDiff(stage) {
     const beforeText = stage.irBefore ?? '';
     const afterText = stage.irAfter ?? '';
+    if (isMissingArtifactIr(stage)) {
+      return renderArtifactOnlyToolbar(stage) +
+        '<div class="empty">Loading artifact IR for this pass...</div>';
+    }
     const rows = diffLines(beforeText, afterText);
     if (!rows.length) {
-      return '<div class="empty">No IR text recorded for this pass.</div>';
+      return renderArtifactOnlyToolbar(stage) +
+        '<div class="empty">No IR text recorded for this pass.</div>';
     }
     const contextRows = showFullDiff ? rows : collapseUnchangedRows(rows);
     const renderedRows = boundDiffRows(contextRows);
@@ -876,6 +910,40 @@
     }
     return '<button class="artifact-button" data-action="open-artifact" data-artifact-path="' +
       escapeHtml(artifactPath) + '" title="' + escapeHtml(artifactPath) + '">' + escapeHtml(label) + '</button>';
+  }
+
+  function renderArtifactOnlyToolbar(stage) {
+    const artifactButtons = [
+      artifactButton('Open before artifact', stage.artifacts?.beforePath),
+      artifactButton('Open after artifact', stage.artifacts?.afterPath),
+      artifactButton('Open diagnostics', stage.artifacts?.diagnosticsPath)
+    ].filter(Boolean).join('');
+    return artifactButtons
+      ? '<div class="diff-toolbar"><div class="diff-actions"><div class="artifact-toolbar" aria-label="Diff artifacts"><span class="toolbar-label">Artifacts</span>' + artifactButtons + '</div></div></div>'
+      : '';
+  }
+
+  function requestStageArtifactsIfNeeded(stage) {
+    if (!isMissingArtifactIr(stage) && !(stage.artifacts?.diagnosticsPath && !stage.diagnostics)) {
+      return;
+    }
+    if (pendingArtifactLoads.has(stage.index)) {
+      return;
+    }
+    if (attemptedArtifactLoads.has(stage.index)) {
+      return;
+    }
+    attemptedArtifactLoads.add(stage.index);
+    pendingArtifactLoads.add(stage.index);
+    vscode.postMessage({
+      type: 'requestStageArtifacts',
+      stageIndex: stage.index
+    });
+  }
+
+  function isMissingArtifactIr(stage) {
+    return Boolean((stage.artifacts?.beforePath && !stage.irBefore) ||
+      (stage.artifacts?.afterPath && !stage.irAfter));
   }
 
   function renderSourceLine(label, artifactPath, text, options = {}) {

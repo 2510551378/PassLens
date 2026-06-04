@@ -57,7 +57,7 @@ Pass Lens 提供的是 trace-grounded 的排障链路：
   stages。
 - first-signal 导航，支持 verifier failure、first IR change、anomaly spike 和
   slowest pass。
-- side-by-side IR diff，支持 inline IR 和 artifact-backed snapshots。
+- side-by-side IR diff，支持 inline IR 和 lazy-loaded artifact-backed IR。
 - metric anomaly 检测：zero-to-positive jump、大比例变化、domain-specific
   budget violation。
 - trace quality score：检查 pass identity、timing、verifier status、artifact
