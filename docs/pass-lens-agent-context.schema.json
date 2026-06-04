@@ -95,6 +95,30 @@
         },
         "capture": {
           "$ref": "#/$defs/capture"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": ["live-pass-instrumentation", "converted-dump", "hand-authored", "real-artifact-capture"]
+        },
+        "description": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "generatedBy": {
+          "type": "string"
+        },
+        "capturedAt": {
+          "type": "string"
         }
       }
     },

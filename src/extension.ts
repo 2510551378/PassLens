@@ -48,44 +48,50 @@ interface TraceQueryPick extends vscode.QuickPickItem {
 
 const sampleTraces: SampleTraceEntry[] = [
   {
+    label: 'Live MLIR PassInstrumentation',
+    description: 'Live structured collector output',
+    detail: 'Real L20 pass-lens-mlir-opt trace with artifact-backed IR for canonicalize,cse.',
+    file: 'mlir-live-pass-instrumentation.json'
+  },
+  {
     label: 'Toy MLIR pipeline',
-    description: '3 passes, simple IR diff',
+    description: 'Hand-authored, simple IR diff',
     detail: 'Small trace for checking the basic viewer layout.',
     file: 'mlir-toy.json'
   },
   {
     label: 'Long lowering pipeline',
-    description: '14 passes, mixed impact',
+    description: 'Hand-authored, 14 passes',
     detail: 'Longer pipeline for scanning changed/unchanged passes and slow passes.',
     file: 'mlir-long-pipeline.json'
   },
   {
     label: 'Verifier failure',
-    description: 'First-signal failure case',
+    description: 'Hand-authored first-signal failure',
     detail: 'Trace with a verifier failure after a lowering pass.',
     file: 'mlir-verifier-failure.json'
   },
   {
     label: 'External IR artifacts',
-    description: '2 passes, IR stored in sidecar files',
+    description: 'Hand-authored sidecar artifacts',
     detail: 'Trace that resolves before/after IR and diagnostics from artifact paths.',
     file: 'mlir-artifacts.json'
   },
   {
     label: 'Triton NPU UB budget overflow',
-    description: 'AscendC resource budget anomaly',
+    description: 'Hand-authored hardware case study',
     detail: 'Case study trace where scratch queue planning exceeds UB live-slot and queue-depth budgets.',
     file: 'triton-npu-ub-budget-overflow.json'
   },
   {
     label: 'Triton NPU strict fallback',
-    description: 'AscendC strict-mode legality failure',
+    description: 'Hand-authored hardware case study',
     detail: 'Case study trace where a lowering pass introduces fallback and missing tile proof evidence.',
     file: 'triton-npu-strict-fallback.json'
   },
   {
     label: 'Real Triton NPU dual RMSNorm',
-    description: 'Captured TTAdapter IR to generated AscendC artifact',
+    description: 'Real artifact capture',
     detail: 'Real local npuir2ascendc sample generated from fused_dual_residual_rmsnorm_kernel.',
     file: 'real-triton-npu-dual-rmsnorm.json'
   }
@@ -994,6 +1000,7 @@ function getWebviewHtml(
     <h1>${title}</h1>
     <div class="meta">
       <span id="tool"></span>
+      <span id="provenance"></span>
       <span id="pipeline"></span>
       <span id="source"></span>
     </div>

@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "tool": "mlir-opt",
+  "provenance": {
+    "kind": "hand-authored",
+    "description": "Hand-authored verifier-failure trace for first-signal and issue-summary UX."
+  },
   "input": "broken-lowering.mlir",
   "pipeline": "builtin.module(func.func(canonicalize,cse),convert-scf-to-cf,convert-func-to-llvm,reconcile-unrealized-casts)",
   "command": "mlir-opt broken-lowering.mlir --pass-pipeline=builtin.module(func.func(canonicalize,cse),convert-scf-to-cf,convert-func-to-llvm,reconcile-unrealized-casts) --verify-each",

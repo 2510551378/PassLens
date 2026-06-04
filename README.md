@@ -18,6 +18,8 @@
   ·
   <a href="docs/trace-schema.md">Trace Schema</a>
   ·
+  <a href="docs/sample-provenance.md">Sample Provenance</a>
+  ·
   <a href="docs/expert-roadmap-todo.md">Roadmap</a>
   ·
   <a href="collectors/mlir-pass-lens">MLIR Collector</a>
@@ -97,6 +99,7 @@ Pass Lens: Open Sample Trace
 
 Good first samples:
 
+- `Live MLIR PassInstrumentation`
 - `Verifier failure`
 - `External IR artifacts`
 - `Toy MLIR pipeline`
@@ -206,6 +209,8 @@ See [docs/trace-schema.md](docs/trace-schema.md) for the full viewer contract.
 
 `Pass Lens: Open Sample Trace` includes:
 
+- `Live MLIR PassInstrumentation`: real structured collector output from L20,
+  with artifact-backed IR for `canonicalize,cse`.
 - `Toy MLIR pipeline`: small trace for checking the basic viewer layout.
 - `Long lowering pipeline`: longer trace for filters, changed-only view, and
   slowest-pass navigation.
@@ -222,6 +227,9 @@ See [docs/trace-schema.md](docs/trace-schema.md) for the full viewer contract.
 The Triton NPU / AscendC samples are not part of the core product contract.
 They are kept as optional case studies showing that the same schema can carry
 hardware-backend evidence.
+
+See [docs/sample-provenance.md](docs/sample-provenance.md) for which samples are
+live collector output, real artifact captures, or hand-authored examples.
 
 ## Commands
 

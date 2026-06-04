@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "collectorVersion": "0.1.0",
+  "tool": "pass-lens-mlir-opt",
+  "provenance": {
+    "kind": "live-pass-instrumentation",
+    "description": "Collected on L20 from the structured MLIR PassInstrumentation collector.",
+    "source": "collectors/mlir-pass-lens/tools/pass-lens-mlir-opt.cpp",
+    "generatedBy": "/home/ahc/PassLens/build/pass-lens-mlir/pass-lens-mlir-opt",
+    "capturedAt": "2026-06-04"
+  },
+  "capture": {
+    "ir": "artifact",
+    "metrics": true,
+    "timing": true
+  },
+  "input": "live-pass-instrumentation.mlir",
+  "pipeline": "builtin.module(func.func(canonicalize,cse))",
+  "command": "pass-lens-mlir-opt live-pass-instrumentation.mlir --pass-pipeline=builtin.module(func.func(canonicalize,cse)) --pass-lens-trace=mlir-live-pass-instrumentation.json --pass-lens-artifact-dir=artifacts/mlir-live-pass-instrumentation -o output.mlir",
+  "stages": [
+    {
+      "index": 0,
+      "pass": "Canonicalizer",
+      "argument": "canonicalize",
+      "opName": "func.func",
+      "symbol": "@main",
+      "scope": "func.func @main",
+      "status": "changed",
+      "changed": true,
+      "durationMs": 9.689200e-02,
+      "verifier": "ok",
+      "location": "loc(\"live-pass-instrumentation.mlir\":2:3)",
+      "metricsBefore": {
+        "lines": 5,
+        "ops": 4,
+        "arith.addi": 1,
+        "arith.constant": 1,
+        "func.func": 1,
+        "func.return": 1
+      },
+      "metricsAfter": {
+        "lines": 3,
+        "ops": 2,
+        "func.func": 1,
+        "func.return": 1
+      },
+      "artifacts": {
+        "beforePath": "artifacts/mlir-live-pass-instrumentation/stage-000000.before.mlir",
+        "afterPath": "artifacts/mlir-live-pass-instrumentation/stage-000000.after.mlir"
+      }
+    },
+    {
+      "index": 1,
+      "pass": "CSE",
+      "argument": "cse",
+      "opName": "func.func",
+      "symbol": "@main",
+      "scope": "func.func @main",
+      "status": "ok",
+      "changed": false,
+      "durationMs": 1.502900e-02,
+      "verifier": "ok",
+      "location": "loc(\"live-pass-instrumentation.mlir\":2:3)",
+      "metricsBefore": {
+        "lines": 3,
+        "ops": 2,
+        "func.func": 1,
+        "func.return": 1
+      },
+      "metricsAfter": {
+        "lines": 3,
+        "ops": 2,
+        "func.func": 1,
+        "func.return": 1
+      },
+      "artifacts": {
+        "beforePath": "artifacts/mlir-live-pass-instrumentation/stage-000001.before.mlir",
+        "afterPath": "artifacts/mlir-live-pass-instrumentation/stage-000001.after.mlir"
+      }
+    }
+  ]
+}

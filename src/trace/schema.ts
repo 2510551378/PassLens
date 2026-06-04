@@ -7,6 +7,7 @@ import type {
   PassTrace,
   StageArtifacts,
   TargetInfo,
+  TraceProvenance,
   TraceStage
 } from '../types';
 
@@ -23,6 +24,7 @@ export function normalizeTrace(raw: unknown): PassTrace {
     collectorVersion: readString(raw.collectorVersion),
     compiler: readCompilerInfo(raw.compiler),
     target: readTargetInfo(raw.target),
+    provenance: readTraceProvenance(raw.provenance),
     inputHash: readString(raw.inputHash),
     capture: readCaptureInfo(raw.capture),
     metricProfiles: readMetricProfiles(raw.metricProfiles),
@@ -126,6 +128,27 @@ function readTargetInfo(raw: unknown): TargetInfo | undefined {
     backend: readString(raw.backend),
     platform: readString(raw.platform),
     triple: readString(raw.triple)
+  });
+}
+
+function readTraceProvenance(raw: unknown): TraceProvenance | undefined {
+  if (!isRecord(raw)) {
+    return undefined;
+  }
+  const kind = readString(raw.kind);
+  const provenance: TraceProvenance = {};
+  if (kind === 'live-pass-instrumentation' ||
+    kind === 'converted-dump' ||
+    kind === 'hand-authored' ||
+    kind === 'real-artifact-capture') {
+    provenance.kind = kind;
+  }
+  return compactObject({
+    ...provenance,
+    description: readString(raw.description),
+    source: readString(raw.source),
+    generatedBy: readString(raw.generatedBy),
+    capturedAt: readString(raw.capturedAt)
   });
 }
 

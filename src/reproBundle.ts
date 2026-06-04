@@ -25,6 +25,7 @@ export function createReproBundle(
     `- Source trace: ${options.sourcePath ?? 'unknown'}`,
     `- Tool: ${trace.tool ?? 'unknown'}`,
     `- Collector: ${trace.collectorVersion ?? 'unknown'}`,
+    `- Provenance: ${formatProvenance(trace.provenance)}`,
     `- Input: ${trace.input ?? 'unknown'}`,
     `- Pipeline: ${trace.pipeline ?? 'unknown'}`,
     `- Exit code: ${trace.exitCode ?? 'unknown'}`,
@@ -71,6 +72,15 @@ export function createReproBundle(
   ];
 
   return `${lines.join('\n')}\n`;
+}
+
+function formatProvenance(provenance: PassTrace['provenance']): string {
+  if (!provenance?.kind) {
+    return 'unknown';
+  }
+  return provenance.description
+    ? `${provenance.kind} (${provenance.description})`
+    : provenance.kind;
 }
 
 function findSelectedStage(trace: PassTrace, selectedStageIndex: number | undefined): TraceStage | undefined {

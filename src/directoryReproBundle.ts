@@ -30,6 +30,7 @@ export interface DirectoryReproBundleManifest {
   }>;
   tool?: string;
   collectorVersion?: string;
+  provenance?: PassTrace['provenance'];
   capture?: PassTrace['capture'];
 }
 
@@ -113,6 +114,7 @@ export async function exportDirectoryReproBundle(
     copiedArtifacts,
     tool: trace.tool,
     collectorVersion: trace.collectorVersion,
+    provenance: trace.provenance,
     capture: trace.capture
   };
 

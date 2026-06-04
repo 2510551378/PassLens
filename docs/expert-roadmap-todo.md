@@ -182,8 +182,12 @@ an execution checklist. The guiding principle is:
   - [ ] Candidate: IREE lowering pipeline.
   - [ ] Candidate: torch-mlir lowering pipeline.
 - [ ] Replace or supplement synthetic samples with 2-3 real trace cases.
-- [ ] Document which samples are live `PassInstrumentation` output versus
+- [x] Document which samples are live `PassInstrumentation` output versus
   hand-authored / converted examples.
+  - Commit: this change.
+  - Added `provenance` to schema v1 and every bundled sample trace, plus
+    `docs/sample-provenance.md`. A new `mlir-live-pass-instrumentation.json`
+    sample is real L20 `pass-lens-mlir-opt` structured collector output.
 - [x] Add collector trace quality checks:
   - [x] Missing pass identity.
   - [x] Missing timing.
@@ -318,7 +322,10 @@ repro/
 
 - [ ] Publish Marketplace preview.
 - [ ] Add directory-style repro bundle.
-- [ ] Add at least 3 trace cases, with provenance labels.
+- [x] Add at least 3 trace cases, with provenance labels.
+  - Commit: this change.
+  - All bundled sample traces now declare `provenance.kind` and
+    `provenance.description`; tests enforce this for future samples.
 - [ ] Add demo GIF and workflow-focused README.
 - [x] Add trace quality score.
   - Commit: this change.

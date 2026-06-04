@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "collectorVersion": "example-hardware-backend/0.1.0",
+  "provenance": {
+    "kind": "hand-authored",
+    "description": "Hand-authored hardware backend metric contract example."
+  },
   "compiler": {
     "name": "example-backend-opt",
     "version": "0.1.0",

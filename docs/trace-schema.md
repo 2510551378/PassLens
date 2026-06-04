@@ -33,6 +33,10 @@ remain portable across MLIR, LLVM, hardware backends, and other compiler stacks.
     "backend": "ascendc",
     "platform": "ascend-910b2"
   },
+  "provenance": {
+    "kind": "live-pass-instrumentation",
+    "description": "Collected from a real PassInstrumentation run."
+  },
   "inputHash": "sha256:...",
   "capture": {
     "ir": "inline",
@@ -100,6 +104,10 @@ remain portable across MLIR, LLVM, hardware backends, and other compiler stacks.
 - `collectorVersion`: collector implementation version.
 - `compiler`: compiler binary name, version, and source revision when known.
 - `target`: backend/platform/triple metadata for downstream compiler pipelines.
+- `provenance`: trace origin. `kind` is one of
+  `live-pass-instrumentation`, `converted-dump`, `hand-authored`, or
+  `real-artifact-capture`; optional text fields can name the source,
+  generator, capture date, or caveat.
 - `inputHash`: stable hash of the input module or source.
 - `capture`: trace-level capture mode. `ir` is `inline`, `artifact`, or
   `omitted`; `metrics` and `timing` describe whether those signals are
@@ -124,6 +132,8 @@ remain portable across MLIR, LLVM, hardware backends, and other compiler stacks.
 - Relative artifact paths are resolved relative to the trace JSON file.
 - Backend-specific evidence should live in `target`, `metricProfiles`,
   `metricsBefore` / `metricsAfter`, `diagnostics`, or artifact files.
+- Sample traces should set `provenance` so users can distinguish live collector
+  output from converted dumps and hand-authored examples.
 - If timing, metrics, or IR are intentionally unavailable, declare that through
   `capture` instead of leaving readers to guess.
 - Prefer additive schema evolution through a future `schemaVersion` bump rather

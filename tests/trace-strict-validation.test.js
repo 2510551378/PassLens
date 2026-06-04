@@ -11,6 +11,10 @@ const {
 test('validateTraceStrict accepts a minimal schema-v1 trace', () => {
   const issues = validateTraceStrict({
     schemaVersion: 1,
+    provenance: {
+      kind: 'live-pass-instrumentation',
+      description: 'Collected from a real structured collector run.'
+    },
     stages: [
       {
         index: 0,
@@ -26,6 +30,11 @@ test('validateTraceStrict rejects malformed collector output', () => {
   const issues = validateTraceStrict({
     schemaVersion: 2,
     collectorVersion: 1,
+    provenance: {
+      kind: 'imagined',
+      description: 42,
+      extra: true
+    },
     capture: {
       ir: 'sidecar'
     },
@@ -50,6 +59,9 @@ test('validateTraceStrict rejects malformed collector output', () => {
 
   assert.ok(issues.some((entry) => entry.field === '$.schemaVersion'));
   assert.ok(issues.some((entry) => entry.field === '$.collectorVersion'));
+  assert.ok(issues.some((entry) => entry.field === '$.provenance.kind'));
+  assert.ok(issues.some((entry) => entry.field === '$.provenance.description'));
+  assert.ok(issues.some((entry) => entry.field === '$.provenance.extra'));
   assert.ok(issues.some((entry) => entry.field === '$.capture.ir'));
   assert.ok(issues.some((entry) => entry.field === '$.stages[0].index'));
   assert.ok(issues.some((entry) => entry.field === '$.stages[0].pass'));

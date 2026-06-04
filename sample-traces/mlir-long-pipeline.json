@@ -1,6 +1,10 @@
 {
   "schemaVersion": 1,
   "tool": "mlir-opt",
+  "provenance": {
+    "kind": "hand-authored",
+    "description": "Hand-authored long MLIR-style trace for timeline, filtering, and slow-pass UX."
+  },
   "input": "long-pipeline.mlir",
   "pipeline": "builtin.module(symbol-dce,func.func(canonicalize,cse,licm),convert-linalg-to-loops,lower-affine,convert-scf-to-cf,convert-arith-to-llvm,convert-func-to-llvm,reconcile-unrealized-casts)",
   "command": "mlir-opt long-pipeline.mlir --pass-pipeline=builtin.module(symbol-dce,func.func(canonicalize,cse,licm),convert-linalg-to-loops,lower-affine,convert-scf-to-cf,convert-arith-to-llvm,convert-func-to-llvm,reconcile-unrealized-casts) --mlir-disable-threading --mlir-print-ir-before-all --mlir-print-ir-after-all --verify-each",

@@ -18,6 +18,7 @@
   const changedOnly = document.getElementById('changed-only');
   
   document.getElementById('tool').textContent = trace.tool ? 'tool: ' + trace.tool : 'tool: unknown';
+  document.getElementById('provenance').textContent = 'origin: ' + provenanceLabel(trace.provenance);
   document.getElementById('pipeline').textContent = trace.pipeline ? 'pipeline: ' + trace.pipeline : 'pipeline: unknown';
   document.getElementById('source').textContent = 'trace: ' + sourcePath;
   renderSummary();
@@ -77,6 +78,23 @@
       return fmtNumber(bytes / 1024) + ' KiB';
     }
     return fmtNumber(bytes / (1024 * 1024)) + ' MiB';
+  }
+
+  function provenanceLabel(provenance) {
+    const kind = provenance?.kind;
+    if (kind === 'live-pass-instrumentation') {
+      return 'live PassInstrumentation';
+    }
+    if (kind === 'converted-dump') {
+      return 'converted dump';
+    }
+    if (kind === 'hand-authored') {
+      return 'hand-authored';
+    }
+    if (kind === 'real-artifact-capture') {
+      return 'real artifact capture';
+    }
+    return 'unknown';
   }
   
   function initialSelectedIndex() {
@@ -341,6 +359,7 @@
       summaryCard('Changed', changed.length + ' / ' + trace.stages.length, firstChanged ? 'first-signal' : undefined, firstChanged ? 'changed' : undefined) +
       summaryCard('First signal', failed ? 'verifier failed at #' + failed.index : firstChanged ? 'first change at #' + firstChanged.index : 'no IR changes', failed || firstChanged ? 'first-signal' : undefined, failed ? 'failed' : firstChanged ? 'changed' : undefined) +
       summaryCard('Anomalies', traceAnomalies.length ? traceAnomalies.length + ' suspicious metric delta(s)' : 'none', firstAnomaly ? 'first-anomaly' : undefined, traceAnomalies.length ? 'warning' : undefined) +
+      summaryCard('Origin', provenanceLabel(trace.provenance), undefined, trace.provenance?.kind ? undefined : 'warning') +
       summaryCard('Trace quality', traceQuality ? traceQuality.score + '/100' : 'unknown', undefined, qualityTone) +
       summaryCard('Trace size', traceSize ? fmtBytes(traceSize.totalKnownBytes) : 'unknown', undefined, sizeTone) +
       summaryCard('Slowest', slowest ? slowest.pass + ' (' + fmtNumber(slowest.durationMs) + ' ms)' : 'not recorded', slowest ? 'slowest' : undefined);

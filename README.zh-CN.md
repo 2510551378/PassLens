@@ -18,6 +18,8 @@
   ·
   <a href="docs/trace-schema.md">Trace Schema</a>
   ·
+  <a href="docs/sample-provenance.md">Sample Provenance</a>
+  ·
   <a href="docs/expert-roadmap-todo.md">Roadmap</a>
   ·
   <a href="collectors/mlir-pass-lens">MLIR Collector</a>
@@ -95,6 +97,7 @@ Pass Lens: Open Sample Trace
 
 建议先看这些 sample：
 
+- `Live MLIR PassInstrumentation`
 - `Verifier failure`
 - `External IR artifacts`
 - `Toy MLIR pipeline`
@@ -203,6 +206,8 @@ downstream compiler 可以直接输出 Pass Lens schema：
 
 `Pass Lens: Open Sample Trace` 包含：
 
+- `Live MLIR PassInstrumentation`：来自 L20 的真实 structured collector
+  output，使用 artifact-backed IR 展示 `canonicalize,cse`。
 - `Toy MLIR pipeline`：用于检查基础 viewer layout 的小 trace。
 - `Long lowering pipeline`：用于验证 filter、changed-only view 和 slowest-pass
   navigation 的长 trace。
@@ -217,6 +222,9 @@ downstream compiler 可以直接输出 Pass Lens schema：
 
 Triton NPU / AscendC samples 不是核心产品契约的一部分，只作为 optional case
 studies 保留，用来说明同一套 schema 可以承载 hardware-backend evidence。
+
+哪些 sample 是 live collector output、real artifact capture 或 hand-authored
+example，见 [`docs/sample-provenance.md`](docs/sample-provenance.md)。
 
 ## Commands
 

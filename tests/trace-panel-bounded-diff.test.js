@@ -10,6 +10,10 @@ test('trace panel bounds large rendered diffs', () => {
     trace: {
       schemaVersion: 1,
       tool: 'smoke',
+      provenance: {
+        kind: 'hand-authored',
+        description: 'unit test fixture'
+      },
       stages: [
         {
           index: 0,
@@ -32,6 +36,7 @@ test('trace panel bounds large rendered diffs', () => {
   for (const id of [
     'pass-lens-data',
     'tool',
+    'provenance',
     'pipeline',
     'source',
     'summary',
