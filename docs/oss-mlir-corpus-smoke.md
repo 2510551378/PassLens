@@ -34,6 +34,8 @@ The script downloads selected files from:
 
 - `https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-20.1.2/mlir/test/Dialect/Arith/canonicalize.mlir`
 - `https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-20.1.2/mlir/test/Dialect/MemRef/canonicalize.mlir`
+- `https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-20.1.2/mlir/test/Dialect/SCF/canonicalize.mlir`
+- `https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-20.1.2/mlir/test/Transforms/canonicalize.mlir`
 
 It runs:
 
@@ -43,6 +45,12 @@ builtin.module(canonicalize,cse)
 
 with `--allow-unregistered-dialect`, because LLVM lit tests may contain
 `test.*` operations used as rewrite fixtures.
+
+For LLVM lit files that contain many independent fixtures, the runner splits on
+`// -----`, skips `expected-error` chunks, and requires a minimum number of
+successful chunks per source file. Unsupported chunks are recorded in
+`results.json` but do not fail the smoke as long as the source-level coverage
+requirement is met.
 
 ## L20 Result
 
@@ -59,32 +67,34 @@ Observed result:
 | --- | --- | --- | ---: | ---: | --- |
 | `arith-canonicalize` | LLVM `Dialect/Arith/canonicalize.mlir` | ok | 2 | 4 | strict schema + artifact check passed |
 | `memref-canonicalize` | LLVM `Dialect/MemRef/canonicalize.mlir` | ok | 2 | 4 | strict schema + artifact check passed |
+| `scf-canonicalize-sections` | LLVM `Dialect/SCF/canonicalize.mlir` | ok, 3/2 required chunks | 2 per chunk | 4 per chunk | strict schema + artifact check passed |
+| `transforms-canonicalize-sections` | LLVM `Transforms/canonicalize.mlir` | ok, 3/2 required chunks | 2 per chunk | 4 per chunk | strict schema + artifact check passed |
 
 Validation command:
 
 ```bash
-npm run validate:trace -- --strict-only --check-artifacts \
-  /tmp/passlens-oss-mlir-smoke-allow-unregistered/traces/arith-canonicalize.json \
-  /tmp/passlens-oss-mlir-smoke-allow-unregistered/traces/memref-canonicalize.json
+PASS_LENS_MLIR_OPT=/home/ahc/PassLens/build/pass-lens-mlir/pass-lens-mlir-opt \
+PASS_LENS_OSS_SMOKE_DIR=/tmp/passlens-oss-script-smoke-v2 \
+npm run smoke:oss-mlir
 ```
 
-Both traces passed with no issues.
+All generated traces passed with no issues.
 
 ## Negative Findings
 
 Several LLVM lit files are not directly usable as one-shot compiler inputs
-without additional splitting or test-dialect registration:
+without additional splitting or test-dialect registration. The current runner
+handles splitting for selected SCF and Transform fixtures, but some files still
+need project-specific dialect setup:
 
 | Candidate | Failure mode |
 | --- | --- |
-| `Dialect/SCF/canonicalize.mlir` | duplicate affine map alias inside the combined test file |
 | `Dialect/Tensor/canonicalize.mlir` | requires the MLIR test dialect for `test.destination_style_op` |
-| `Transforms/canonicalize.mlir` | duplicate symbol in the combined test file |
 
 These are not Pass Lens trace validation failures. They show that LLVM lit test
 files are often collections of fixtures, expected diagnostics, or test-dialect
-cases. A broader OSS corpus runner should either split lit files by test
-sections or use a collector build that registers the MLIR test dialect.
+cases. A broader OSS corpus runner should continue expanding lit splitting and
+use a collector build that registers the MLIR test dialect when needed.
 
 ## Interpretation
 
@@ -97,7 +107,7 @@ Evidence:
 
 Remaining risk:
 
-- This smoke is intentionally small. It validates plumbing and artifact
-  integrity, not broad dialect coverage.
+- This smoke is intentionally small. It validates plumbing, lit-section
+  handling, and artifact integrity, not broad dialect coverage.
 - Larger LLVM/IREE/torch-mlir corpora should be added as separate milestones
   once the runner can handle lit splitting and project-specific dialect setup.

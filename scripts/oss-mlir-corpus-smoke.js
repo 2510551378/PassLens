@@ -16,21 +16,45 @@ const cases = [
   {
     name: 'arith-canonicalize',
     source: 'Dialect/Arith/canonicalize.mlir',
+    mode: 'file',
     pipeline: 'builtin.module(canonicalize,cse)',
     args: ['--allow-unregistered-dialect']
   },
   {
     name: 'memref-canonicalize',
     source: 'Dialect/MemRef/canonicalize.mlir',
+    mode: 'file',
     pipeline: 'builtin.module(canonicalize,cse)',
     args: ['--allow-unregistered-dialect']
+  },
+  {
+    name: 'scf-canonicalize-sections',
+    source: 'Dialect/SCF/canonicalize.mlir',
+    mode: 'litSections',
+    pipeline: 'builtin.module(canonicalize,cse)',
+    args: ['--allow-unregistered-dialect'],
+    minSuccessfulChunks: 2,
+    maxSuccessfulChunks: 3,
+    maxSections: 40
+  },
+  {
+    name: 'transforms-canonicalize-sections',
+    source: 'Transforms/canonicalize.mlir',
+    mode: 'litSections',
+    pipeline: 'builtin.module(canonicalize,cse)',
+    args: ['--allow-unregistered-dialect'],
+    minSuccessfulChunks: 2,
+    maxSuccessfulChunks: 3,
+    maxSections: 40
   }
 ];
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(error instanceof Error ? error.message : String(error));
+    process.exit(1);
+  });
+}
 
 async function main() {
   resetDirectory(outputRoot);
@@ -38,39 +62,101 @@ async function main() {
   fs.mkdirSync(path.join(outputRoot, 'traces'), { recursive: true });
 
   const results = [];
+  const caseSummaries = [];
   for (const entry of cases) {
-    results.push(await runCase(entry));
+    if (entry.mode === 'litSections') {
+      const sectionResult = await runLitSectionCase(entry);
+      results.push(...sectionResult.results);
+      caseSummaries.push(sectionResult.summary);
+    } else {
+      const result = await runCase(entry);
+      results.push(result);
+      caseSummaries.push({
+        name: entry.name,
+        successfulChunks: result.status === 'ok' ? 1 : 0,
+        minSuccessfulChunks: 1
+      });
+    }
   }
 
   const tracePaths = results
     .filter((entry) => entry.status === 'ok')
     .map((entry) => entry.tracePath);
   const validation = validateTraces(tracePaths);
-  const failed = results.filter((entry) => entry.status !== 'ok');
+  const failed = results.filter((entry) => entry.status !== 'ok' && !entry.status.startsWith('unsupported:'));
 
   fs.writeFileSync(path.join(outputRoot, 'results.json'), JSON.stringify({
     llvmTag,
     collector,
     outputRoot,
+    caseSummaries,
     results,
     validationExitCode: validation.status
   }, null, 2), 'utf8');
 
-  printSummary(results, validation);
-  if (failed.length > 0 || validation.status !== 0) {
+  printSummary(results, caseSummaries, validation);
+  const missingRequiredCoverage = caseSummaries.some((entry) => entry.successfulChunks < entry.minSuccessfulChunks);
+  if (failed.length > 0 || missingRequiredCoverage || validation.status !== 0) {
     process.exit(1);
   }
 }
 
 async function runCase(entry) {
-  const sourceUrl = `${baseUrl}/${entry.source}`;
+  const sourceUrl = entry.sourceUrl || `${baseUrl}/${entry.source}`;
   const inputPath = path.join(outputRoot, 'inputs', `${entry.name}.mlir`);
+  await download(sourceUrl, inputPath);
+  return runInput(entry, inputPath, sourceUrl);
+}
+
+async function runLitSectionCase(entry) {
+  const sourceUrl = `${baseUrl}/${entry.source}`;
+  const sourcePath = path.join(outputRoot, 'inputs', `${entry.name}.source.mlir`);
+  await download(sourceUrl, sourcePath);
+  const sections = splitLitSections(fs.readFileSync(sourcePath, 'utf8'))
+    .slice(0, entry.maxSections ?? Number.POSITIVE_INFINITY);
+  const results = [];
+  let successfulChunks = 0;
+
+  for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex += 1) {
+    if (successfulChunks >= (entry.maxSuccessfulChunks ?? Number.POSITIVE_INFINITY)) {
+      break;
+    }
+    const chunkName = `${entry.name}-part-${String(sectionIndex).padStart(3, '0')}`;
+    const inputPath = path.join(outputRoot, 'inputs', `${chunkName}.mlir`);
+    fs.writeFileSync(inputPath, sections[sectionIndex], 'utf8');
+    const result = await runInput({
+      ...entry,
+      name: chunkName
+    }, inputPath, `${sourceUrl}#section-${sectionIndex}`);
+    if (result.status === 'ok') {
+      successfulChunks += 1;
+      results.push(result);
+    } else {
+      results.push({
+        ...result,
+        status: `unsupported:${result.status}`
+      });
+    }
+  }
+
+  return {
+    results,
+    summary: {
+      name: entry.name,
+      successfulChunks,
+      minSuccessfulChunks: entry.minSuccessfulChunks ?? 1,
+      attemptedChunks: results.length,
+      availableChunks: sections.length
+    }
+  };
+}
+
+async function runInput(entry, inputPath, sourceUrl) {
   const tracePath = path.join(outputRoot, 'traces', `${entry.name}.json`);
   const artifactDir = path.join(outputRoot, 'traces', `${entry.name}-artifacts`);
   const stdoutPath = path.join(outputRoot, 'traces', `${entry.name}.stdout.txt`);
   const stderrPath = path.join(outputRoot, 'traces', `${entry.name}.stderr.txt`);
   fs.mkdirSync(artifactDir, { recursive: true });
-  await download(sourceUrl, inputPath);
 
   const args = [
     ...entry.args,
@@ -133,7 +219,7 @@ function validateTraces(tracePaths) {
   };
 }
 
-function printSummary(results, validation) {
+function printSummary(results, caseSummaries, validation) {
   console.log(`OSS MLIR corpus smoke output: ${outputRoot}`);
   console.log('case\tstatus\tstages\tartifacts\tsource');
   for (const entry of results) {
@@ -145,6 +231,12 @@ function printSummary(results, validation) {
       entry.sourceUrl
     ].join('\t'));
   }
+  console.log('\ncoverage');
+  for (const entry of caseSummaries) {
+    const attempted = entry.attemptedChunks === undefined ? '' : ` attempted=${entry.attemptedChunks}`;
+    const available = entry.availableChunks === undefined ? '' : ` available=${entry.availableChunks}`;
+    console.log(`${entry.name}\t${entry.successfulChunks}/${entry.minSuccessfulChunks} required${attempted}${available}`);
+  }
   if (validation.stdout.trim()) {
     console.log('\nvalidation');
     console.log(validation.stdout.trim());
@@ -152,6 +244,13 @@ function printSummary(results, validation) {
   if (validation.stderr.trim()) {
     console.error(validation.stderr.trim());
   }
+}
+
+function splitLitSections(text) {
+  return text
+    .split(/^\/\/ -----\s*$/mu)
+    .map((section) => section.trim())
+    .filter((section) => section.length > 0 && !section.includes('expected-error'));
 }
 
 function resetDirectory(directory) {
@@ -198,3 +297,7 @@ function download(url, targetPath) {
     request.on('error', reject);
   });
 }
+
+module.exports = {
+  splitLitSections
+};

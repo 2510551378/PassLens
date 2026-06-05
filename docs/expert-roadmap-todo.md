@@ -203,7 +203,9 @@ more detailed execution checklist.
   - `npm run smoke:oss-mlir` downloads selected LLVM-project MLIR files,
     collects artifact-backed traces with `pass-lens-mlir-opt`, and validates
     them with `--strict-only --check-artifacts`.
-  - L20 result is documented in `docs/oss-mlir-corpus-smoke.md`.
+  - The runner supports `// -----` lit-section splitting and L20 currently
+    validates Arith, MemRef, SCF sections, and Transform sections. Result is
+    documented in `docs/oss-mlir-corpus-smoke.md`.
 - [x] Add collector trace quality checks:
   - [x] Missing pass identity.
   - [x] Missing timing.
