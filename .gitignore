@@ -4,6 +4,7 @@ build/
 *.vsix
 *.pass-lens.json
 .pass-lens-large-trace-smoke/
+.pass-lens-heir-case-study/
 *.log
 .DS_Store
 Thumbs.db

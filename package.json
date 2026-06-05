@@ -129,6 +129,7 @@
     "check:mlir-collector": "node scripts/check-mlir-collector.js",
     "smoke:oss-mlir": "npm run compile && node scripts/oss-mlir-corpus-smoke.js",
     "smoke:large-trace": "npm run compile && node scripts/large-trace-smoke.js",
+    "smoke:heir-case-study": "npm run compile && node scripts/heir-case-study-smoke.js",
     "smoke:deepseek-agent": "npm run compile && node scripts/deepseek-agent-smoke.js",
     "package": "vsce package",
     "vscode:prepublish": "npm run compile"

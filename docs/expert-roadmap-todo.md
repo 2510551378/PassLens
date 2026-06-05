@@ -191,6 +191,11 @@ more detailed execution checklist.
   - [ ] Candidate: Triton -> TTIR / TTGIR -> NPU / AscendC.
   - [ ] Candidate: IREE lowering pipeline.
   - [ ] Candidate: torch-mlir lowering pipeline.
+- [x] Run a real downstream MLIR compiler through the textual dump fallback.
+  - `npm run smoke:heir-case-study` runs HEIR `heir-opt` on a CKKS
+    dot-product lowering to OpenFHE, converts textual before/after IR dumps
+    into a Pass Lens trace, and validates strict schema plus viewer checks.
+  - Result and limitations are documented in `docs/heir-case-study.md`.
 - [ ] Replace or supplement synthetic samples with 2-3 real trace cases.
 - [x] Document which samples are live `PassInstrumentation` output versus
   hand-authored / converted examples.

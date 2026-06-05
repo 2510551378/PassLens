@@ -354,8 +354,9 @@ npm install
 npm run compile
 npm test
 npm run validate:trace:all
-PASS_LENS_MLIR_OPT=/path/to/pass-lens-mlir-opt npm run smoke:oss-mlir
+$env:PASS_LENS_MLIR_OPT="/path/to/pass-lens-mlir-opt"; npm run smoke:oss-mlir
 npm run smoke:large-trace
+$env:PASS_LENS_HEIR_ROOT="/path/to/heir"; npm run smoke:heir-case-study
 npm run package
 ```
 
@@ -378,6 +379,10 @@ To validate the core large-trace path, run `npm run smoke:large-trace`. It
 generates an artifact-backed synthetic trace and checks validation, size
 accounting, selected-stage hydration, anomaly computation, and bounded agent
 context export. See [`docs/large-trace-smoke.md`](docs/large-trace-smoke.md).
+
+To validate a real downstream MLIR/FHE compiler through the textual dump
+fallback path, set `PASS_LENS_HEIR_ROOT` and run `npm run
+smoke:heir-case-study`. See [`docs/heir-case-study.md`](docs/heir-case-study.md).
 
 ## Project Status
 

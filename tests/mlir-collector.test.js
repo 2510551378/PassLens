@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { computeMetrics, parseMlirDumps } = require('../out/mlirCollector.js');
+const { computeMetrics, createMlirDumpTrace, parseMlirDumps } = require('../out/mlirCollector.js');
 
 test('parseMlirDumps extracts before and after dump blocks', () => {
   const stderr = [
@@ -47,4 +47,43 @@ test('computeMetrics counts MLIR-like operation names and ignores locations', ()
   assert.equal(metrics['arith.addi'], 1);
   assert.equal(metrics['loc."x"'], undefined);
   assert.equal(metrics.functions, 1);
+});
+
+test('createMlirDumpTrace preserves converted-dump provenance and builds stages', () => {
+  const dumpText = [
+    '// -----// IR Dump Before HEIR Lowering: mlir-to-ckks //----- //',
+    'module {',
+    '  func.func @main() { return }',
+    '}',
+    '// -----// IR Dump After HEIR Lowering: mlir-to-ckks //----- //',
+    'module {',
+    '  func.func @main() {',
+    '    "ckks.rotate"() : () -> ()',
+    '    return',
+    '  }',
+    '}'
+  ].join('\n');
+  const trace = createMlirDumpTrace({
+    inputText: 'module {}',
+    dumpText,
+    tool: 'heir-opt',
+    input: 'input.mlir',
+    pipeline: '--mlir-to-ckks',
+    command: 'heir-opt input.mlir --mlir-to-ckks',
+    exitCode: 0,
+    provenance: {
+      kind: 'converted-dump',
+      description: 'unit test'
+    }
+  });
+
+  assert.equal(trace.tool, 'heir-opt');
+  assert.equal(trace.provenance.kind, 'converted-dump');
+  assert.equal(trace.capture.ir, 'inline');
+  assert.equal(trace.capture.timing, false);
+  assert.equal(trace.stages.length, 1);
+  assert.equal(trace.stages[0].pass, 'mlir-to-ckks');
+  assert.equal(trace.stages[0].changed, true);
+  assert.equal(trace.stages[0].metricsAfter['ckks.rotate'], 1);
+  assert.match(trace.diagnostics, /Textual MLIR dump collection/);
 });

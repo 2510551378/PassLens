@@ -12,6 +12,20 @@ export interface CollectMlirOptions {
   extraArgs?: string[];
 }
 
+export interface CreateMlirDumpTraceOptions {
+  inputText: string;
+  dumpText: string;
+  tool: string;
+  input: string;
+  pipeline: string;
+  command: string;
+  exitCode: number;
+  elapsedMs?: number;
+  diagnostics?: string;
+  collectorVersion?: string;
+  provenance?: PassTrace['provenance'];
+}
+
 interface DumpBlock {
   phase: 'Before' | 'After';
   pass: string;
@@ -38,44 +52,60 @@ export async function collectMlirTrace(options: CollectMlirOptions): Promise<Pas
   const elapsedMs = performance.now() - startedAt;
   await fs.rm(outputPath, { force: true }).catch(() => undefined);
 
-  const dumps = parseMlirDumps(`${result.stderr}\n${result.stdout}`);
-  const stages = buildStages(dumps, inputText);
-
-  if (stages.length === 0) {
-    stages.push({
-      index: 0,
-      pass: 'mlir-opt',
-      scope: 'unknown',
-      changed: false,
-      durationMs: elapsedMs,
-      verifier: result.exitCode === 0 ? 'ok' : 'failed',
-      metricsBefore: computeMetrics(inputText),
-      metricsAfter: computeMetrics(inputText),
-      irBefore: inputText,
-      irAfter: inputText
-    });
-  }
-
   const diagnostics = result.exitCode === 0
     ? trimDiagnostics(result.stderr)
     : trimDiagnostics(`${result.stderr}\n${result.stdout}`);
 
-  return {
-    schemaVersion: 1,
-    collectorVersion: 'typescript-mlir-dump-fallback/0.1.0',
+  return createMlirDumpTrace({
+    inputText,
+    dumpText: `${result.stderr}\n${result.stdout}`,
     tool: 'mlir-opt',
     input: path.basename(options.inputPath),
     pipeline: options.pipeline,
     command: formatCommand(options.mlirOptPath, args),
     exitCode: result.exitCode,
+    elapsedMs,
+    diagnostics,
+    collectorVersion: 'typescript-mlir-dump-fallback/0.1.0'
+  });
+}
+
+export function createMlirDumpTrace(options: CreateMlirDumpTraceOptions): PassTrace {
+  const dumps = parseMlirDumps(options.dumpText);
+  const stages = buildStages(dumps, options.inputText);
+
+  if (stages.length === 0) {
+    stages.push({
+      index: 0,
+      pass: options.tool,
+      scope: 'unknown',
+      changed: false,
+      durationMs: options.elapsedMs,
+      verifier: options.exitCode === 0 ? 'ok' : 'failed',
+      metricsBefore: computeMetrics(options.inputText),
+      metricsAfter: computeMetrics(options.inputText),
+      irBefore: options.inputText,
+      irAfter: options.inputText
+    });
+  }
+
+  return {
+    schemaVersion: 1,
+    collectorVersion: options.collectorVersion ?? 'typescript-mlir-dump-fallback/0.1.0',
+    provenance: options.provenance,
+    tool: options.tool,
+    input: options.input,
+    pipeline: options.pipeline,
+    command: options.command,
+    exitCode: options.exitCode,
     capture: {
       ir: 'inline',
       metrics: true,
       timing: false
     },
     diagnostics: appendCollectorNote(
-      diagnostics,
-      'Textual mlir-opt dump collection is a best-effort fallback and does not provide reliable per-pass duration. Use the structured pass-lens-mlir-opt collector for timing, verifier attribution, and artifact-backed IR.'
+      options.diagnostics,
+      'Textual MLIR dump collection is a best-effort fallback and does not provide reliable per-pass duration. Use a structured PassInstrumentation collector for timing, verifier attribution, and artifact-backed IR.'
     ),
     stages
   };
@@ -159,7 +189,7 @@ export function computeMetrics(ir: string): Metrics {
     lines: countNonEmptyLines(ir),
     ops: 0
   };
-  const opPattern = /(?:^|\s)([A-Za-z_][\w$-]*\.[A-Za-z_][\w$-]*)\b/gm;
+  const opPattern = /(?:^|\s)"?([A-Za-z_][\w$-]*\.[A-Za-z_][\w$-]*)"?\b/gm;
   let match: RegExpExecArray | null;
 
   while ((match = opPattern.exec(ir)) !== null) {
@@ -184,6 +214,10 @@ function countNonEmptyLines(text: string): number {
 }
 
 function normalizePassName(raw: string): string {
+  const colonSeparated = /:\s*([^:]+)\s*$/.exec(raw);
+  if (colonSeparated) {
+    return colonSeparated[1].trim();
+  }
   const parenthesized = /\(([^()]+)\)\s*$/.exec(raw);
   return parenthesized?.[1] ?? raw.trim();
 }
