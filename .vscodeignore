@@ -8,3 +8,4 @@ node_modules/**
 .gitattributes
 .git/**
 .github/**
+.pass-lens-large-trace-smoke/**

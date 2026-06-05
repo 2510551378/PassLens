@@ -304,6 +304,11 @@ repro/
   - `TraceSizeSummary` now includes size warnings with explicit quick fixes,
     including artifact-backed recapture via `--pass-lens-artifact-dir <dir>`
     and repro directory export for missing artifact references.
+- [x] Validate large-trace core processing and artifact hydration path.
+  - `npm run smoke:large-trace` generates a synthetic artifact-backed trace and
+    checks strict validation, trace size accounting, selected-stage hydration,
+    anomaly computation, and bounded agent context export.
+  - Results and scope are documented in `docs/large-trace-smoke.md`.
 
 ## Schema And Collector Ecosystem
 
@@ -394,7 +399,9 @@ repro/
     of eager trace-wide hydration.
 - [ ] Add prefix bisection.
 - [ ] Add first-failure localization report.
-- [ ] Validate large trace UX and performance.
+- [x] Validate large-trace core processing path.
+  - `npm run smoke:large-trace` covers the non-UI path; a real webview demo or
+    Marketplace recording remains separate presentation work.
 
 ### Month 3-6: AI Agent Layer
 

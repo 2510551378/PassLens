@@ -355,6 +355,7 @@ npm run compile
 npm test
 npm run validate:trace:all
 PASS_LENS_MLIR_OPT=/path/to/pass-lens-mlir-opt npm run smoke:oss-mlir
+npm run smoke:large-trace
 npm run package
 ```
 
@@ -372,6 +373,11 @@ npm run check:mlir-collector
 
 For custom MLIR drivers, see the PassInstrumentation SDK notes in
 [`docs/mlir-collector-sdk.md`](docs/mlir-collector-sdk.md).
+
+To validate the core large-trace path, run `npm run smoke:large-trace`. It
+generates an artifact-backed synthetic trace and checks validation, size
+accounting, selected-stage hydration, anomaly computation, and bounded agent
+context export. See [`docs/large-trace-smoke.md`](docs/large-trace-smoke.md).
 
 ## Project Status
 
