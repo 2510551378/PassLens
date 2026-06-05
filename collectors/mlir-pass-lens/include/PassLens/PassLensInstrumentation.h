@@ -4,6 +4,9 @@
 #include "mlir/Pass/PassInstrumentation.h"
 #include "llvm/ADT/StringRef.h"
 
+#include <cstdint>
+#include <functional>
+#include <map>
 #include <memory>
 #include <string>
 
@@ -17,6 +20,12 @@ namespace passlens {
 
 inline constexpr const char *kPassLensCollectorVersion = "0.1.0";
 
+using PassLensMetricMap = std::map<std::string, int64_t>;
+using PassLensMetricsHook =
+    std::function<void(mlir::Operation *op, PassLensMetricMap &metrics)>;
+using PassLensDiagnosticsHook =
+    std::function<std::string(mlir::Pass *pass, mlir::Operation *op)>;
+
 struct PassLensOptions {
   std::string outputPath;
   std::string tool = "pass-lens-mlir";
@@ -24,6 +33,8 @@ struct PassLensOptions {
   std::string pipeline;
   std::string artifactDir;
   bool includeIr = true;
+  PassLensMetricsHook metricsHook;
+  PassLensDiagnosticsHook diagnosticsHook;
 };
 
 class PassLensInstrumentation : public mlir::PassInstrumentation {

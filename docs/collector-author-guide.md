@@ -43,6 +43,11 @@ Prefer starting from the examples in
 npm run validate:trace -- docs/schema-examples/mlir-structured.json
 ```
 
+For MLIR drivers that can attach `PassInstrumentation`, use the C++ SDK surface
+in [`mlir-collector-sdk.md`](mlir-collector-sdk.md). It documents the
+instrumentation lifecycle, artifact path policy, metrics hook, diagnostics hook,
+and validation checklist.
+
 ## 2. Map The Pipeline
 
 Use stable pass identifiers. A good `pass` value should remain recognizable

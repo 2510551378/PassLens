@@ -341,7 +341,10 @@ repro/
   - Commit: this change.
   - Strict-valid examples live under `docs/schema-examples/` and are covered by
     `tests/trace-strict-validation.test.js`.
-- [ ] Build a small MLIR collector SDK surface around `PassInstrumentation`.
+- [x] Build a small MLIR collector SDK surface around `PassInstrumentation`.
+  - `PassLensOptions` now exposes metrics and diagnostics hooks, and
+    `docs/mlir-collector-sdk.md` documents lifecycle, stage semantics, artifact
+    path policy, validation, and downstream driver integration.
 - [x] Keep the schema compiler-agnostic enough for non-MLIR compilers.
   - Commit: this change.
   - Public docs and agent contracts now describe Pass Lens as a generic compiler

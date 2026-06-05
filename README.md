@@ -236,7 +236,9 @@ metrics. The full schema lives at
 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json), and field semantics
 are documented in [`docs/trace-schema.md`](docs/trace-schema.md). For a
 step-by-step producer integration path, see
-[`docs/collector-author-guide.md`](docs/collector-author-guide.md).
+[`docs/collector-author-guide.md`](docs/collector-author-guide.md). MLIR driver
+authors can use the small C++ SDK surface documented in
+[`docs/mlir-collector-sdk.md`](docs/mlir-collector-sdk.md).
 
 ### 5. Generate Reports and Repro Artifacts
 
@@ -367,6 +369,9 @@ $env:MLIR_DIR="C:\path\to\llvm-build\lib\cmake\mlir"
 $env:LLVM_DIR="C:\path\to\llvm-build\lib\cmake\llvm"
 npm run check:mlir-collector
 ```
+
+For custom MLIR drivers, see the PassInstrumentation SDK notes in
+[`docs/mlir-collector-sdk.md`](docs/mlir-collector-sdk.md).
 
 ## Project Status
 
