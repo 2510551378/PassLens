@@ -352,6 +352,7 @@ example，见 [`docs/sample-provenance.md`](docs/sample-provenance.md)。
 npm install
 npm run compile
 npm test
+npm run validate:trace:all
 npm run package
 ```
 

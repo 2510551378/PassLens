@@ -319,6 +319,9 @@ repro/
   - `npm run validate:trace -- trace.json` reuses strict schema validation and
     viewer-level validation, with `--strict-only`, `--warnings-as-errors`, and
     `--json` modes.
+  - The CLI also accepts directories, recursively discovers Pass Lens trace
+    JSON files, skips non-trace artifact metadata JSON, and exposes
+    `npm run validate:trace:all` for bundled samples and schema examples.
 - [x] Add schema examples for:
   - [x] MLIR.
   - [x] LLVM New Pass Manager.

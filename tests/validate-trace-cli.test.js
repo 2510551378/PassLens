@@ -36,3 +36,36 @@ test('validate-trace CLI rejects malformed trace JSON', () => {
   assert.match(result.stdout, /failed:/);
   assert.match(result.stdout, /\$\.schemaVersion/);
 });
+
+test('validate-trace CLI discovers trace JSON files in directories and skips artifact metadata', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-cli-dir-'));
+  const tracePath = path.join(tempDir, 'trace.json');
+  const artifactsDir = path.join(tempDir, 'artifacts');
+  fs.mkdirSync(artifactsDir);
+  fs.writeFileSync(tracePath, JSON.stringify({
+    schemaVersion: 1,
+    provenance: {
+      kind: 'hand-authored',
+      description: 'directory discovery test'
+    },
+    stages: [
+      {
+        index: 0,
+        pass: 'canonicalize'
+      }
+    ]
+  }), 'utf8');
+  fs.writeFileSync(path.join(artifactsDir, 'metadata.json'), JSON.stringify({
+    generatedBy: 'not-a-pass-lens-trace'
+  }), 'utf8');
+
+  const result = spawnSync(node, [cli, '--strict-only', tempDir], {
+    cwd: process.cwd(),
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /ok:/);
+  assert.match(result.stdout, /trace\.json/);
+  assert.doesNotMatch(result.stdout, /metadata\.json/);
+});

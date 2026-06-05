@@ -197,6 +197,15 @@ Add trace validation before uploading or publishing trace artifacts:
   run: npm run validate:trace -- path/to/trace.json
 ```
 
+Pass a directory when you want the CLI to discover trace JSON files
+recursively. Non-trace artifact JSON files are skipped unless you pass them as
+explicit file arguments:
+
+```yaml
+- name: Validate Pass Lens samples and schema examples
+  run: npm run validate:trace:all
+```
+
 Use `--strict-only` when you only want to enforce the public schema contract.
 Use `--warnings-as-errors` when CI should reject viewer-level warnings such as
 unstable pass names, duplicate stage indexes, or large inline IR.

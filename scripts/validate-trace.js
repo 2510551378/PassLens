@@ -14,8 +14,12 @@ function main(argv) {
     process.exit(options.help ? 0 : 2);
   }
 
-  let failed = false;
-  const reports = options.files.map((file) => validateFile(file, options));
+  const expanded = expandInputs(options.files);
+  let failed = expanded.reports.some((report) => !report.ok);
+  const reports = [
+    ...expanded.reports,
+    ...expanded.files.map((file) => validateFile(file, options))
+  ];
   for (const report of reports) {
     if (options.json) {
       process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
@@ -56,6 +60,73 @@ function parseArgs(argv) {
   return options;
 }
 
+function expandInputs(inputs) {
+  const files = [];
+  const reports = [];
+  const seen = new Set();
+
+  for (const input of inputs) {
+    const resolved = path.resolve(input);
+    if (!fs.existsSync(resolved)) {
+      reports.push(errorReport(resolved, `Input path does not exist: ${resolved}`));
+      continue;
+    }
+
+    const stat = fs.statSync(resolved);
+    if (stat.isDirectory()) {
+      const discovered = findTraceJsonFiles(resolved);
+      if (discovered.length === 0) {
+        reports.push(errorReport(resolved, `No Pass Lens trace JSON files found in directory: ${resolved}`));
+      }
+      for (const file of discovered) {
+        if (!seen.has(file)) {
+          files.push(file);
+          seen.add(file);
+        }
+      }
+    } else if (stat.isFile()) {
+      if (!seen.has(resolved)) {
+        files.push(resolved);
+        seen.add(resolved);
+      }
+    } else {
+      reports.push(errorReport(resolved, `Input path is neither a file nor a directory: ${resolved}`));
+    }
+  }
+
+  files.sort((a, b) => a.localeCompare(b));
+  return { files, reports };
+}
+
+function findTraceJsonFiles(directory) {
+  const results = [];
+  const entries = fs.readdirSync(directory, { withFileTypes: true })
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  for (const entry of entries) {
+    const fullPath = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...findTraceJsonFiles(fullPath));
+    } else if (entry.isFile() && entry.name.endsWith('.json') && looksLikeTraceJson(fullPath)) {
+      results.push(fullPath);
+    }
+  }
+
+  return results;
+}
+
+function looksLikeTraceJson(file) {
+  try {
+    const raw = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return Boolean(raw && typeof raw === 'object' && !Array.isArray(raw) && (
+      Object.prototype.hasOwnProperty.call(raw, 'schemaVersion') ||
+      Object.prototype.hasOwnProperty.call(raw, 'stages')
+    ));
+  } catch {
+    return false;
+  }
+}
+
 function validateFile(file, options) {
   const resolved = path.resolve(file);
   try {
@@ -78,21 +149,25 @@ function validateFile(file, options) {
       issues
     };
   } catch (error) {
-    return {
-      file: resolved,
-      ok: false,
-      summary: '1 error',
-      strictIssueCount: 1,
-      viewerIssueCount: 0,
-      issues: [
-        {
-          severity: 'error',
-          field: '$',
-          message: error instanceof Error ? error.message : String(error)
-        }
-      ]
-    };
+    return errorReport(resolved, error instanceof Error ? error.message : String(error));
   }
+}
+
+function errorReport(file, message) {
+  return {
+    file,
+    ok: false,
+    summary: '1 error',
+    strictIssueCount: 1,
+    viewerIssueCount: 0,
+    issues: [
+      {
+        severity: 'error',
+        field: '$',
+        message
+      }
+    ]
+  };
 }
 
 function printReport(report, options) {
@@ -117,7 +192,7 @@ function printUsage() {
 
 Usage:
   npm run compile
-  node scripts/validate-trace.js [options] <trace.json> [...]
+  node scripts/validate-trace.js [options] <trace.json|directory> [...]
 
 Options:
   --strict-only          Only validate the public schema contract.
@@ -127,6 +202,7 @@ Options:
 
 Examples:
   npm run validate:trace -- sample-traces/mlir-live-pass-instrumentation.json
+  npm run validate:trace -- --strict-only sample-traces docs/schema-examples
   npm run validate:trace -- --strict-only docs/schema-examples/mlir-structured.json
 `);
 }

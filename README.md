@@ -351,6 +351,7 @@ live collector output, real artifact captures, or hand-authored examples.
 npm install
 npm run compile
 npm test
+npm run validate:trace:all
 npm run package
 ```
 
