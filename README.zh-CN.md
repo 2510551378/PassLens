@@ -124,6 +124,15 @@ trace 应符合 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json)。
 npm run validate:trace -- --check-artifacts path\to\trace.json
 ```
 
+准备公开 preview build 前，先运行 release entry-point check：
+
+```powershell
+npm run release:check
+```
+
+Marketplace / Open VSX checklist 见
+[`docs/release-readiness.md`](docs/release-readiness.md)。
+
 ## 使用指南
 
 ### 1. 查看 trace

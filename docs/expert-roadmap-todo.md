@@ -371,6 +371,11 @@ repro/
 - [ ] Publish VS Code Marketplace preview.
 - [ ] Publish Open VSX preview.
 - [ ] Add 30-second demo GIF to README.
+- [x] Add an executable release readiness check before publishing.
+  - `npm run release:check` validates public entry-point docs, Marketplace
+    metadata, release milestone coverage, and sample trace provenance coverage.
+  - `docs/release-readiness.md` documents the pre-publish command sequence and
+    keeps Marketplace/Open VSX credentials outside the automated check.
 - [x] Add a minimal CI demo for trace validation and evidence artifact upload.
   - Commit: this change.
   - `.github/workflows/pass-lens-demo.yml` validates public trace artifacts and

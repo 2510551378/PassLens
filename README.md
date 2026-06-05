@@ -118,6 +118,15 @@ Validate a trace before sharing or uploading it from CI:
 npm run validate:trace -- --check-artifacts path\to\trace.json
 ```
 
+Before preparing a public preview build, run the release entry-point check:
+
+```powershell
+npm run release:check
+```
+
+See [`docs/release-readiness.md`](docs/release-readiness.md) for the
+Marketplace / Open VSX checklist.
+
 ## Usage Guide
 
 ### 1. Inspect a Trace
