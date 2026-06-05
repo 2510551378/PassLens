@@ -36,6 +36,7 @@ function main(argv) {
 
 function parseArgs(argv) {
   const options = {
+    checkArtifacts: false,
     files: [],
     help: false,
     json: false,
@@ -48,6 +49,8 @@ function parseArgs(argv) {
       options.help = true;
     } else if (arg === '--json') {
       options.json = true;
+    } else if (arg === '--check-artifacts') {
+      options.checkArtifacts = true;
     } else if (arg === '--strict-only') {
       options.strictOnly = true;
     } else if (arg === '--warnings-as-errors') {
@@ -133,10 +136,14 @@ function validateFile(file, options) {
     const raw = JSON.parse(fs.readFileSync(resolved, 'utf8'));
     const strictIssues = validateTraceStrict(raw);
     const strictErrors = strictIssues.filter((issue) => issue.severity === 'error');
+    const trace = strictErrors.length > 0 ? undefined : normalizeTrace(raw);
     const viewerIssues = options.strictOnly || strictErrors.length > 0
       ? []
-      : validateTrace(normalizeTrace(raw));
-    const issues = [...strictIssues, ...viewerIssues];
+      : validateTrace(trace);
+    const artifactIssues = options.checkArtifacts && trace
+      ? validateArtifactReferences(trace, resolved)
+      : [];
+    const issues = [...strictIssues, ...viewerIssues, ...artifactIssues];
     const hasError = issues.some((issue) => issue.severity === 'error');
     const hasWarning = issues.some((issue) => issue.severity === 'warning');
 
@@ -146,6 +153,7 @@ function validateFile(file, options) {
       summary: summarizeTraceIssues(issues),
       strictIssueCount: strictIssues.length,
       viewerIssueCount: viewerIssues.length,
+      artifactIssueCount: artifactIssues.length,
       issues
     };
   } catch (error) {
@@ -160,6 +168,7 @@ function errorReport(file, message) {
     summary: '1 error',
     strictIssueCount: 1,
     viewerIssueCount: 0,
+    artifactIssueCount: 0,
     issues: [
       {
         severity: 'error',
@@ -167,6 +176,44 @@ function errorReport(file, message) {
         message
       }
     ]
+  };
+}
+
+function validateArtifactReferences(trace, tracePath) {
+  const baseDir = path.dirname(tracePath);
+  const issues = [];
+  for (const stage of trace.stages) {
+    const artifacts = [
+      stage.artifacts?.beforePath ? { field: 'artifacts.beforePath', label: 'before artifact', artifactPath: stage.artifacts.beforePath } : undefined,
+      stage.artifacts?.afterPath ? { field: 'artifacts.afterPath', label: 'after artifact', artifactPath: stage.artifacts.afterPath } : undefined,
+      stage.artifacts?.diagnosticsPath ? { field: 'artifacts.diagnosticsPath', label: 'diagnostics artifact', artifactPath: stage.artifacts.diagnosticsPath } : undefined
+    ].filter(Boolean);
+
+    for (const artifact of artifacts) {
+      const resolved = resolveArtifactPath(baseDir, artifact.artifactPath);
+      try {
+        const stat = fs.statSync(resolved);
+        if (!stat.isFile()) {
+          issues.push(artifactIssue(stage.index, artifact.field, `${artifact.label} is not a file: ${artifact.artifactPath}`));
+        }
+      } catch {
+        issues.push(artifactIssue(stage.index, artifact.field, `${artifact.label} is missing or unreadable: ${artifact.artifactPath}`));
+      }
+    }
+  }
+  return issues;
+}
+
+function resolveArtifactPath(baseDir, artifactPath) {
+  return path.normalize(path.isAbsolute(artifactPath) ? artifactPath : path.resolve(baseDir, artifactPath));
+}
+
+function artifactIssue(stageIndex, field, message) {
+  return {
+    severity: 'error',
+    stageIndex,
+    field,
+    message
   };
 }
 
@@ -195,6 +242,7 @@ Usage:
   node scripts/validate-trace.js [options] <trace.json|directory> [...]
 
 Options:
+  --check-artifacts     Fail when before/after/diagnostics artifact paths are missing.
   --strict-only          Only validate the public schema contract.
   --warnings-as-errors  Return non-zero when viewer warnings are present.
   --json                Print machine-readable reports.
@@ -202,7 +250,7 @@ Options:
 
 Examples:
   npm run validate:trace -- sample-traces/mlir-live-pass-instrumentation.json
-  npm run validate:trace -- --strict-only sample-traces docs/schema-examples
+  npm run validate:trace -- --strict-only --check-artifacts sample-traces
   npm run validate:trace -- --strict-only docs/schema-examples/mlir-structured.json
 `);
 }

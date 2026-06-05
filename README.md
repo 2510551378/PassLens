@@ -115,7 +115,7 @@ Open your own trace with `Pass Lens: Open Trace File`. The trace should follow
 Validate a trace before sharing or uploading it from CI:
 
 ```powershell
-npm run validate:trace -- path\to\trace.json
+npm run validate:trace -- --check-artifacts path\to\trace.json
 ```
 
 ## Usage Guide

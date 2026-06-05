@@ -322,6 +322,10 @@ repro/
   - The CLI also accepts directories, recursively discovers Pass Lens trace
     JSON files, skips non-trace artifact metadata JSON, and exposes
     `npm run validate:trace:all` for bundled samples and schema examples.
+  - `--check-artifacts` verifies that referenced before/after/diagnostics
+    sidecar files exist, so CI can reject incomplete artifact-backed sample
+    traces while keeping schema-example artifact paths as unchecked producer
+    templates.
 - [x] Add schema examples for:
   - [x] MLIR.
   - [x] LLVM New Pass Manager.

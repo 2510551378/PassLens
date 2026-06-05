@@ -194,7 +194,7 @@ Add trace validation before uploading or publishing trace artifacts:
 
 ```yaml
 - name: Validate Pass Lens trace
-  run: npm run validate:trace -- path/to/trace.json
+  run: npm run validate:trace -- --strict-only --check-artifacts path/to/trace.json
 ```
 
 Pass a directory when you want the CLI to discover trace JSON files
@@ -207,6 +207,11 @@ explicit file arguments:
 ```
 
 Use `--strict-only` when you only want to enforce the public schema contract.
+Use `--check-artifacts` when CI should fail if `beforePath`, `afterPath`, or
+`diagnosticsPath` points to a missing sidecar file. This is recommended for
+published samples, repro bundles, and CI artifacts. Schema examples can be
+validated with `--strict-only` alone when their artifact paths are illustrative
+producer templates rather than checked-in sidecars.
 Use `--warnings-as-errors` when CI should reject viewer-level warnings such as
 unstable pass names, duplicate stage indexes, or large inline IR.
 
