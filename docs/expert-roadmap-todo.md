@@ -198,6 +198,12 @@ more detailed execution checklist.
   - Added `provenance` to schema v1 and every bundled sample trace, plus
     `docs/sample-provenance.md`. A new `mlir-live-pass-instrumentation.json`
     sample is real L20 `pass-lens-mlir-opt` structured collector output.
+- [x] Smoke-test the structured collector on real open-source LLVM MLIR inputs.
+  - Commit: this change.
+  - `npm run smoke:oss-mlir` downloads selected LLVM-project MLIR files,
+    collects artifact-backed traces with `pass-lens-mlir-opt`, and validates
+    them with `--strict-only --check-artifacts`.
+  - L20 result is documented in `docs/oss-mlir-corpus-smoke.md`.
 - [x] Add collector trace quality checks:
   - [x] Missing pass identity.
   - [x] Missing timing.

@@ -127,6 +127,7 @@
     "validate:trace": "npm run compile && node scripts/validate-trace.js",
     "validate:trace:all": "npm run validate:trace -- --strict-only --check-artifacts sample-traces && npm run validate:trace -- --strict-only docs/schema-examples",
     "check:mlir-collector": "node scripts/check-mlir-collector.js",
+    "smoke:oss-mlir": "npm run compile && node scripts/oss-mlir-corpus-smoke.js",
     "smoke:deepseek-agent": "npm run compile && node scripts/deepseek-agent-smoke.js",
     "package": "vsce package",
     "vscode:prepublish": "npm run compile"

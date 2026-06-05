@@ -352,6 +352,7 @@ npm install
 npm run compile
 npm test
 npm run validate:trace:all
+PASS_LENS_MLIR_OPT=/path/to/pass-lens-mlir-opt npm run smoke:oss-mlir
 npm run package
 ```
 
