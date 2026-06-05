@@ -431,3 +431,7 @@ repro/
   feature count.
 - [ ] Large trace risk: artifact and lazy loading path must be the default for
   real compiler pipelines.
+- [ ] Extension maintainability risk: keep peeling command, process, webview,
+  and export responsibilities out of `src/extension.ts` as features grow.
+  - `src/process.ts` now owns process execution, command formatting, and bounded
+    output trimming, with focused tests in `tests/process.test.js`.

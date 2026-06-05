@@ -1,5 +1,4 @@
 import * as fs from 'node:fs/promises';
-import { spawn } from 'node:child_process';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -22,6 +21,7 @@ import {
   type PipelineRunResult,
   type PipelineRunner
 } from './rerun';
+import { formatCommand, runProcess, trimOutput } from './process';
 import { computeTraceAnomalies } from './trace/anomalies';
 import { hydrateTraceStageArtifacts } from './trace/artifacts';
 import { evaluateTraceQuality, renderTraceQualityMarkdown } from './trace/quality';
@@ -702,41 +702,6 @@ async function toLoadedTrace(trace: PassTrace, tracePath?: string): Promise<Load
     anomalies: computeTraceAnomalies(trace),
     sizeSummary: await evaluateTraceSize(trace, tracePath)
   };
-}
-
-function runProcess(command: string, args: string[], cwd?: string): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd,
-      windowsHide: true
-    });
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
-
-    child.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
-    child.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
-    child.on('error', reject);
-    child.on('close', (code) => {
-      resolve({
-        exitCode: code ?? -1,
-        stdout: Buffer.concat(stdout).toString('utf8'),
-        stderr: Buffer.concat(stderr).toString('utf8')
-      });
-    });
-  });
-}
-
-function formatCommand(command: string, args: string[]): string {
-  return [command, ...args].map(quoteArg).join(' ');
-}
-
-function quoteArg(arg: string): string {
-  return /[\s"']/u.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg;
-}
-
-function trimOutput(text: string): string | undefined {
-  const trimmed = text.trim();
-  return trimmed.length > 0 ? trimmed.slice(0, 8000) : undefined;
 }
 
 function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, sourceUri: vscode.Uri): void {
