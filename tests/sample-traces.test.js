@@ -3,6 +3,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const test = require('node:test');
 
+const { sampleTraces, provenanceLabel } = require('../out/sampleTraces.js');
 const { hydrateTraceArtifacts } = require('../out/trace/artifacts.js');
 const { normalizeTrace } = require('../out/trace/schema.js');
 const { validateTraceStrict } = require('../out/trace/strictValidation.js');
@@ -38,4 +39,26 @@ test('sample traces normalize, hydrate artifacts, and validate without errors', 
   assert.ok(provenanceKinds.has('live-pass-instrumentation'));
   assert.ok(provenanceKinds.has('real-artifact-capture'));
   assert.ok(provenanceKinds.has('hand-authored'));
+});
+
+test('sample trace catalog has stable provenance labels', () => {
+  assert.equal(provenanceLabel('live-pass-instrumentation'), 'Live PassInstrumentation');
+  assert.equal(provenanceLabel('converted-dump'), 'Converted dump fallback');
+  assert.equal(provenanceLabel('hand-authored'), 'Hand-authored schema example');
+  assert.equal(provenanceLabel('real-artifact-capture'), 'Real artifact capture');
+});
+
+test('sample trace catalog points to existing traces with matching provenance', async () => {
+  const seen = new Set();
+  const sampleDir = path.join(process.cwd(), 'sample-traces');
+
+  for (const entry of sampleTraces) {
+    assert.equal(seen.has(entry.file), false, `duplicate sample trace entry: ${entry.file}`);
+    seen.add(entry.file);
+
+    const tracePath = path.join(sampleDir, entry.file);
+    const raw = JSON.parse(await fs.readFile(tracePath, 'utf8'));
+    assert.equal(raw.provenance?.kind, entry.provenanceKind, `${entry.file} provenance drifted from catalog`);
+    assert.equal(entry.description, provenanceLabel(entry.provenanceKind));
+  }
 });

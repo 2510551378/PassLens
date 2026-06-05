@@ -203,6 +203,9 @@ more detailed execution checklist.
   - Added `provenance` to schema v1 and every bundled sample trace, plus
     `docs/sample-provenance.md`. A new `mlir-live-pass-instrumentation.json`
     sample is real L20 `pass-lens-mlir-opt` structured collector output.
+  - The VS Code sample gallery now gets its provenance labels from
+    `src/sampleTraces.ts`, and `tests/sample-traces.test.js` checks that each
+    catalog entry still matches the trace file's `provenance.kind`.
 - [x] Smoke-test the structured collector on real open-source LLVM MLIR inputs.
   - Commit: this change.
   - `npm run smoke:oss-mlir` downloads selected LLVM-project MLIR files,
@@ -435,3 +438,5 @@ repro/
   and export responsibilities out of `src/extension.ts` as features grow.
   - `src/process.ts` now owns process execution, command formatting, and bounded
     output trimming, with focused tests in `tests/process.test.js`.
+  - `src/sampleTraces.ts` now owns sample gallery metadata and provenance labels,
+    with catalog-to-trace drift checks in `tests/sample-traces.test.js`.
