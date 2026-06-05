@@ -45,12 +45,7 @@ jobs:
         run: npm ci
 
       - name: Validate public trace artifacts
-        run: |
-          npm run validate:trace -- --strict-only \
-            sample-traces/mlir-live-pass-instrumentation.json \
-            docs/schema-examples/mlir-structured.json \
-            docs/schema-examples/llvm-new-pass-manager.json \
-            docs/schema-examples/hardware-backend-metrics.json
+        run: npm run validate:trace:all
 
       - name: Assemble demo evidence bundle
         run: |

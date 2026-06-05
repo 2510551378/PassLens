@@ -198,6 +198,14 @@ more detailed execution checklist.
   - Added `provenance` to schema v1 and every bundled sample trace, plus
     `docs/sample-provenance.md`. A new `mlir-live-pass-instrumentation.json`
     sample is real L20 `pass-lens-mlir-opt` structured collector output.
+- [x] Smoke-test the structured collector on real open-source LLVM MLIR inputs.
+  - Commit: this change.
+  - `npm run smoke:oss-mlir` downloads selected LLVM-project MLIR files,
+    collects artifact-backed traces with `pass-lens-mlir-opt`, and validates
+    them with `--strict-only --check-artifacts`.
+  - The runner supports `// -----` lit-section splitting and L20 currently
+    validates Arith, MemRef, SCF sections, and Transform sections. Result is
+    documented in `docs/oss-mlir-corpus-smoke.md`.
 - [x] Add collector trace quality checks:
   - [x] Missing pass identity.
   - [x] Missing timing.
@@ -296,6 +304,11 @@ repro/
   - `TraceSizeSummary` now includes size warnings with explicit quick fixes,
     including artifact-backed recapture via `--pass-lens-artifact-dir <dir>`
     and repro directory export for missing artifact references.
+- [x] Validate large-trace core processing and artifact hydration path.
+  - `npm run smoke:large-trace` generates a synthetic artifact-backed trace and
+    checks strict validation, trace size accounting, selected-stage hydration,
+    anomaly computation, and bounded agent context export.
+  - Results and scope are documented in `docs/large-trace-smoke.md`.
 
 ## Schema And Collector Ecosystem
 
@@ -319,6 +332,13 @@ repro/
   - `npm run validate:trace -- trace.json` reuses strict schema validation and
     viewer-level validation, with `--strict-only`, `--warnings-as-errors`, and
     `--json` modes.
+  - The CLI also accepts directories, recursively discovers Pass Lens trace
+    JSON files, skips non-trace artifact metadata JSON, and exposes
+    `npm run validate:trace:all` for bundled samples and schema examples.
+  - `--check-artifacts` verifies that referenced before/after/diagnostics
+    sidecar files exist, so CI can reject incomplete artifact-backed sample
+    traces while keeping schema-example artifact paths as unchecked producer
+    templates.
 - [x] Add schema examples for:
   - [x] MLIR.
   - [x] LLVM New Pass Manager.
@@ -326,7 +346,10 @@ repro/
   - Commit: this change.
   - Strict-valid examples live under `docs/schema-examples/` and are covered by
     `tests/trace-strict-validation.test.js`.
-- [ ] Build a small MLIR collector SDK surface around `PassInstrumentation`.
+- [x] Build a small MLIR collector SDK surface around `PassInstrumentation`.
+  - `PassLensOptions` now exposes metrics and diagnostics hooks, and
+    `docs/mlir-collector-sdk.md` documents lifecycle, stage semantics, artifact
+    path policy, validation, and downstream driver integration.
 - [x] Keep the schema compiler-agnostic enough for non-MLIR compilers.
   - Commit: this change.
   - Public docs and agent contracts now describe Pass Lens as a generic compiler
@@ -376,7 +399,9 @@ repro/
     of eager trace-wide hydration.
 - [ ] Add prefix bisection.
 - [ ] Add first-failure localization report.
-- [ ] Validate large trace UX and performance.
+- [x] Validate large-trace core processing path.
+  - `npm run smoke:large-trace` covers the non-UI path; a real webview demo or
+    Marketplace recording remains separate presentation work.
 
 ### Month 3-6: AI Agent Layer
 

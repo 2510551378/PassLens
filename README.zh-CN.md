@@ -121,7 +121,7 @@ trace 应符合 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json)。
 在分享 trace 或从 CI 上传之前，可以先验证：
 
 ```powershell
-npm run validate:trace -- path\to\trace.json
+npm run validate:trace -- --check-artifacts path\to\trace.json
 ```
 
 ## 使用指南
@@ -352,6 +352,8 @@ example，见 [`docs/sample-provenance.md`](docs/sample-provenance.md)。
 npm install
 npm run compile
 npm test
+npm run validate:trace:all
+PASS_LENS_MLIR_OPT=/path/to/pass-lens-mlir-opt npm run smoke:oss-mlir
 npm run package
 ```
 

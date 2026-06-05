@@ -43,6 +43,11 @@ Prefer starting from the examples in
 npm run validate:trace -- docs/schema-examples/mlir-structured.json
 ```
 
+For MLIR drivers that can attach `PassInstrumentation`, use the C++ SDK surface
+in [`mlir-collector-sdk.md`](mlir-collector-sdk.md). It documents the
+instrumentation lifecycle, artifact path policy, metrics hook, diagnostics hook,
+and validation checklist.
+
 ## 2. Map The Pipeline
 
 Use stable pass identifiers. A good `pass` value should remain recognizable
@@ -194,10 +199,24 @@ Add trace validation before uploading or publishing trace artifacts:
 
 ```yaml
 - name: Validate Pass Lens trace
-  run: npm run validate:trace -- path/to/trace.json
+  run: npm run validate:trace -- --strict-only --check-artifacts path/to/trace.json
+```
+
+Pass a directory when you want the CLI to discover trace JSON files
+recursively. Non-trace artifact JSON files are skipped unless you pass them as
+explicit file arguments:
+
+```yaml
+- name: Validate Pass Lens samples and schema examples
+  run: npm run validate:trace:all
 ```
 
 Use `--strict-only` when you only want to enforce the public schema contract.
+Use `--check-artifacts` when CI should fail if `beforePath`, `afterPath`, or
+`diagnosticsPath` points to a missing sidecar file. This is recommended for
+published samples, repro bundles, and CI artifacts. Schema examples can be
+validated with `--strict-only` alone when their artifact paths are illustrative
+producer templates rather than checked-in sidecars.
 Use `--warnings-as-errors` when CI should reject viewer-level warnings such as
 unstable pass names, duplicate stage indexes, or large inline IR.
 

@@ -60,6 +60,7 @@ struct Stage {
   double durationMs = 0.0;
   std::string verifier = "ok";
   std::string location;
+  std::string diagnostics;
   Metrics metricsBefore;
   Metrics metricsAfter;
   std::string irBefore;
@@ -190,7 +191,8 @@ int64_t countLines(llvm::StringRef text) {
   return lines;
 }
 
-Metrics collectMetrics(mlir::Operation *root, llvm::StringRef printedIr) {
+Metrics collectMetrics(mlir::Operation *root, llvm::StringRef printedIr,
+                       const PassLensOptions &options) {
   Metrics metrics;
   metrics.lines = countLines(printedIr);
   root->walk([&](mlir::Operation *op) {
@@ -198,7 +200,16 @@ Metrics collectMetrics(mlir::Operation *root, llvm::StringRef printedIr) {
     std::string name = op->getName().getStringRef().str();
     ++metrics.opCounts[name];
   });
+  if (options.metricsHook)
+    options.metricsHook(root, metrics.opCounts);
   return metrics;
+}
+
+std::string collectDiagnostics(mlir::Pass *pass, mlir::Operation *op,
+                               const PassLensOptions &options) {
+  if (!options.diagnosticsHook)
+    return "";
+  return options.diagnosticsHook(pass, op);
 }
 
 std::string getScope(mlir::Operation *op) {
@@ -286,6 +297,9 @@ void writeStage(llvm::raw_ostream &os, const Stage &stage,
   os << pad << "  \"durationMs\": " << stage.durationMs << ",\n";
   os << pad << "  \"verifier\": " << jsonString(stage.verifier) << ",\n";
   os << pad << "  \"location\": " << jsonString(stage.location) << ",\n";
+  if (!stage.diagnostics.empty())
+    os << pad << "  \"diagnostics\": " << jsonString(stage.diagnostics)
+       << ",\n";
   os << pad << "  \"metricsBefore\": ";
   writeMetrics(os, stage.metricsBefore, indent + 2);
   os << ",\n";
@@ -377,7 +391,7 @@ void PassLensInstrumentation::runBeforePass(mlir::Pass *pass,
   active.scope = getScope(op);
   active.location = getLocation(op);
   active.irBefore = ir;
-  active.metricsBefore = collectMetrics(op, ir);
+  active.metricsBefore = collectMetrics(op, ir, impl->options);
   active.startedAt = Clock::now();
   impl->active[makeKey(pass, op)] = std::move(active);
 }
@@ -404,8 +418,9 @@ void PassLensInstrumentation::runAfterPass(mlir::Pass *pass,
   stage.durationMs = elapsedMs(it->second.startedAt);
   stage.verifier = "ok";
   stage.location = it->second.location;
+  stage.diagnostics = collectDiagnostics(pass, op, impl->options);
   stage.metricsBefore = std::move(it->second.metricsBefore);
-  stage.metricsAfter = collectMetrics(op, irAfter);
+  stage.metricsAfter = collectMetrics(op, irAfter, impl->options);
   stage.irBefore = std::move(it->second.irBefore);
   stage.irAfter = std::move(irAfter);
   stage.changed = stage.irBefore != stage.irAfter;
@@ -438,8 +453,9 @@ void PassLensInstrumentation::runAfterPassFailed(mlir::Pass *pass,
   stage.status = "pass_failed";
   stage.verifier = "failed";
   stage.location = it->second.location;
+  stage.diagnostics = collectDiagnostics(pass, op, impl->options);
   stage.metricsBefore = std::move(it->second.metricsBefore);
-  stage.metricsAfter = collectMetrics(op, irAfter);
+  stage.metricsAfter = collectMetrics(op, irAfter, impl->options);
   stage.irBefore = std::move(it->second.irBefore);
   stage.irAfter = std::move(irAfter);
   stage.changed = stage.irBefore != stage.irAfter;

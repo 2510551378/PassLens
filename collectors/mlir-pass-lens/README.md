@@ -27,8 +27,19 @@ options.input = "input.mlir";
 options.pipeline = pipelineText;
 options.includeIr = true;
 options.artifactDir = "artifacts"; // optional: sidecar IR files
+options.metricsHook = [](mlir::Operation *op,
+                         passlens::PassLensMetricMap &metrics) {
+  metrics["my_backend.custom_counter"] = computeCounter(op);
+};
+options.diagnosticsHook = [](mlir::Pass *pass, mlir::Operation *op) {
+  return summarizeStageDiagnostics(pass, op);
+};
 passlens::addPassLensInstrumentation(pm, std::move(options));
 ```
+
+See [`../../docs/mlir-collector-sdk.md`](../../docs/mlir-collector-sdk.md) for
+the SDK lifecycle, artifact path policy, metrics hook, diagnostics hook, and
+validation checklist.
 
 ## Build Sketch
 

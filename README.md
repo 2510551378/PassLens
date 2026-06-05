@@ -115,7 +115,7 @@ Open your own trace with `Pass Lens: Open Trace File`. The trace should follow
 Validate a trace before sharing or uploading it from CI:
 
 ```powershell
-npm run validate:trace -- path\to\trace.json
+npm run validate:trace -- --check-artifacts path\to\trace.json
 ```
 
 ## Usage Guide
@@ -236,7 +236,9 @@ metrics. The full schema lives at
 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json), and field semantics
 are documented in [`docs/trace-schema.md`](docs/trace-schema.md). For a
 step-by-step producer integration path, see
-[`docs/collector-author-guide.md`](docs/collector-author-guide.md).
+[`docs/collector-author-guide.md`](docs/collector-author-guide.md). MLIR driver
+authors can use the small C++ SDK surface documented in
+[`docs/mlir-collector-sdk.md`](docs/mlir-collector-sdk.md).
 
 ### 5. Generate Reports and Repro Artifacts
 
@@ -351,6 +353,9 @@ live collector output, real artifact captures, or hand-authored examples.
 npm install
 npm run compile
 npm test
+npm run validate:trace:all
+PASS_LENS_MLIR_OPT=/path/to/pass-lens-mlir-opt npm run smoke:oss-mlir
+npm run smoke:large-trace
 npm run package
 ```
 
@@ -365,6 +370,14 @@ $env:MLIR_DIR="C:\path\to\llvm-build\lib\cmake\mlir"
 $env:LLVM_DIR="C:\path\to\llvm-build\lib\cmake\llvm"
 npm run check:mlir-collector
 ```
+
+For custom MLIR drivers, see the PassInstrumentation SDK notes in
+[`docs/mlir-collector-sdk.md`](docs/mlir-collector-sdk.md).
+
+To validate the core large-trace path, run `npm run smoke:large-trace`. It
+generates an artifact-backed synthetic trace and checks validation, size
+accounting, selected-stage hydration, anomaly computation, and bounded agent
+context export. See [`docs/large-trace-smoke.md`](docs/large-trace-smoke.md).
 
 ## Project Status
 
