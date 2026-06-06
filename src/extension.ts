@@ -25,6 +25,7 @@ import { formatCommand, runProcess, trimOutput } from './process';
 import { sampleTraces } from './sampleTraces';
 import { computeTraceAnomalies } from './trace/anomalies';
 import { hydrateTraceStageArtifacts } from './trace/artifacts';
+import { resolveArtifactPathWithinTraceRoot } from './trace/artifactPaths';
 import { evaluateTraceQuality, renderTraceQualityMarkdown } from './trace/quality';
 import { evaluateTraceSize, renderTraceSizeMarkdown, type TraceSizeSummary } from './trace/size';
 import { createTraceExplanation } from './traceExplanation';
@@ -906,14 +907,16 @@ async function exportTraceExplanation(
 }
 
 async function openArtifact(sourceUri: vscode.Uri, artifactPath: string): Promise<void> {
-  const resolvedPath = path.normalize(path.isAbsolute(artifactPath)
-    ? artifactPath
-    : path.resolve(path.dirname(sourceUri.fsPath), artifactPath));
-  if (!await pathExists(resolvedPath)) {
-    vscode.window.showWarningMessage(`Pass Lens artifact does not exist: ${resolvedPath}`);
+  const resolved = resolveArtifactPathWithinTraceRoot(path.dirname(sourceUri.fsPath), artifactPath);
+  if (!resolved.ok || !resolved.resolvedPath) {
+    vscode.window.showWarningMessage(`Pass Lens rejected artifact path '${artifactPath}': ${resolved.message ?? 'invalid artifact path'}`);
     return;
   }
-  await vscode.window.showTextDocument(vscode.Uri.file(resolvedPath), { preview: false });
+  if (!await pathExists(resolved.resolvedPath)) {
+    vscode.window.showWarningMessage(`Pass Lens artifact does not exist: ${resolved.resolvedPath}`);
+    return;
+  }
+  await vscode.window.showTextDocument(vscode.Uri.file(resolved.resolvedPath), { preview: false });
 }
 
 function getWebviewHtml(

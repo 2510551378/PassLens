@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { PassTrace, TraceIssue, TraceStage } from '../types';
+import { resolveArtifactPathWithinTraceRoot } from './artifactPaths';
 
 const defaultMaxArtifactBytes = 4 * 1024 * 1024;
 
@@ -80,13 +81,13 @@ async function hydrateStageArtifact(
   }
 
   const before = artifacts.beforePath && !stage.irBefore
-    ? readArtifact(artifacts.beforePath, baseDir, maxArtifactBytes, stage, 'before artifact')
+    ? readArtifact(artifacts.beforePath, baseDir, maxArtifactBytes, stage, 'before artifact', 'artifacts.beforePath')
     : Promise.resolve(undefined);
   const after = artifacts.afterPath && !stage.irAfter
-    ? readArtifact(artifacts.afterPath, baseDir, maxArtifactBytes, stage, 'after artifact')
+    ? readArtifact(artifacts.afterPath, baseDir, maxArtifactBytes, stage, 'after artifact', 'artifacts.afterPath')
     : Promise.resolve(undefined);
   const diagnostics = artifacts.diagnosticsPath && !stage.diagnostics
-    ? readArtifact(artifacts.diagnosticsPath, baseDir, maxArtifactBytes, stage, 'diagnostics artifact')
+    ? readArtifact(artifacts.diagnosticsPath, baseDir, maxArtifactBytes, stage, 'diagnostics artifact', 'artifacts.diagnosticsPath')
     : Promise.resolve(undefined);
 
   const [beforeResult, afterResult, diagnosticsResult] = await Promise.all([before, after, diagnostics]);
@@ -101,22 +102,27 @@ async function readArtifact(
   baseDir: string,
   maxArtifactBytes: number,
   stage: TraceStage,
-  label: string
+  label: string,
+  field: string
 ): Promise<ArtifactResult> {
-  const resolvedPath = resolveArtifactPath(baseDir, artifactPath);
+  const resolved = resolveArtifactPathWithinTraceRoot(baseDir, artifactPath);
+  if (!resolved.ok || !resolved.resolvedPath) {
+    return artifactIssue(stage, field, `${label} '${artifactPath}' was rejected: ${resolved.message ?? 'invalid artifact path'}`);
+  }
+
   try {
-    const stat = await fs.stat(resolvedPath);
+    const stat = await fs.stat(resolved.resolvedPath);
     if (!stat.isFile()) {
-      return artifactIssue(stage, `${label} '${artifactPath}' is not a file.`);
+      return artifactIssue(stage, field, `${label} '${artifactPath}' is not a file.`);
     }
 
     const text = stat.size > maxArtifactBytes
-      ? await readArtifactPrefix(resolvedPath, maxArtifactBytes, stat.size)
-      : await fs.readFile(resolvedPath, 'utf8');
+      ? await readArtifactPrefix(resolved.resolvedPath, maxArtifactBytes, stat.size)
+      : await fs.readFile(resolved.resolvedPath, 'utf8');
     return { text };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return artifactIssue(stage, `Could not read ${label} '${artifactPath}': ${message}`);
+    return artifactIssue(stage, field, `Could not read ${label} '${artifactPath}': ${message}`);
   }
 }
 
@@ -132,16 +138,12 @@ async function readArtifactPrefix(filePath: string, maxArtifactBytes: number, to
   }
 }
 
-function resolveArtifactPath(baseDir: string, artifactPath: string): string {
-  return path.normalize(path.isAbsolute(artifactPath) ? artifactPath : path.resolve(baseDir, artifactPath));
-}
-
-function artifactIssue(stage: TraceStage, message: string): ArtifactResult {
+function artifactIssue(stage: TraceStage, field: string, message: string): ArtifactResult {
   return {
     issue: {
       severity: 'warning',
       stageIndex: stage.index,
-      field: 'artifacts',
+      field,
       message
     }
   };

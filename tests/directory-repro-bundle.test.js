@@ -156,3 +156,41 @@ test('exportDirectoryReproBundle falls back to first stage IR when input file is
   assert.equal(manifest.inputSource, 'first-stage-ir');
   assert.match(await fs.readFile(path.join(target, 'input.mlir'), 'utf8'), /@fallback/);
 });
+
+test('exportDirectoryReproBundle does not copy artifacts outside the trace directory', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-directory-repro-contained-'));
+  const source = path.join(root, 'source');
+  const outside = path.join(root, 'outside');
+  const target = path.join(root, 'repro');
+  await fs.mkdir(source, { recursive: true });
+  await fs.mkdir(outside, { recursive: true });
+  await fs.writeFile(path.join(source, 'trace.json'), '{}\n', 'utf8');
+  await fs.writeFile(path.join(outside, 'before.mlir'), 'module { should_not_copy }', 'utf8');
+
+  const manifest = await exportDirectoryReproBundle(
+    {
+      schemaVersion: 1,
+      capture: { ir: 'artifact' },
+      stages: [
+        {
+          index: 0,
+          pass: 'contained',
+          changed: false,
+          artifacts: {
+            beforePath: '../outside/before.mlir'
+          }
+        }
+      ]
+    },
+    [],
+    [],
+    {
+      targetDir: target,
+      sourceTracePath: path.join(source, 'trace.json'),
+      createdAt: '2026-06-02T00:00:00.000Z'
+    }
+  );
+
+  assert.equal(manifest.copiedArtifacts.length, 0);
+  assert.equal(await exists(path.join(target, 'artifacts', '000-before.mlir')), false);
+});

@@ -99,6 +99,30 @@ test('evaluateTraceSize does not double-count hydrated artifact IR as inline pay
   assert.deepEqual(summary.warnings, []);
 });
 
+test('evaluateTraceSize treats escaping artifact paths as missing size data', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-size-contained-'));
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-size-outside-'));
+  await fs.writeFile(path.join(outside, 'before.mlir'), 'outside artifact', 'utf8');
+
+  const summary = await evaluateTraceSize({
+    schemaVersion: 1,
+    capture: { ir: 'artifact' },
+    stages: [
+      {
+        index: 0,
+        pass: 'escape',
+        artifacts: {
+          beforePath: path.relative(root, path.join(outside, 'before.mlir'))
+        }
+      }
+    ]
+  }, path.join(root, 'trace.json'));
+
+  assert.equal(summary.artifactCount, 0);
+  assert.equal(summary.missingArtifactCount, 1);
+  assert.ok(summary.warnings.some((entry) => entry.id === 'missing-artifact-size-data'));
+});
+
 test('evaluateTraceSize warns and suggests artifact capture for large inline IR', async () => {
   const largeIr = 'x'.repeat(700 * 1024);
   const summary = await evaluateTraceSize({

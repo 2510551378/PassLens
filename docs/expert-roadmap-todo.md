@@ -11,6 +11,12 @@ Release-level milestones are tracked in
 [`docs/release-milestones.md`](release-milestones.md). This file remains the
 more detailed execution checklist.
 
+The 2026-06-06 subagent review follow-up is tracked in
+[`docs/subagent-review-action-plan.md`](subagent-review-action-plan.md). Use
+that document for the next implementation sequence when choosing between
+collector credibility, large-trace performance, release surface, and extension
+maintainability work.
+
 ## Positioning
 
 - [x] Update public positioning from "trace viewer" to "pass pipeline

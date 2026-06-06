@@ -1,6 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import type { PassTrace, TraceStage } from '../types';
+import { resolveArtifactPathWithinTraceRoot } from './artifactPaths';
 
 export interface TraceSizeSummary {
   stageCount: number;
@@ -147,9 +148,13 @@ async function evaluateArtifactSizes(
 
   for (const stage of trace.stages) {
     for (const artifact of stageArtifacts(stage)) {
-      const resolved = resolveArtifactPath(baseDir, artifact.path);
+      const resolved = resolveArtifactPathWithinTraceRoot(baseDir, artifact.path);
+      if (!resolved.ok || !resolved.resolvedPath) {
+        missingArtifactCount += 1;
+        continue;
+      }
       try {
-        const stat = await fs.stat(resolved);
+        const stat = await fs.stat(resolved.resolvedPath);
         if (!stat.isFile()) {
           missingArtifactCount += 1;
           continue;
@@ -189,10 +194,6 @@ function stageArtifacts(stage: TraceStage): Array<{ kind: ArtifactSizeSummary['k
     artifacts.afterPath ? { kind: 'after', path: artifacts.afterPath } : undefined,
     artifacts.diagnosticsPath ? { kind: 'diagnostics', path: artifacts.diagnosticsPath } : undefined
   ].filter((entry): entry is { kind: ArtifactSizeSummary['kind']; path: string } => Boolean(entry));
-}
-
-function resolveArtifactPath(baseDir: string, artifactPath: string): string {
-  return path.normalize(path.isAbsolute(artifactPath) ? artifactPath : path.resolve(baseDir, artifactPath));
 }
 
 function createSizeWarnings(summary: TraceSizeSummary, trace: PassTrace): TraceSizeWarning[] {
@@ -239,7 +240,7 @@ function createSizeWarnings(summary: TraceSizeSummary, trace: PassTrace): TraceS
       id: 'artifact-capture-without-artifacts',
       severity: 'warning',
       message: 'Trace declares artifact IR capture but no artifact files were found.',
-      quickFix: 'Check collector output paths and verify beforePath/afterPath are relative to trace.json or absolute.'
+      quickFix: 'Check collector output paths and verify beforePath/afterPath are relative to trace.json.'
     });
   }
 

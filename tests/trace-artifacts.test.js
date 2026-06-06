@@ -8,7 +8,16 @@ const {
   hydrateTraceArtifacts,
   hydrateTraceStageArtifacts
 } = require('../out/trace/artifacts.js');
+const { resolveArtifactPathWithinTraceRoot } = require('../out/trace/artifactPaths.js');
 const { normalizeTrace } = require('../out/trace/schema.js');
+
+test('resolveArtifactPathWithinTraceRoot rejects absolute and escaping paths', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-artifact-paths-'));
+
+  assert.equal(resolveArtifactPathWithinTraceRoot(root, 'artifacts/0-before.mlir').ok, true);
+  assert.equal(resolveArtifactPathWithinTraceRoot(root, '../outside.mlir').ok, false);
+  assert.equal(resolveArtifactPathWithinTraceRoot(root, path.resolve(root, 'artifact.mlir')).ok, false);
+});
 
 test('hydrateTraceArtifacts reads relative before, after, and diagnostics artifacts', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-artifacts-'));
@@ -64,7 +73,35 @@ test('hydrateTraceArtifacts reports missing artifacts as non-blocking issues', a
   assert.equal(issues.length, 1);
   assert.equal(issues[0].severity, 'warning');
   assert.equal(issues[0].stageIndex, 3);
+  assert.equal(issues[0].field, 'artifacts.beforePath');
   assert.match(issues[0].message, /Could not read before artifact/);
+});
+
+test('hydrateTraceArtifacts rejects artifact paths outside the trace directory', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-artifacts-'));
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-artifacts-outside-'));
+  await fs.writeFile(path.join(outside, 'secret.mlir'), 'module { secret }', 'utf8');
+
+  const trace = normalizeTrace({
+    capture: { ir: 'artifact' },
+    stages: [
+      {
+        index: 4,
+        pass: 'escape',
+        artifacts: {
+          beforePath: path.relative(root, path.join(outside, 'secret.mlir'))
+        }
+      }
+    ]
+  });
+
+  const issues = await hydrateTraceArtifacts(trace, path.join(root, 'trace.json'));
+
+  assert.equal(issues.length, 1);
+  assert.equal(issues[0].stageIndex, 4);
+  assert.equal(issues[0].field, 'artifacts.beforePath');
+  assert.match(issues[0].message, /rejected/);
+  assert.equal(trace.stages[0].irBefore, '');
 });
 
 test('hydrateTraceArtifacts recomputes changed for mixed inline and artifact IR', async () => {

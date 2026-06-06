@@ -4,6 +4,7 @@ import { createAgentContext } from './agentContext';
 import { createAgentToolManifest } from './agentToolManifest';
 import { createRegressionTestSketch } from './regressionTestSketch';
 import { createReproBundle } from './reproBundle';
+import { resolveArtifactPathWithinTraceRoot } from './trace/artifactPaths';
 import type { MetricAnomaly, PassTrace, TraceIssue, TraceStage } from './types';
 
 export interface DirectoryReproBundleOptions {
@@ -162,12 +163,12 @@ async function copyOrWriteStageArtifact(
   const extension = kind === 'diagnostics' ? 'txt' : 'mlir';
   const bundledPath = `artifacts/${padStageIndex(stage.index)}-${kind}.${extension}`;
   const targetPath = path.join(artifactsDir, path.basename(bundledPath));
-  const resolvedArtifact = artifactPath
-    ? path.resolve(sourceDir ?? process.cwd(), artifactPath)
+  const resolvedArtifact = artifactPath && sourceDir
+    ? resolveArtifactPathWithinTraceRoot(sourceDir, artifactPath)
     : undefined;
 
-  if (resolvedArtifact && await pathExists(resolvedArtifact)) {
-    await fs.copyFile(resolvedArtifact, targetPath);
+  if (resolvedArtifact?.ok && resolvedArtifact.resolvedPath && await pathExists(resolvedArtifact.resolvedPath)) {
+    await fs.copyFile(resolvedArtifact.resolvedPath, targetPath);
     copiedArtifacts.push({
       stageIndex: stage.index,
       kind,
