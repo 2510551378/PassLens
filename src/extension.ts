@@ -41,7 +41,34 @@ interface TraceQueryPick extends vscode.QuickPickItem {
   summaryKind?: string;
 }
 
-let currentTraceSession: { loaded: LoadedTrace; sourceUri: vscode.Uri } | undefined;
+const tracePanelSessions = new WeakMap<
+  vscode.WebviewPanel,
+  {
+    loaded: LoadedTrace;
+    sourceUri: vscode.Uri;
+  }
+>();
+let activeTracePanel: vscode.WebviewPanel | undefined;
+
+function getCurrentTraceSession(): { loaded: LoadedTrace; sourceUri: vscode.Uri } | undefined {
+  return activeTracePanel ? tracePanelSessions.get(activeTracePanel) : undefined;
+}
+
+function setActiveTracePanel(panel: vscode.WebviewPanel): void {
+  activeTracePanel = panel;
+}
+
+function removeTracePanel(panel: vscode.WebviewPanel): void {
+  if (activeTracePanel === panel) {
+    activeTracePanel = undefined;
+  }
+  tracePanelSessions.delete(panel);
+}
+
+function registerTracePanelSession(panel: vscode.WebviewPanel, session: { loaded: LoadedTrace; sourceUri: vscode.Uri }): void {
+  tracePanelSessions.set(panel, session);
+  setActiveTracePanel(panel);
+}
 
 export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
@@ -269,7 +296,8 @@ async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise
     return;
   }
 
-  const defaultPipeline = currentTraceSession?.loaded.trace.pipeline ?? 'builtin.module(func.func(canonicalize,cse))';
+  const activeSession = getCurrentTraceSession();
+  const defaultPipeline = activeSession?.loaded.trace.pipeline ?? 'builtin.module(func.func(canonicalize,cse))';
   const pipeline = await vscode.window.showInputBox({
     title: 'MLIR pass pipeline to bisect',
     prompt: 'Pass Lens will rerun textual prefixes of this pipeline with verifier enabled.',
@@ -298,7 +326,8 @@ async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise
         return runPrefixBisect(pipeline.trim(), runner);
       }
     );
-    await showMarkdownDocument(createMinimalFailingPrefixReport(result, currentTraceSession?.loaded.trace));
+  const activeSession = getCurrentTraceSession();
+  await showMarkdownDocument(createMinimalFailingPrefixReport(result, activeSession?.loaded.trace));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const action = await vscode.window.showErrorMessage(
@@ -378,7 +407,8 @@ async function checkMlirCollectorSetupCommand(context: vscode.ExtensionContext):
 }
 
 async function queryCurrentTraceCommand(): Promise<void> {
-  if (!currentTraceSession) {
+  const currentSession = getCurrentTraceSession();
+  if (!currentSession) {
     const action = await vscode.window.showWarningMessage(
       'Pass Lens has no current trace to query.',
       'Open Trace File',
@@ -464,7 +494,7 @@ async function queryCurrentTraceCommand(): Promise<void> {
     return;
   }
 
-  const { loaded, sourceUri } = currentTraceSession;
+  const { loaded, sourceUri } = currentSession;
   if (picked.summaryKind) {
     const content = await resolveIssueSummary(picked.summaryKind, loaded, sourceUri);
     if (!content) {
@@ -654,7 +684,6 @@ async function toLoadedTrace(trace: PassTrace, tracePath?: string): Promise<Load
 
 function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, sourceUri: vscode.Uri): void {
   const { trace, issues, anomalies, sizeSummary } = loaded;
-  currentTraceSession = { loaded, sourceUri };
   const panel = vscode.window.createWebviewPanel(
     'passLens.trace',
     `Pass Lens: ${trace.input ?? sourceUri.path.split('/').pop() ?? 'trace'}`,
@@ -665,6 +694,15 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     }
   );
 
+  registerTracePanelSession(panel, { loaded, sourceUri });
+  panel.onDidChangeViewState((event) => {
+    if (event.webviewPanel.active) {
+      setActiveTracePanel(event.webviewPanel);
+    }
+  });
+  panel.onDidDispose(() => {
+    removeTracePanel(panel);
+  });
   panel.webview.onDidReceiveMessage(async (message: unknown) => {
     const parsed = parseTracePanelMessage(message);
     if (!parsed) {

@@ -130,6 +130,7 @@
     "smoke:oss-mlir": "npm run compile && node scripts/oss-mlir-corpus-smoke.js",
     "smoke:large-trace": "npm run compile && node scripts/large-trace-smoke.js",
     "smoke:heir-case-study": "npm run compile && node scripts/heir-case-study-smoke.js",
+    "smoke:iree-case-study": "npm run compile && node scripts/iree-case-study-smoke.js",
     "smoke:deepseek-agent": "npm run compile && node scripts/deepseek-agent-smoke.js",
     "release:check": "node scripts/release-readiness.js",
     "package": "vsce package",

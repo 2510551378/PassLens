@@ -249,7 +249,36 @@ step-by-step producer integration path, see
 authors can use the small C++ SDK surface documented in
 [`docs/mlir-collector-sdk.md`](docs/mlir-collector-sdk.md).
 
-### 5. Generate Reports and Repro Artifacts
+### 5. Run a Downstream Structured Case Study
+
+For real compiler pipelines that already support Pass Lens flags, use the
+downstream smoke runner:
+
+```powershell
+$env:PASS_LENS_IREE_DRIVER="/path/to/downstream-driver"
+npm run smoke:iree-case-study
+```
+
+The runner validates:
+
+- zero driver exit code;
+- strict schema validation;
+- viewer validation;
+- artifact path existence checks (when enabled);
+- provenance kind (`live-pass-instrumentation`).
+
+If your compiler needs extra flags, pass them with `--driver-arg`:
+
+```bash
+npm run compile
+node scripts/iree-case-study-smoke.js \
+  --driver /path/to/downstream-driver \
+  --input /path/to/input.mlir \
+  --driver-arg --my-driver-extra-flag \
+  --driver-arg --other-extra-flag
+```
+
+### 6. Generate Reports and Repro Artifacts
 
 After opening a trace, run:
 
@@ -280,7 +309,7 @@ Agent tool manifests follow
 [`docs/pass-lens-agent-tools.schema.json`](docs/pass-lens-agent-tools.schema.json).
 See [`docs/agent-tools.md`](docs/agent-tools.md) for the agent-facing contract.
 
-### 6. Find a Minimal Failing Prefix
+### 7. Find a Minimal Failing Prefix
 
 If a pipeline fails and you need the smallest failing prefix, run:
 
@@ -292,7 +321,7 @@ Pass Lens reruns textual MLIR pipeline prefixes with the configured structured
 collector driver and opens a minimal failing prefix report with command lines,
 attempt traces, diagnostics, and the shortest failing prefix if one is found.
 
-### 7. Work With Large Traces
+### 8. Work With Large Traces
 
 For real compiler pipelines:
 
@@ -366,6 +395,7 @@ npm run validate:trace:all
 $env:PASS_LENS_MLIR_OPT="/path/to/pass-lens-mlir-opt"; npm run smoke:oss-mlir
 npm run smoke:large-trace
 $env:PASS_LENS_HEIR_ROOT="/path/to/heir"; npm run smoke:heir-case-study
+$env:PASS_LENS_IREE_DRIVER="/path/to/downstream-driver"; npm run smoke:iree-case-study
 npm run package
 ```
 
@@ -392,6 +422,10 @@ context export. See [`docs/large-trace-smoke.md`](docs/large-trace-smoke.md).
 To validate a real downstream MLIR/FHE compiler through the textual dump
 fallback path, set `PASS_LENS_HEIR_ROOT` and run `npm run
 smoke:heir-case-study`. See [`docs/heir-case-study.md`](docs/heir-case-study.md).
+
+To validate a real downstream structured integration, set
+`PASS_LENS_IREE_DRIVER` and run `npm run smoke:iree-case-study`. See
+[`docs/iree-case-study.md`](docs/iree-case-study.md).
 
 ## Project Status
 

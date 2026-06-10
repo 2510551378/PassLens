@@ -197,6 +197,10 @@ maintainability work.
   - [ ] Candidate: Triton -> TTIR / TTGIR -> NPU / AscendC.
   - [ ] Candidate: IREE lowering pipeline.
   - [ ] Candidate: torch-mlir lowering pipeline.
+  - `scripts/iree-case-study-smoke.js` and
+    [`docs/iree-case-study.md`](docs/iree-case-study.md) are ready as a reusable
+    entry point for the IREE structured case-study smoke, once a driver with
+    Pass Lens flags is available.
 - [x] Run a real downstream MLIR compiler through the textual dump fallback.
   - `npm run smoke:heir-case-study` runs HEIR `heir-opt` on a CKKS
     dot-product lowering to OpenFHE, converts textual before/after IR dumps

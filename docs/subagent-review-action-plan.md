@@ -271,10 +271,13 @@ Why this matters:
 
 Minimum implementation:
 
-- Track sessions per webview panel.
-- Update active session using `onDidChangeViewState`.
-- Clear disposed sessions using `onDidDispose`.
-- Make query and prefix-bisect commands read from the active panel session.
+- [x] Track sessions per webview panel.
+- [x] Update active session using `onDidChangeViewState`.
+- [x] Clear disposed sessions using `onDidDispose`.
+- [x] Make query and prefix-bisect commands read from the active panel session.
+  - Commit: this change.
+  - Added panel session registration and active-panel tracking in
+    `src/extension.ts`.
 
 Acceptance checks:
 
