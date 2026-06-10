@@ -197,6 +197,7 @@ maintainability work.
   - [ ] Candidate: Triton -> TTIR / TTGIR -> NPU / AscendC.
   - [ ] Candidate: IREE lowering pipeline.
   - [ ] Candidate: torch-mlir lowering pipeline.
+  - [x] Torch-MLIR case-study harness and docs are in place (`smoke:torch-mlir-case-study`, `docs/torch-mlir-case-study.md`).
   - `scripts/iree-case-study-smoke.js` and
     [`docs/iree-case-study.md`](docs/iree-case-study.md) are ready as a reusable
     entry point for the IREE structured case-study smoke, once a driver with
