@@ -234,6 +234,27 @@ test('smoke script runs both available downstream case studies', () => {
       assert.equal(torchSummary.errors.length, 0);
       assert.equal(ireeSummary.provenanceKind, 'live-pass-instrumentation');
       assert.equal(torchSummary.provenanceKind, 'live-pass-instrumentation');
+
+      const minQuality = Number(ireeSummary.qualityScore);
+      if (!Number.isFinite(minQuality)) {
+        throw new Error(`Unexpected quality score: ${ireeSummary.qualityScore}`);
+      }
+
+      const tightenedResult = spawnSync(process.execPath, [
+        path.join(process.cwd(), 'scripts', 'downstream-case-studies-smoke.js'),
+        '--iree',
+        '--min-quality',
+        String(minQuality + 1)
+      ], {
+        cwd: process.cwd(),
+        encoding: 'utf8'
+      });
+      assert.equal(tightenedResult.status, 1, `script unexpectedly passed with impossible quality floor`);
+      const tightenedSummary = JSON.parse(fs.readFileSync(path.join(ireeCaseRoot, 'summary.json'), 'utf8'));
+      assert.equal(
+        tightenedSummary.errors.some((entry) => entry.includes('quality score')),
+        true
+      );
     } finally {
       if (previousIreeDriver === undefined) {
         delete process.env.PASS_LENS_IREE_DRIVER;
