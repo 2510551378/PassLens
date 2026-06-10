@@ -9,6 +9,39 @@ const { normalizeTrace } = require('../out/trace/schema.js');
 const { validateTraceStrict } = require('../out/trace/strictValidation.js');
 const { validateTrace } = require('../out/trace/validation.js');
 
+function parseSampleProvenanceTable(fileText) {
+  const lines = fileText.split(/\r?\n/);
+  const entries = new Map();
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('|') || trimmed.startsWith('| Sample ')) {
+      continue;
+    }
+    if (/^\|\s*[-|]+\s*\|/.test(trimmed)) {
+      continue;
+    }
+
+    const columns = trimmed
+      .split('|')
+      .map((column) => column.trim())
+      .filter((column) => column.length > 0);
+    if (columns.length < 2) {
+      continue;
+    }
+
+    const file = columns[0].replace(/`/g, '');
+    const kind = columns[1].replace(/`/g, '');
+    if (!/\.json$/i.test(file)) {
+      continue;
+    }
+
+    entries.set(file, kind);
+  }
+
+  return entries;
+}
+
 test('sample traces normalize, hydrate artifacts, and validate without errors', async () => {
   const sampleDir = path.join(process.cwd(), 'sample-traces');
   const files = (await fs.readdir(sampleDir))
@@ -60,5 +93,27 @@ test('sample trace catalog points to existing traces with matching provenance', 
     const raw = JSON.parse(await fs.readFile(tracePath, 'utf8'));
     assert.equal(raw.provenance?.kind, entry.provenanceKind, `${entry.file} provenance drifted from catalog`);
     assert.equal(entry.description, provenanceLabel(entry.provenanceKind));
+  }
+});
+
+test('sample provenance doc stays in sync with sample traces', async () => {
+  const sampleDir = path.join(process.cwd(), 'sample-traces');
+  const sampleFiles = (await fs.readdir(sampleDir))
+    .filter((file) => file.endsWith('.json'))
+    .sort();
+
+  const provenanceText = await fs.readFile(path.join(process.cwd(), 'docs', 'sample-provenance.md'), 'utf8');
+  const provenanceEntries = parseSampleProvenanceTable(provenanceText);
+
+  assert.ok(provenanceEntries.size > 0, 'sample provenance table should be parseable');
+
+  for (const sample of sampleFiles) {
+    assert.equal(provenanceEntries.has(sample), true, `sample-provenance.md missing entry: ${sample}`);
+  }
+
+  for (const [sample, kind] of provenanceEntries) {
+    const samplePath = path.join(sampleDir, sample);
+    const raw = JSON.parse(await fs.readFile(samplePath, 'utf8'));
+    assert.equal(raw.provenance?.kind, kind, `${sample} provenance document does not match sample trace`);
   }
 });
