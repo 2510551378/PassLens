@@ -120,10 +120,17 @@ Validate a trace before sharing or uploading it from CI:
 npm run validate:trace -- --check-artifacts path\to\trace.json
 ```
 
-Before preparing a public preview build, run the release entry-point check:
+Before preparing a public preview build, run the full release smoke sequence:
 
 ```powershell
-npm run release:check
+npm run release:smoke
+```
+
+Then publish with an explicit target (default is dry-run):
+
+```powershell
+npm run release:publish:marketplace
+npm run release:publish:open-vsx
 ```
 
 See [`docs/release-readiness.md`](docs/release-readiness.md) for the
