@@ -402,7 +402,8 @@ repro/
 - [x] Write "From IR Dumps to Compiler Observability".
   - Commit: this change.
   - Added `docs/from-ir-dumps-to-observability.md` and linked it from README.
-- [ ] Prepare an MLIR discourse post with a concrete real trace demo.
+- [x] Prepare an MLIR discourse post with a concrete real trace demo.
+  - Added `docs/mlir-discourse-post-draft.md` with a ready-to-post draft and reproducible steps.
 - [ ] Consider Triton / IREE / torch-mlir issue-style demos.
 
 ## Six-Month Execution Plan

@@ -132,6 +132,7 @@ Marketplace / Open VSX checklist.
 Hands-on guides:
 
 - [`docs/first-bad-pass-workflow.md`](docs/first-bad-pass-workflow.md)
+- [`docs/mlir-discourse-post-draft.md`](docs/mlir-discourse-post-draft.md)
 - [`docs/from-ir-dumps-to-observability.md`](docs/from-ir-dumps-to-observability.md)
 
 ## Usage Guide
