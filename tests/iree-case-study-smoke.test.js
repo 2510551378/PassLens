@@ -5,7 +5,7 @@ const path = require('node:path');
 const test = require('node:test');
 const { spawnSync } = require('node:child_process');
 
-const { buildDriverArgs, parseArgs } = require('../scripts/iree-case-study-smoke.js');
+const { buildDriverArgs, parseArgs, resolveDriverPath } = require('../scripts/iree-case-study-smoke.js');
 
 test('parseArgs accepts IREE case study smoke flags', () => {
   const previousDriver = process.env.PASS_LENS_IREE_DRIVER;
@@ -91,6 +91,52 @@ test('buildDriverArgs omits empty pipeline flag when not provided', () => {
   assert.equal(args.some((entry) => entry.startsWith('--pass-pipeline=')), false);
   assert.equal(args[0], '--keep');
   assert.equal(args[1], path.join(os.tmpdir(), 'input.mlir'));
+});
+
+test('resolveDriverPath resolves explicit executable paths', () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'iree-driver-explicit-'));
+  try {
+    const driver = path.join(tmpRoot, 'iree-case-driver');
+    fs.writeFileSync(driver, 'exit 0', 'utf8');
+    const found = resolveDriverPath(driver);
+    assert.equal(found, driver);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('resolveDriverPath finds driver from PATH', () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'iree-driver-path-'));
+  const originalPath = process.env.PATH;
+  const originalPathExt = process.env.PATHEXT;
+  try {
+    const command = 'iree-pass-lens-driver';
+    const driverName = process.platform === 'win32'
+      ? `${command}.exe`
+      : command;
+    const driver = path.join(tmpRoot, driverName);
+    fs.writeFileSync(driver, 'exit 0', 'utf8');
+
+    process.env.PATH = `${tmpRoot}${path.delimiter}${originalPath}`;
+    if (process.platform === 'win32') {
+      process.env.PATHEXT = '.exe;.cmd;.bat;.com';
+    }
+
+    const found = resolveDriverPath(command);
+    assert.equal(found, driver);
+  } finally {
+    if (originalPath === undefined) {
+      delete process.env.PATH;
+    } else {
+      process.env.PATH = originalPath;
+    }
+    if (originalPathExt === undefined) {
+      delete process.env.PATHEXT;
+    } else {
+      process.env.PATHEXT = originalPathExt;
+    }
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
 });
 
 test('smoke script validates a structured downstream driver fixture', () => {

@@ -188,11 +188,39 @@ function parseArgs(argv) {
 }
 
 function resolveDriverPath(rawDriver) {
-  if (!rawDriver) {
+  const command = String(rawDriver || '').trim();
+  if (!command) {
     throw new Error('PASS_LENS_IREE_DRIVER or --driver is required.');
   }
-  const isPathLike = rawDriver.includes(path.sep) || rawDriver.includes(path.posix.sep) || rawDriver.includes('/');
-  return isPathLike ? path.resolve(rawDriver) : rawDriver;
+
+  const hasPathLike = command.includes(path.sep) || command.includes(path.posix.sep);
+  if (hasPathLike) {
+    const absolute = path.isAbsolute(command) ? command : path.resolve(command);
+    if (!fs.existsSync(absolute)) {
+      throw new Error(`Structured collector driver was not found: ${absolute}`);
+    }
+    return absolute;
+  }
+
+  const pathExts = process.platform === 'win32'
+    ? process.env.PATHEXT?.split(path.delimiter).map((ext) => ext.toLowerCase()) ?? ['.exe', '.cmd', '.bat', '.com']
+    : [''];
+
+  const searchPaths = process.env.PATH || '';
+  for (const directory of searchPaths.split(path.delimiter)) {
+    for (const extension of pathExts) {
+      const candidate = path.join(directory, `${command}${extension}`);
+      try {
+        if (fs.existsSync(candidate)) {
+          return candidate;
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  throw new Error(`Structured collector driver was not found on PATH: ${command}`);
 }
 
 function buildDriverArgs(params) {
@@ -429,5 +457,6 @@ function round(value) {
 
 module.exports = {
   parseArgs,
-  buildDriverArgs
+  buildDriverArgs,
+  resolveDriverPath
 };
