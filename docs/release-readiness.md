@@ -48,6 +48,9 @@ npm run release:preflight
 This runs the release smoke checks, packages VSIX, and writes a
 `artifacts/release-preview-plan.json` report.
 
+For a step-by-step dry-run/execute sequence and post-publish verification checklist,
+follow [`release-publish-playbook.md`](release-publish-playbook.md).
+
 CI can also generate and persist the publish plan:
 
 ```text

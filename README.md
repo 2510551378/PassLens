@@ -148,6 +148,9 @@ npm run release:preview:plan -- --json
 npm run release:preview:plan -- --output .github/release-preview-plan.json
 ```
 
+For a complete publish sequence (dry-run checks → execute, and post-publish
+verification), use [`docs/release-publish-playbook.md`](docs/release-publish-playbook.md).
+
 See [`docs/release-readiness.md`](docs/release-readiness.md) for the
 Marketplace / Open VSX checklist.
 
