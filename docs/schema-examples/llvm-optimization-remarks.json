@@ -1,0 +1,115 @@
+{
+  "schemaVersion": 1,
+  "collectorVersion": "example-llvm-new-pass-manager/0.2.0",
+  "provenance": {
+    "kind": "hand-authored",
+    "description": "Hand-authored LLVM New Pass Manager example including optimization-remark evidence."
+  },
+  "compiler": {
+    "name": "opt",
+    "version": "21.0.0",
+    "gitSha": "example"
+  },
+  "target": {
+    "backend": "llvm",
+    "platform": "x86_64-linux",
+    "triple": "x86_64-unknown-linux-gnu"
+  },
+  "extensions": {
+    "llvm": {
+      "pipelineManager": "new-pass-manager",
+      "remarkSink": "pass manager callback API"
+    }
+  },
+  "inputHash": "sha256:example",
+  "capture": {
+    "ir": "artifact",
+    "metrics": true,
+    "timing": true
+  },
+  "tool": "opt",
+  "input": "input.ll",
+  "pipeline": "module(function(instcombine,simplifycfg),globalopt)",
+  "command": "opt input.ll -passes=module(function(instcombine,simplifycfg),globalopt) -S -o output.ll",
+  "exitCode": 0,
+  "stages": [
+    {
+      "index": 0,
+      "pass": "instcombine",
+      "argument": "instcombine",
+      "opName": "llvm.function",
+      "symbol": "@kernel",
+      "nestingDepth": 2,
+      "scope": "function @kernel",
+      "changed": true,
+      "status": "changed",
+      "durationMs": 2.4,
+      "verifier": "ok",
+      "artifacts": {
+        "beforePath": "artifacts/000-before.ll",
+        "afterPath": "artifacts/000-after.ll"
+      },
+      "metricsBefore": {
+        "llvm.instructions": 44,
+        "llvm.basic_blocks": 6,
+        "llvm.calls": 3
+      },
+      "metricsAfter": {
+        "llvm.instructions": 39,
+        "llvm.basic_blocks": 6,
+        "llvm.calls": 2
+      },
+      "extensions": {
+        "llvmRemarks": {
+          "generatedFrom": "pass manager optimization remarks",
+          "remarks": [
+            {
+              "kind": "OptimizationRemarkMissed",
+              "pass": "CorrelatedValuePropagation",
+              "message": "failed to simplify add with constant because of potential overflow"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "index": 1,
+      "pass": "simplifycfg",
+      "argument": "simplifycfg",
+      "opName": "llvm.function",
+      "symbol": "@kernel",
+      "nestingDepth": 2,
+      "scope": "function @kernel",
+      "changed": true,
+      "status": "changed",
+      "durationMs": 1.7,
+      "verifier": "ok",
+      "artifacts": {
+        "beforePath": "artifacts/001-before.ll",
+        "afterPath": "artifacts/001-after.ll"
+      },
+      "metricsBefore": {
+        "llvm.instructions": 39,
+        "llvm.basic_blocks": 6,
+        "llvm.branches": 5
+      },
+      "metricsAfter": {
+        "llvm.instructions": 35,
+        "llvm.basic_blocks": 4,
+        "llvm.branches": 3
+      },
+      "extensions": {
+        "llvmRemarks": {
+          "generatedFrom": "pass manager optimization remarks",
+          "remarks": [
+            {
+              "kind": "OptimizationRemark",
+              "pass": "SROA",
+              "message": "scalar replacement applied to promoted alloca"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

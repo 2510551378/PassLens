@@ -32,6 +32,10 @@ export interface TraceProvenance {
   capturedAt?: string;
 }
 
+export interface StageExtensions {
+  [namespace: string]: unknown;
+}
+
 export interface MetricProfile {
   critical?: string[];
   budgets?: Record<string, number>;
@@ -62,6 +66,7 @@ export interface TraceStage {
   artifacts?: StageArtifacts;
   metricsBefore?: Metrics;
   metricsAfter?: Metrics;
+  extensions?: StageExtensions;
   irBefore?: string;
   irAfter?: string;
 }
@@ -75,6 +80,7 @@ export interface PassTrace {
   inputHash?: string;
   capture?: CaptureInfo;
   metricProfiles?: MetricProfiles;
+  extensions?: Record<string, unknown>;
   tool?: string;
   input?: string;
   pipeline?: string;

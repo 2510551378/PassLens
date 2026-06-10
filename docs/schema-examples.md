@@ -12,6 +12,7 @@ fields. Each example should pass strict schema validation.
 | --- | --- |
 | [`schema-examples/mlir-structured.json`](schema-examples/mlir-structured.json) | MLIR `PassInstrumentation` style collector with artifact-backed IR. |
 | [`schema-examples/llvm-new-pass-manager.json`](schema-examples/llvm-new-pass-manager.json) | LLVM New Pass Manager style pass pipeline with LLVM-flavored metrics. |
+| [`schema-examples/llvm-optimization-remarks.json`](schema-examples/llvm-optimization-remarks.json) | LLVM New Pass Manager style evidence with optimization remarks carried in `extensions`. |
 | [`schema-examples/hardware-backend-metrics.json`](schema-examples/hardware-backend-metrics.json) | Hardware/backend lowering trace with metric budgets and critical metrics. |
 
 ## Authoring Rules
@@ -44,3 +45,24 @@ implementation, for example `scratchpad.bytes`, `dma.queue.depth`,
 
 When a backend needs richer evidence, attach it as artifact files and reference
 them with `artifacts.diagnosticsPath` or before/after artifact paths.
+
+For optimization remarks specifically, include them in namespaced `extensions`
+objects (for example, under `extensions.llvmRemarks`) while keeping stage
+metrics and diagnostics fields stable:
+
+```json
+{
+  "extensions": {
+    "llvmRemarks": {
+      "generatedFrom": "pass manager optimization remarks",
+      "remarks": [
+        {
+          "kind": "OptimizationRemarkMissed",
+          "pass": "LoopVectorize",
+          "message": "..."
+        }
+      ]
+    }
+  }
+}
+```

@@ -160,8 +160,28 @@ Metrics must be finite numbers:
 ```
 
 Metric names are intentionally compiler-defined. Keep backend-specific evidence
-inside metrics, diagnostics, target metadata, or artifacts instead of adding new
-top-level fields.
+inside metrics, diagnostics, target metadata, extensions, or artifacts instead of
+adding new top-level fields.
+
+For optimization-remark-style evidence, prefer namespaced `extensions` payloads so
+collectors can keep strict schema compatibility. A practical pattern for LLVM is:
+
+```json
+{
+  "extensions": {
+    "llvmRemarks": {
+      "generatedFrom": "pass manager optimization remarks",
+      "remarks": [
+        {
+          "kind": "OptimizationRemark",
+          "pass": "GVN",
+          "message": "..."
+        }
+      ]
+    }
+  }
+}
+```
 
 Use `metricProfiles` when a backend has important budgets:
 

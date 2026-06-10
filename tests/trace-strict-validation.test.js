@@ -26,6 +26,58 @@ test('validateTraceStrict accepts a minimal schema-v1 trace', () => {
   assert.deepEqual(issues, []);
 });
 
+test('validateTraceStrict allows optional trace extensions', () => {
+  const issues = validateTraceStrict({
+    schemaVersion: 1,
+    provenance: {
+      kind: 'live-pass-instrumentation',
+      description: 'trace extension smoke test'
+    },
+    extensions: {
+      llvmRemarks: {
+        remarks: []
+      }
+    },
+    stages: [
+      {
+        index: 0,
+        pass: 'canonicalize',
+        extensions: {
+          llvm: {
+            stageRemark: 'ok'
+          }
+        }
+      }
+    ]
+  });
+
+  assert.deepEqual(issues, []);
+});
+
+test('validateTraceStrict rejects non-object trace extensions', () => {
+  const issues = validateTraceStrict({
+    schemaVersion: 1,
+    provenance: {
+      kind: 'live-pass-instrumentation',
+      description: 'bad trace extension'
+    },
+    extensions: ['invalid'],
+    stages: [
+      {
+        index: 0,
+        pass: 'canonicalize',
+        extensions: 12
+      }
+    ]
+  });
+
+  const traceExtensionIssue = issues.find((issue) => issue.field === '$.extensions');
+  const stageExtensionIssue = issues.find((issue) => issue.field === '$.stages[0].extensions');
+
+  assert.ok(traceExtensionIssue);
+  assert.ok(stageExtensionIssue);
+});
+
 test('validateTraceStrict rejects malformed collector output', () => {
   const issues = validateTraceStrict({
     schemaVersion: 2,
@@ -100,6 +152,7 @@ test('schema examples are strict-valid public collector contracts', async () => 
   assert.deepEqual(files, [
     'hardware-backend-metrics.json',
     'llvm-new-pass-manager.json',
+    'llvm-optimization-remarks.json',
     'mlir-structured.json'
   ]);
 
@@ -116,7 +169,7 @@ test('schema examples documentation references existing files', async () => {
   const links = Array.from(markdown.matchAll(/\]\((schema-examples\/[^)]+\.json)\)/g))
     .map((match) => match[1]);
 
-  assert.equal(links.length, 3);
+  assert.equal(links.length, 4);
   for (const link of links) {
     await fs.access(path.join(docsDir, link));
   }

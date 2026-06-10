@@ -379,8 +379,14 @@ repro/
   - Public docs and agent contracts now describe Pass Lens as a generic compiler
     pass evidence schema; backend-specific samples are optional examples, and
     agent tools avoid Triton/NPU-specific inputs.
-- [ ] Investigate LLVM New Pass Manager integration.
-- [ ] Investigate LLVM optimization remarks ingestion as complementary evidence.
+- [x] Investigate LLVM New Pass Manager integration.
+  - Added schema-friendly extension envelope for New Pass Manager metadata and
+    optimization-remark evidence.
+  - Added `docs/schema-examples/llvm-optimization-remarks.json` and linked it
+    from schema examples.
+- [x] Investigate LLVM optimization remarks ingestion as complementary evidence.
+  - Added `extensions` guidance in schema and collector author docs, with a
+    concrete example carrying stage-local `llvmRemarks` payloads.
 
 ## Marketplace And Ecosystem
 
