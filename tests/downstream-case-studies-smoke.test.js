@@ -23,6 +23,22 @@ test('parseArgs handles fail-fast flag', () => {
   assert.equal(options.forceTorch, true);
   assert.equal(options.failFast, true);
   assert.equal(options.all, false);
+  assert.equal(options.minQuality, 0);
+});
+
+test('parseArgs handles min-quality flag', () => {
+  const options = parseArgs(['--torch', '--min-quality', '90']);
+  assert.equal(options.minQuality, 90);
+});
+
+test('parseArgs handles min-quality assignment flag', () => {
+  const options = parseArgs(['--iree', '--min-quality=95']);
+  assert.equal(options.minQuality, 95);
+});
+
+test('parseArgs handles invalid min-quality input', () => {
+  const options = parseArgs(['--iree', '--min-quality', 'invalid', '--min-quality=88']);
+  assert.equal(options.minQuality, 88);
 });
 
 test('resolveTargets respects forced selection without driver env', () => {
@@ -179,15 +195,17 @@ test('smoke script runs both available downstream case studies', () => {
     const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
     const previousIreeCaseDir = process.env.PASS_LENS_IREE_CASE_DIR;
     const previousTorchCaseDir = process.env.PASS_LENS_TORCH_MLIR_CASE_DIR;
-    const previousIreePipeline = process.env.PASS_LENS_IREE_PIPELINE;
-    const previousTorchPipeline = process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
-    try {
-      process.env.PASS_LENS_IREE_DRIVER = ireeDriver;
+      const previousIreePipeline = process.env.PASS_LENS_IREE_PIPELINE;
+      const previousTorchPipeline = process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
+      const previousQuality = process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY;
+      try {
+        process.env.PASS_LENS_IREE_DRIVER = ireeDriver;
       process.env.PASS_LENS_TORCH_MLIR_DRIVER = torchDriver;
       process.env.PASS_LENS_IREE_CASE_DIR = ireeCaseRoot;
       process.env.PASS_LENS_TORCH_MLIR_CASE_DIR = torchCaseRoot;
-      process.env.PASS_LENS_IREE_PIPELINE = 'builtin.module(func.func(canonicalize))';
-      process.env.PASS_LENS_TORCH_MLIR_PIPELINE = 'builtin.module(func.func(canonicalize))';
+        process.env.PASS_LENS_IREE_PIPELINE = 'builtin.module(func.func(canonicalize))';
+        process.env.PASS_LENS_TORCH_MLIR_PIPELINE = 'builtin.module(func.func(canonicalize))';
+        process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY = '100';
 
       const result = spawnSync(process.execPath, [
         path.join(process.cwd(), 'scripts', 'downstream-case-studies-smoke.js'),
@@ -209,6 +227,9 @@ test('smoke script runs both available downstream case studies', () => {
       assert.equal(torchSummary.case, 'torch-mlir-downstream-lowering');
       assert.equal(ireeSummary.stageCount, 1);
       assert.equal(torchSummary.stageCount, 1);
+      assert.equal(ireeSummary.qualityScore >= 90, true);
+      assert.equal(torchSummary.qualityScore >= 90, true);
+      assert.equal(typeof ireeSummary.qualitySummary, 'string');
       assert.equal(ireeSummary.errors.length, 0);
       assert.equal(torchSummary.errors.length, 0);
       assert.equal(ireeSummary.provenanceKind, 'live-pass-instrumentation');
@@ -239,12 +260,17 @@ test('smoke script runs both available downstream case studies', () => {
       } else {
         process.env.PASS_LENS_IREE_PIPELINE = previousIreePipeline;
       }
-      if (previousTorchPipeline === undefined) {
-        delete process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
-      } else {
-        process.env.PASS_LENS_TORCH_MLIR_PIPELINE = previousTorchPipeline;
+        if (previousTorchPipeline === undefined) {
+          delete process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
+        } else {
+          process.env.PASS_LENS_TORCH_MLIR_PIPELINE = previousTorchPipeline;
+        }
+        if (previousQuality === undefined) {
+          delete process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY;
+        } else {
+          process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY = previousQuality;
+        }
       }
-    }
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
