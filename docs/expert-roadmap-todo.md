@@ -123,7 +123,7 @@ maintainability work.
 
 ## P2: Agentic Rerun / Prefix Bisection
 
-- [ ] Design a rerun abstraction:
+- [x] Design a rerun abstraction:
   - [x] `run_pipeline(prefix)`.
   - [x] `run_prefix_bisect()`.
   - [x] `run_with_verify_each()`.
