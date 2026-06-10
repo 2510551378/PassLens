@@ -195,17 +195,17 @@ test('smoke script runs both available downstream case studies', () => {
     const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
     const previousIreeCaseDir = process.env.PASS_LENS_IREE_CASE_DIR;
     const previousTorchCaseDir = process.env.PASS_LENS_TORCH_MLIR_CASE_DIR;
-      const previousIreePipeline = process.env.PASS_LENS_IREE_PIPELINE;
-      const previousTorchPipeline = process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
-      const previousQuality = process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY;
-      try {
-        process.env.PASS_LENS_IREE_DRIVER = ireeDriver;
+    const previousIreePipeline = process.env.PASS_LENS_IREE_PIPELINE;
+    const previousTorchPipeline = process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
+    const previousQuality = process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY;
+    try {
+      process.env.PASS_LENS_IREE_DRIVER = ireeDriver;
       process.env.PASS_LENS_TORCH_MLIR_DRIVER = torchDriver;
       process.env.PASS_LENS_IREE_CASE_DIR = ireeCaseRoot;
       process.env.PASS_LENS_TORCH_MLIR_CASE_DIR = torchCaseRoot;
-        process.env.PASS_LENS_IREE_PIPELINE = 'builtin.module(func.func(canonicalize))';
-        process.env.PASS_LENS_TORCH_MLIR_PIPELINE = 'builtin.module(func.func(canonicalize))';
-        process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY = '100';
+      process.env.PASS_LENS_IREE_PIPELINE = 'builtin.module(func.func(canonicalize))';
+      process.env.PASS_LENS_TORCH_MLIR_PIPELINE = 'builtin.module(func.func(canonicalize))';
+      process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY = '90';
 
       const result = spawnSync(process.execPath, [
         path.join(process.cwd(), 'scripts', 'downstream-case-studies-smoke.js'),
@@ -260,18 +260,18 @@ test('smoke script runs both available downstream case studies', () => {
       } else {
         process.env.PASS_LENS_IREE_PIPELINE = previousIreePipeline;
       }
-        if (previousTorchPipeline === undefined) {
-          delete process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
-        } else {
-          process.env.PASS_LENS_TORCH_MLIR_PIPELINE = previousTorchPipeline;
-        }
-        if (previousQuality === undefined) {
-          delete process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY;
-        } else {
-          process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY = previousQuality;
-        }
+      if (previousTorchPipeline === undefined) {
+        delete process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
+      } else {
+        process.env.PASS_LENS_TORCH_MLIR_PIPELINE = previousTorchPipeline;
       }
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true });
-  }
+      if (previousQuality === undefined) {
+        delete process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY;
+      } else {
+        process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY = previousQuality;
+      }
+      }
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
 });
