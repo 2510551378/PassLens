@@ -14,6 +14,8 @@ collector run.
 | `mlir-artifacts.json` | `hand-authored` | Artifact-backed trace for sidecar IR loading. |
 | `triton-npu-ub-budget-overflow.json` | `hand-authored` | Hardware-backend case study for metric-budget anomaly triage. |
 | `triton-npu-strict-fallback.json` | `hand-authored` | Hardware-backend case study for strict-mode legality failure triage. |
+| `mlir-live-pass-instrumentation-arith-canonicalize.json` | `live-pass-instrumentation` | Real LLVM/MLIR Arith canonicalize pipeline sample with artifact-backed IR (source: LLVM MLIR tests). |
+| `mlir-live-pass-instrumentation-memref-canonicalize.json` | `live-pass-instrumentation` | Real LLVM/MLIR MemRef canonicalize pipeline sample with artifact-backed IR (source: LLVM MLIR tests). |
 
 ## Provenance Kinds
 

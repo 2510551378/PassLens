@@ -30,6 +30,20 @@ export const sampleTraces: SampleTraceEntry[] = [
     provenanceKind: 'live-pass-instrumentation'
   },
   {
+    label: 'Live MLIR Arith canonicalize',
+    description: provenanceLabel('live-pass-instrumentation'),
+    detail: 'Real LLVM MLIR Arith canonicalize sample with artifact-backed IR.',
+    file: 'mlir-live-pass-instrumentation-arith-canonicalize.json',
+    provenanceKind: 'live-pass-instrumentation'
+  },
+  {
+    label: 'Live MLIR MemRef canonicalize',
+    description: provenanceLabel('live-pass-instrumentation'),
+    detail: 'Real LLVM MLIR MemRef canonicalize sample with artifact-backed IR.',
+    file: 'mlir-live-pass-instrumentation-memref-canonicalize.json',
+    provenanceKind: 'live-pass-instrumentation'
+  },
+  {
     label: 'Toy MLIR pipeline',
     description: provenanceLabel('hand-authored'),
     detail: 'Small trace for checking the basic viewer layout.',
