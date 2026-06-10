@@ -89,6 +89,8 @@ For reproducibility, include at least these top-level fields when available:
 - `compiler`: `{ name, version, gitSha }` as available.
 - `target`: `{ backend, platform, triple }` if relevant.
 - `diagnostics`: command-level diagnostics not tied to one stage.
+- `provenance`: trace lineage metadata (`kind`, `description`, optional `source`,
+  `generatedBy`, `capturedAt`).
 
 This makes downstream users clear about how a trace was produced before they
 inspect stage-level evidence.

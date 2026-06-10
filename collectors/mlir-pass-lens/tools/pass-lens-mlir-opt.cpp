@@ -20,8 +20,11 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <memory>
+#include <sstream>
+#include <iomanip>
 #include <string>
 #include <utility>
+#include <ctime>
 
 namespace cl = llvm::cl;
 
@@ -68,6 +71,19 @@ static std::string quoteArg(llvm::StringRef value) {
   if (value.find(' ') == llvm::StringRef::npos)
     return value.str();
   return "\"" + value.str() + "\"";
+}
+
+static std::string utcTimestamp() {
+  const std::time_t now = std::time(nullptr);
+  std::tm utc{};
+#if defined(_WIN32)
+  gmtime_s(&utc, &now);
+#else
+  gmtime_r(&now, &utc);
+#endif
+  std::ostringstream buffer;
+  buffer << std::put_time(&utc, "%Y-%m-%dT%H:%M:%SZ");
+  return buffer.str();
 }
 
 int main(int argc, char **argv) {
@@ -124,6 +140,12 @@ int main(int argc, char **argv) {
     traceOptions.command +=
         " --pass-lens-artifact-dir=" + quoteArg(artifactDir);
   traceOptions.compilerName = "pass-lens-mlir-opt";
+  traceOptions.provenance = passlens::PassLensProvenance{
+      "live-pass-instrumentation",
+      "Collected from real MLIR PassInstrumentation callbacks with artifact IR.",
+      "collectors/mlir-pass-lens/tools/pass-lens-mlir-opt.cpp",
+      argv[0],
+      utcTimestamp()};
 
   mlir::PassManager pm(&context, mlir::ModuleOp::getOperationName());
 

@@ -40,6 +40,13 @@ options.compilerName = "my-mlir-driver";
 options.compilerVersion = "git:..."; // optional
 options.targetBackend = "llvm";
 options.exitCode = 0; // set explicitly when known
+options.provenance = {
+  .kind = "live-pass-instrumentation",
+  .description = "Collected from structured pass instrumentation callbacks.",
+  .source = "downstream compiler pass manager",
+  .generatedBy = "/path/to/downstream-driver",
+  .capturedAt = "2026-06-10T00:00:00Z"
+};
 
 passlens::addPassLensInstrumentation(pm, std::move(options));
 

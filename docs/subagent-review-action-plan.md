@@ -155,6 +155,8 @@ Suggested files:
 - `docs/sample-provenance.md`
 - `sample-traces/mlir-live-pass-instrumentation.json`
 
+Status: implemented.
+
 ### P1: One Real Downstream Structured Integration
 
 Risk:

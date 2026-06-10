@@ -250,6 +250,50 @@ std::string inferFailureStatus(mlir::Pass *pass,
   return isVerifierFailure(op, diagnostics) ? "verifier_failed" : "pass_failed";
 }
 
+bool hasProvenanceFields(const PassLensProvenance &provenance) {
+  return !provenance.kind.empty() || !provenance.description.empty() ||
+         !provenance.source.empty() || !provenance.generatedBy.empty() ||
+         !provenance.capturedAt.empty();
+}
+
+void writeProvenance(llvm::raw_ostream &os,
+                     const PassLensProvenance &provenance) {
+  os << "  \"provenance\": {\n";
+  bool firstField = true;
+  if (!provenance.kind.empty()) {
+    os << "    \"kind\": " << jsonString(provenance.kind);
+    firstField = false;
+  }
+  if (!provenance.description.empty()) {
+    if (!firstField) {
+      os << ",\n";
+    }
+    os << "    \"description\": " << jsonString(provenance.description);
+    firstField = false;
+  }
+  if (!provenance.source.empty()) {
+    if (!firstField) {
+      os << ",\n";
+    }
+    os << "    \"source\": " << jsonString(provenance.source);
+    firstField = false;
+  }
+  if (!provenance.generatedBy.empty()) {
+    if (!firstField) {
+      os << ",\n";
+    }
+    os << "    \"generatedBy\": " << jsonString(provenance.generatedBy);
+    firstField = false;
+  }
+  if (!provenance.capturedAt.empty()) {
+    if (!firstField) {
+      os << ",\n";
+    }
+    os << "    \"capturedAt\": " << jsonString(provenance.capturedAt);
+  }
+  os << "\n  },\n";
+}
+
 std::string getScope(mlir::Operation *op) {
   std::string scope = op->getName().getStringRef().str();
   if (auto symbolName = mlir::SymbolTable::getSymbolName(op)) {
@@ -534,6 +578,9 @@ void PassLensInstrumentation::writeTrace() {
   os << "  \"tool\": " << jsonString(impl->options.tool) << ",\n";
   if (!impl->options.command.empty())
     os << "  \"command\": " << jsonString(impl->options.command) << ",\n";
+  if (impl->options.provenance && hasProvenanceFields(*impl->options.provenance)) {
+    writeProvenance(os, *impl->options.provenance);
+  }
   if (impl->options.exitCode.has_value())
     os << "  \"exitCode\": " << *impl->options.exitCode << ",\n";
   if (!impl->options.diagnostics.empty())

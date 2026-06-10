@@ -27,12 +27,21 @@ using PassLensMetricsHook =
 using PassLensDiagnosticsHook =
     std::function<std::string(mlir::Pass *pass, mlir::Operation *op)>;
 
+struct PassLensProvenance {
+  std::string kind;
+  std::string description;
+  std::string source;
+  std::string generatedBy;
+  std::string capturedAt;
+};
+
 struct PassLensOptions {
   std::string outputPath;
   std::string tool = "pass-lens-mlir";
   std::string input;
   std::string pipeline;
   std::string command;
+  std::optional<PassLensProvenance> provenance;
   std::string artifactDir;
   bool includeIr = true;
   std::optional<int> exitCode;
