@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const { splitLitSections, parseArgs, resolveCaseSource } = require('../scripts/oss-mlir-corpus-smoke.js');
+const { resolveCollectorExecutable, splitLitSections, parseArgs, resolveCaseSource } = require('../scripts/oss-mlir-corpus-smoke.js');
 
 test('splitLitSections separates lit chunks and drops expected-error fixtures', () => {
   const sections = splitLitSections(`
@@ -52,6 +52,53 @@ test('resolveCaseSource prefers local source root when file exists', () => {
     assert.equal(local.kind, 'local');
     assert.equal(local.sourcePath, sourcePath);
   } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('resolveCollectorExecutable resolves explicit absolute paths', () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'oss-collector-explicit-'));
+  try {
+    const executable = path.join(tmpRoot, 'pass-lens-mlir-opt');
+    fs.writeFileSync(executable, 'echo ok', 'utf8');
+
+    const found = resolveCollectorExecutable(executable);
+    assert.equal(found, executable);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
+});
+
+test('resolveCollectorExecutable finds collector from PATH', () => {
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'oss-collector-path-'));
+  const originalPath = process.env.PATH;
+  const originalPathExt = process.env.PATHEXT;
+  try {
+    const command = 'pass-lens-mlir-opt';
+    const executableName = process.platform === 'win32'
+      ? `${command}.exe`
+      : command;
+    const executable = path.join(tmpRoot, executableName);
+    fs.writeFileSync(executable, 'echo ok', 'utf8');
+
+    process.env.PATH = `${tmpRoot}${path.delimiter}${originalPath}`;
+    if (process.platform === 'win32') {
+      process.env.PATHEXT = '.exe;.cmd;.bat;.com';
+    }
+
+    const found = resolveCollectorExecutable(command);
+    assert.equal(found, executable);
+  } finally {
+    if (originalPath === undefined) {
+      delete process.env.PATH;
+    } else {
+      process.env.PATH = originalPath;
+    }
+    if (originalPathExt === undefined) {
+      delete process.env.PATHEXT;
+    } else {
+      process.env.PATHEXT = originalPathExt;
+    }
     fs.rmSync(tmpRoot, { recursive: true, force: true });
   }
 });

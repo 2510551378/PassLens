@@ -8,7 +8,8 @@ const { spawnSync } = require('node:child_process');
 
 const defaultLlvmTag = 'llvmorg-20.1.2';
 const llvmTag = process.env.PASS_LENS_OSS_LLVM_TAG || defaultLlvmTag;
-const collector = process.env.PASS_LENS_MLIR_OPT || process.env.PASS_LENS_MLIR_DRIVER || 'pass-lens-mlir-opt';
+const requestedCollector = process.env.PASS_LENS_MLIR_OPT || process.env.PASS_LENS_MLIR_DRIVER || 'pass-lens-mlir-opt';
+const collector = resolveCollectorExecutable(requestedCollector);
 const outputRoot = path.resolve(process.env.PASS_LENS_OSS_SMOKE_DIR || path.join(os.tmpdir(), 'passlens-oss-mlir-smoke'));
 const sourceRoot = process.env.PASS_LENS_OSS_SOURCE_ROOT ? path.resolve(process.env.PASS_LENS_OSS_SOURCE_ROOT) : undefined;
 const baseUrl = `https://raw.githubusercontent.com/llvm/llvm-project/${llvmTag}/mlir/test`;
@@ -63,6 +64,14 @@ async function main() {
     printUsage();
     return;
   }
+  if (!collector) {
+    throw new Error(`pass-lens-mlir-opt is not available.
+Set PASS_LENS_MLIR_OPT or PASS_LENS_MLIR_DRIVER to the binary path, or add it to PATH.
+Example:
+  $env:PASS_LENS_MLIR_OPT = "C:\\path\\to\\pass-lens-mlir-opt"
+  $env:PASS_LENS_OSS_SOURCE_ROOT = "C:\\path\\to\\llvm\\mlir\\test"`);
+  }
+
   const effectiveSourceRoot = options.sourceRoot ? path.resolve(options.sourceRoot) : sourceRoot;
 
   resetDirectory(outputRoot);
@@ -300,12 +309,44 @@ Options:
                           Dialect/Arith/canonicalize.mlir, etc.
   --help, -h              Show this help.
 
-Environment:
+  Environment:
   PASS_LENS_OSS_SOURCE_ROOT
   PASS_LENS_OSS_SMOKE_DIR
   PASS_LENS_OSS_LLVM_TAG
   PASS_LENS_MLIR_OPT
 `);
+}
+
+function resolveCollectorExecutable(rawCollector) {
+  const command = String(rawCollector || '').trim();
+  if (command.length === 0) {
+    return null;
+  }
+
+  const hasExplicitPath = command.includes(path.sep) || command.includes(path.posix.sep);
+  if (hasExplicitPath) {
+    const absolute = path.isAbsolute(command) ? command : path.join(process.cwd(), command);
+    return fs.existsSync(absolute) ? absolute : null;
+  }
+
+  const pathExts = process.platform === 'win32'
+    ? process.env.PATHEXT?.split(path.delimiter).map((ext) => ext.toLowerCase()) ?? ['.exe', '.cmd', '.bat']
+    : [''];
+  const searchPath = process.env.PATH || '';
+  const segments = searchPath.split(path.delimiter);
+  for (const directory of segments) {
+    for (const extension of pathExts) {
+      const candidate = path.join(directory, `${command}${extension}`);
+      try {
+        if (fs.existsSync(candidate)) {
+          return candidate;
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+  return null;
 }
 
 function splitLitSections(text) {
@@ -375,5 +416,6 @@ function download(url, targetPath) {
 module.exports = {
   splitLitSections,
   parseArgs,
-  resolveCaseSource
+  resolveCaseSource,
+  resolveCollectorExecutable
 };
