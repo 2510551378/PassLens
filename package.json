@@ -45,6 +45,7 @@
     "onCommand:passLens.runStructuredMlirTrace",
     "onCommand:passLens.checkMlirCollectorSetup",
     "onCommand:passLens.queryCurrentTrace",
+    "onCommand:passLens.generateIssueDraft",
     "onCommand:passLens.runPrefixBisect"
   ],
   "main": "./out/extension.js",
