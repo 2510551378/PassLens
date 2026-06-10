@@ -81,6 +81,36 @@ test('release preview plan command writes json summary to output path', () => {
   fs.unlinkSync(output);
 });
 
+test('release preview plan creates missing output directories', () => {
+  const root = process.cwd();
+  const output = path.join(
+    os.tmpdir(),
+    'pass-lens-release-preview',
+    'nested',
+    `plan-${Date.now()}.json`
+  );
+
+  try {
+    const result = spawnSync(process.execPath, [
+      path.join(root, 'scripts', 'release-preview-plan.js'),
+      '--json',
+      '--output',
+      output
+    ], {
+      cwd: root,
+      encoding: 'utf8'
+    });
+
+    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.equal(fs.existsSync(output), true);
+  } finally {
+    const nestedDir = path.join(os.tmpdir(), 'pass-lens-release-preview');
+    if (fs.existsSync(nestedDir)) {
+      fs.rmSync(nestedDir, { recursive: true, force: true });
+    }
+  }
+});
+
 test('buildPublishPlan requires package artifact before returning command', () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-release-preview-'));
   const previousDir = process.cwd();
