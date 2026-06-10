@@ -40,6 +40,9 @@ declaring a successful real downstream structured case:
 5. The per-stage artifact references are readable in trace root (or are intentionally
    omitted for inline captures).
 
+For a complete acceptance workflow checklist and optional redacted sample publication
+steps, see [`docs/downstream-structured-integration-workflow.md`](downstream-structured-integration-workflow.md).
+
 If your compiler wraps or renames pipeline flags, keep the smoke runner defaults and
 pass your own flag through `--driver-arg`, for example:
 

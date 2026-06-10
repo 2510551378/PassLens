@@ -197,6 +197,12 @@ maintainability work.
   - [ ] Candidate: Triton -> TTIR / TTGIR -> NPU / AscendC.
   - [ ] Candidate: IREE lowering pipeline.
   - [ ] Candidate: torch-mlir lowering pipeline.
+  - [ ] Capture one external redacted real trace and publish it in `sample-traces`
+    as `live-pass-instrumentation` once driver output is verified.
+  - [ ] Add the redacted trace to `docs/sample-provenance.md` and keep
+    `npm run validate:trace:all` green.
+  - Workflow reference:
+    [`docs/downstream-structured-integration-workflow.md`](downstream-structured-integration-workflow.md)
   - [x] Torch-MLIR case-study harness and docs are in place (`smoke:torch-mlir-case-study`, `docs/torch-mlir-case-study.md`).
   - `scripts/iree-case-study-smoke.js` and
     [`docs/iree-case-study.md`](docs/iree-case-study.md) are ready as a reusable
@@ -433,6 +439,12 @@ repro/
 ### Month 1-3: Real Collector Workflow
 
 - [ ] Integrate structured collector into one real downstream compiler.
+  - Acceptance:
+    - run `smoke:iree-case-study` and/or `smoke:torch-mlir-case-study` successfully;
+    - strict validation + artifact check are clean on generated traces;
+    - output trace is marked `live-pass-instrumentation`.
+  - Follow the shared acceptance checklist in:
+    [`docs/downstream-structured-integration-workflow.md`](downstream-structured-integration-workflow.md)
 - [x] Add artifact lazy loading.
   - Commit: this change.
   - Stage artifact IR is loaded on selection through a webview request instead

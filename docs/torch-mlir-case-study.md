@@ -21,6 +21,9 @@ export PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-pass-lens-driver"
 npm run smoke:torch-mlir-case-study
 ```
 
+For a complete acceptance workflow checklist and optional redacted sample publication
+steps, see [`docs/downstream-structured-integration-workflow.md`](downstream-structured-integration-workflow.md).
+
 ### Minimal real-driver verification
 
 For successful downstream integration, confirm these minimum signals:
