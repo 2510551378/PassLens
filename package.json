@@ -144,7 +144,10 @@
     "smoke:deepseek-agent": "npm run compile && node scripts/deepseek-agent-smoke.js",
     "release:check": "node scripts/release-readiness.js",
     "release:check:strict": "node scripts/release-readiness.js --strict-release",
+    "release:smoke": "npm run validate:trace:all && npm test && npm run release:check",
     "package": "vsce package",
+    "release:publish:marketplace": "node scripts/release-publish.js marketplace",
+    "release:publish:open-vsx": "node scripts/release-publish.js open-vsx",
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {

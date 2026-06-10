@@ -18,6 +18,9 @@ test('release readiness passes for the repository public entry points', () => {
   assert.equal(report.errors.length, 0);
   assert.ok(report.warnings.some((warning) => warning.includes('Marketplace preview')));
   assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:check'));
+  assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:smoke'));
+  assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:publish:marketplace'));
+  assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:publish:open-vsx'));
   assert.ok(report.checks.some((check) => check.id === 'sample-provenance:live-pass-instrumentation'));
   assert.ok(report.checks.some((check) => check.id === 'release-doc:Open VSX'));
 });

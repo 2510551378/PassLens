@@ -21,16 +21,33 @@ The check validates:
 Before publishing a preview:
 
 ```powershell
-npm test
-npm run validate:trace:all
+cd /path/to/PassLens
 npm run release:check
+npm run release:smoke
 npm run package
 ```
 
-Publishing itself still requires maintainer credentials:
+Publishing itself is intentionally guarded:
 
-- VS Code Marketplace: `vsce publish` or upload the packaged VSIX.
-- Open VSX: `ovsx publish` or upload the packaged VSIX.
+- VS Code Marketplace: `node scripts/release-publish.js marketplace` for a dry run,
+  `node scripts/release-publish.js marketplace --execute` to actually publish.
+- Open VSX: `node scripts/release-publish.js open-vsx` for a dry run,
+  `node scripts/release-publish.js open-vsx --execute` to actually publish.
+
+The publish commands are also available as npm scripts:
+
+```powershell
+npm run release:publish:marketplace
+npm run release:publish:open-vsx
+```
+
+Dry-run mode prints the exact CLI invocation and verifies that the VSIX
+(`pass-lens-<version>.vsix`) exists before attempting publish.
+
+Required credentials:
+
+- `VSCE_PAT` for Marketplace publishing.
+- `OVSX_PAT` for Open VSX publishing.
 
 Keep Marketplace/Open VSX publication and the README demo GIF as explicit
 release blockers until they are completed. This avoids presenting a polished
