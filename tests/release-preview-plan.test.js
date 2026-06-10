@@ -53,9 +53,20 @@ test('release preview plan command returns json and includes both targets', () =
   const parsed = JSON.parse(stdout);
   assert.equal(parsed.plans.length, 2);
   assert.equal(parsed.plans[0].target !== undefined, true);
-  assert.equal(parsed.plans.some((item) => item.error), true);
+  assert.equal(parsed.plans.every((item) => item.error === undefined), true);
   assert.match(stdout, /marketplace/);
   assert.match(stdout, /open-vsx/);
+
+  const hasVsceToken = Boolean(process.env.VSCE_PAT);
+  const hasOpenVsxToken = Boolean(process.env.OVSX_PAT);
+  for (const plan of parsed.plans) {
+    if (plan.target === 'marketplace') {
+      assert.equal(plan.canExecute, hasVsceToken, 'marketplace plan should reflect VSCE_PAT presence');
+    }
+    if (plan.target === 'open-vsx') {
+      assert.equal(plan.canExecute, hasOpenVsxToken, 'open-vsx plan should reflect OVSX_PAT presence');
+    }
+  }
 });
 
 test('release preview plan command writes json summary to output path', () => {

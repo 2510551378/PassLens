@@ -26,8 +26,9 @@ import { evaluateTraceQuality, renderTraceQualityMarkdown } from './trace/qualit
 import { evaluateTraceSize, renderTraceSizeMarkdown, type TraceSizeSummary } from './trace/size';
 import { renderTraceQueryResultMarkdown, runTraceQuery, type TraceQuery } from './traceQuery';
 import { normalizeTrace } from './trace/schema';
-import { summarizeTraceIssues, validateTrace } from './trace/validation';
+import { validateTrace } from './trace/validation';
 import { createTracePanelSessionManager } from './tracePanelSession';
+import { getWebviewHtml } from './tracePanelHtml';
 import { registerTracePanelMessageHandlers } from './tracePanelController';
 import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
 
@@ -741,77 +742,14 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
 
   const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.css'));
   const scriptUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.js'));
-  panel.webview.html = getWebviewHtml(trace, issues, anomalies, sizeSummary, sourceUri.fsPath, styleUri, scriptUri, panel.webview.cspSource);
-}
-
-function getWebviewHtml(
-  trace: PassTrace,
-  issues: TraceIssue[],
-  anomalies: MetricAnomaly[],
-  sizeSummary: TraceSizeSummary,
-  sourcePath: string,
-  styleUri: vscode.Uri,
-  scriptUri: vscode.Uri,
-  cspSource: string
-): string {
-  const encodedData = JSON.stringify({
+  panel.webview.html = getWebviewHtml({
     trace,
-    traceIssues: issues,
-    traceAnomalies: anomalies,
-    traceIssueSummary: summarizeTraceIssues(issues),
-    traceQuality: evaluateTraceQuality(trace),
-    traceSize: sizeSummary,
-    sourcePath
-  }).replace(/</g, '\\u003c');
-  const title = escapeHtml(trace.input ?? 'Pass Trace');
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src ${escapeHtml(cspSource)} 'unsafe-inline'; script-src ${escapeHtml(cspSource)};">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pass Lens</title>
-  <link rel="stylesheet" href="${escapeHtml(styleUri.toString())}">
-</head>
-<body>
-  <header>
-    <h1>${title}</h1>
-    <div class="meta">
-      <span id="tool"></span>
-      <span id="provenance"></span>
-      <span id="pipeline"></span>
-      <span id="source"></span>
-    </div>
-    <div id="summary" class="summary"></div>
-    <div id="issue-panel" class="issue-panel"></div>
-  </header>
-  <main>
-    <aside>
-      <div class="toolbar">
-        <input id="search" class="search" type="search" placeholder="Filter passes, scopes, metrics">
-        <label class="toggle"><input id="changed-only" type="checkbox"> changed only</label>
-        <span id="stage-count"></span>
-        <span id="changed-count"></span>
-      </div>
-      <div id="overview" class="overview"></div>
-      <div id="timeline"></div>
-    </aside>
-    <section>
-      <div id="details" class="details"></div>
-    </section>
-  </main>
-  <template id="pass-lens-data">${escapeHtml(encodedData)}</template>
-  <script src="${escapeHtml(scriptUri.toString())}"></script>
-</body>
-</html>`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    issues,
+    anomalies,
+    sizeSummary,
+    sourcePath: sourceUri.fsPath,
+    styleUri,
+    scriptUri,
+    cspSource: panel.webview.cspSource
+  });
 }
