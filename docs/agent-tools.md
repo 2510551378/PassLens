@@ -44,7 +44,8 @@ Agents consuming this contract should follow the same rules as Pass Lens:
 - Query tools: first failure, first changed stage, metric jumps, metric budgets,
   slowest passes, text search, and a preview natural-language planner.
 - Report tools: GitHub issue draft, suspicious-pass summary, first-signal
-  explanation, candidate root causes, trace quality, and trace size.
+  explanation, candidate root causes, first-failure localization, trace quality,
+  and trace size.
 - Export tools: agent context, Markdown repro bundle, and directory repro
   bundle.
 - Rerun tools: preview contract for local prefix bisection.

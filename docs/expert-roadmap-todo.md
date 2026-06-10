@@ -429,8 +429,12 @@ repro/
   - Commit: this change.
   - Stage artifact IR is loaded on selection through a webview request instead
     of eager trace-wide hydration.
-- [ ] Add prefix bisection.
-- [ ] Add first-failure localization report.
+- [x] Add prefix bisection.
+  - `Pass Lens: Run Prefix Bisect` is available and now reports shortest
+    failing-prefix diagnostics.
+- [x] Add first-failure localization report.
+  - `Query Current Trace` now includes `Generate first failure localization
+    report` and exports the same report through the agent tool registry.
 - [x] Validate large-trace core processing path.
   - `npm run smoke:large-trace` covers the non-UI path; a real webview demo or
     Marketplace recording remains separate presentation work.
@@ -440,7 +444,9 @@ repro/
 - [x] Export agent context.
 - [x] Export deterministic suspicious-pass explanation.
 - [x] Add deterministic trace query tools.
-- [ ] Add issue generator.
+- [x] Add issue generator.
+  - `Pass Lens: Generate Issue Draft` exports a GitHub issue-ready draft from
+    the active trace and is available as a command.
 - [x] Add rerun / bisect agent tools.
   - Commit: this change.
   - `pass-lens.rerun.prefixBisect` is declared as a preview local tool contract

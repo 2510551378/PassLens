@@ -7,6 +7,7 @@ import { exportDirectoryReproBundle } from './directoryReproBundle';
 import {
   createCandidateRootCausesMarkdown,
   createGithubIssueDescription,
+  createFirstFailureLocalizationMarkdown,
   createSuspiciousPassesMarkdown,
   explainFirstSignal,
   renderFirstSignalExplanation,
@@ -93,6 +94,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('passLens.queryCurrentTrace', async () => {
       await queryCurrentTraceCommand();
+    }),
+    vscode.commands.registerCommand('passLens.generateIssueDraft', async () => {
+      await generateIssueDraftCommand();
     }),
     vscode.commands.registerCommand('passLens.runPrefixBisect', async () => {
       await runPrefixBisectCommand(context);
@@ -449,6 +453,11 @@ async function queryCurrentTraceCommand(): Promise<void> {
         summaryKind: 'candidateRootCauses'
       },
       {
+        label: 'Generate first failure localization report',
+        detail: 'Get a bounded localization hypothesis with confidence and next checks.',
+        summaryKind: 'firstFailureLocalization'
+      },
+      {
         label: 'Explain first fallback / legality / budget signal',
         detail: 'Choose a signal family and generate a concise evidence summary.',
         summaryKind: 'firstSignal'
@@ -547,7 +556,50 @@ async function resolveIssueSummary(
     loaded.sizeSummary = fullTraceSizeSummary;
     return renderTraceSizeMarkdown(fullTraceSizeSummary);
   }
+  if (summaryKind === 'firstFailureLocalization') {
+    return createFirstFailureLocalizationMarkdown(loaded.trace, loaded.issues, loaded.anomalies);
+  }
   return undefined;
+}
+
+async function generateIssueDraftCommand(): Promise<void> {
+  const currentSession = tracePanelSessionManager.getActiveSession();
+  if (!currentSession) {
+    const action = await vscode.window.showWarningMessage(
+      'Pass Lens has no current trace. Open a trace first.',
+      'Open Trace File',
+      'Open Sample Trace'
+    );
+    if (action === 'Open Trace File') {
+      await vscode.commands.executeCommand('passLens.openTraceFile');
+    } else if (action === 'Open Sample Trace') {
+      await vscode.commands.executeCommand('passLens.openSampleTrace');
+    }
+    return;
+  }
+
+  const parsed = path.parse(currentSession.sourceUri.fsPath);
+  const defaultUri = vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-issue.md`));
+  const target = await vscode.window.showSaveDialog({
+    defaultUri,
+    filters: {
+      Markdown: ['md'],
+      'All files': ['*']
+    },
+    saveLabel: 'Export Issue Draft',
+    title: 'Export Pass Lens GitHub issue draft'
+  });
+  if (!target) {
+    return;
+  }
+
+  const { trace, issues, anomalies } = currentSession.loaded;
+  const content = createGithubIssueDescription(trace, issues, anomalies, currentSession.sourceUri.fsPath);
+  await fs.writeFile(target.fsPath, content, 'utf8');
+  const open = await vscode.window.showInformationMessage('Pass Lens exported issue draft.', 'Open');
+  if (open === 'Open') {
+    await vscode.window.showTextDocument(target, { preview: false });
+  }
 }
 
 async function showMarkdownDocument(content: string): Promise<void> {

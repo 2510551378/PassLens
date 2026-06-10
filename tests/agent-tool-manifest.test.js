@@ -32,6 +32,7 @@ test('createAgentToolManifest declares generic deterministic agent tools', () =>
   assert.ok(ids.includes('pass-lens.query.planNaturalLanguage'));
   assert.ok(ids.includes('pass-lens.query.firstFailure'));
   assert.ok(ids.includes('pass-lens.report.candidateRootCauses'));
+  assert.ok(ids.includes('pass-lens.report.firstFailureLocalization'));
   assert.ok(ids.includes('pass-lens.export.agentContext'));
   assert.ok(ids.includes('pass-lens.rerun.prefixBisect'));
   assert.ok(manifest.guardrails.some((entry) => /Do not auto-edit compiler source/.test(entry)));

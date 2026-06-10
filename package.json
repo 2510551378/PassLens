@@ -75,6 +75,10 @@
         "title": "Pass Lens: Query Current Trace"
       },
       {
+        "command": "passLens.generateIssueDraft",
+        "title": "Pass Lens: Generate Issue Draft"
+      },
+      {
         "command": "passLens.runPrefixBisect",
         "title": "Pass Lens: Run Prefix Bisect"
       }
@@ -113,6 +117,9 @@
         },
         {
           "command": "passLens.queryCurrentTrace"
+        },
+        {
+          "command": "passLens.generateIssueDraft"
         },
         {
           "command": "passLens.runPrefixBisect"

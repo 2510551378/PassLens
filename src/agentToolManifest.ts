@@ -85,6 +85,7 @@ export function createAgentToolManifest(
         kind: enumSchema(['fallback', 'legality', 'budget'], 'Signal family.')
       }),
       reportTool('pass-lens.report.candidateRootCauses', 'Generate Candidate Root Causes', 'Frame candidate root causes with evidence, uncertainty, and next experiments.'),
+      reportTool('pass-lens.report.firstFailureLocalization', 'Generate First Failure Localization Report', 'Generate a bounded first-failure localization hypothesis with confidence and next checks.'),
       reportTool('pass-lens.report.traceQuality', 'Generate Trace Quality Report', 'Report collector credibility and trace-quality limitations.'),
       reportTool('pass-lens.report.traceSize', 'Generate Trace Size Report', 'Summarize inline IR, artifacts, diagnostics, and size quick fixes.'),
       exportTool('pass-lens.export.agentContext', 'Export Agent Context', 'Export bounded JSON context for tool-mediated agents.', 'json', '#/schemas/pass-lens-agent-context'),
