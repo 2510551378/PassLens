@@ -241,10 +241,12 @@ function buildDriverArgs(params) {
 }
 
 function runProcess(command, args, options) {
+  const useShell = process.platform === 'win32' && /\.cmd$/i.test(command);
   const child = spawnSync(command, args, {
     cwd: options.cwd,
     encoding: 'utf8',
     timeout: options.timeoutMs,
+    shell: useShell,
     maxBuffer: 64 * 1024 * 1024
   });
   if (child.error) {
