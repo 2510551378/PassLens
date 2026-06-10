@@ -3,7 +3,7 @@
 This checklist keeps the public release path executable before Pass Lens is
 published to the VS Code Marketplace or Open VSX.
 
-Run the automated check:
+Run the automated check for public onboarding checks:
 
 ```powershell
 npm run release:check
@@ -35,3 +35,12 @@ Publishing itself still requires maintainer credentials:
 Keep Marketplace/Open VSX publication and the README demo GIF as explicit
 release blockers until they are completed. This avoids presenting a polished
 codebase without a clear external entry point.
+
+Use strict mode for a release gate:
+
+```powershell
+npm run release:check:strict
+```
+
+`release:check:strict` fails the process if any roadmap release blocker is still
+uncompleted.

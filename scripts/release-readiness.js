@@ -42,14 +42,17 @@ const requiredProvenanceKinds = [
 
 const releaseBlockers = [
   {
+    id: 'marketplace-preview',
     marker: '- [ ] Publish VS Code Marketplace preview.',
     message: 'VS Code Marketplace preview is still an explicit release blocker.'
   },
   {
+    id: 'open-vsx-preview',
     marker: '- [ ] Publish Open VSX preview.',
     message: 'Open VSX preview is still an explicit release blocker.'
   },
   {
+    id: 'demo-gif',
     marker: '- [ ] Add 30-second demo GIF to README.',
     message: 'README demo GIF is still an explicit release blocker.'
   }
@@ -57,7 +60,7 @@ const releaseBlockers = [
 
 function main(argv) {
   const options = parseArgs(argv);
-  const report = checkReleaseReadiness(options.root);
+  const report = checkReleaseReadiness(options);
 
   if (options.json) {
     process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
@@ -71,6 +74,7 @@ function main(argv) {
 function parseArgs(argv) {
   const options = {
     json: false,
+    strict: false,
     root: process.cwd()
   };
 
@@ -78,6 +82,8 @@ function parseArgs(argv) {
     const arg = argv[index];
     if (arg === '--json') {
       options.json = true;
+    } else if (arg === '--strict' || arg === '--strict-release') {
+      options.strict = true;
     } else if (arg === '--root') {
       index += 1;
       options.root = argv[index] ?? options.root;
@@ -92,8 +98,13 @@ function parseArgs(argv) {
   return options;
 }
 
-function checkReleaseReadiness(root) {
-  const resolvedRoot = path.resolve(root);
+function checkReleaseReadiness(root, override = {}) {
+  const options = {
+    ...(typeof root === 'string' ? { root } : root),
+    ...override
+  };
+  const resolvedRoot = path.resolve(options.root || process.cwd());
+  const strict = Boolean(options.strict);
   const errors = [];
   const warnings = [];
   const checks = [];
@@ -101,13 +112,14 @@ function checkReleaseReadiness(root) {
   checkRequiredFiles(resolvedRoot, errors, checks);
   const packageJson = checkPackageMetadata(resolvedRoot, errors, checks);
   checkReadme(resolvedRoot, errors, checks);
-  checkReleaseDocs(resolvedRoot, errors, warnings, checks);
+  checkReleaseDocs(resolvedRoot, errors, warnings, checks, strict);
   checkSampleProvenance(resolvedRoot, errors, checks);
 
   return {
     ok: errors.length === 0,
     root: resolvedRoot,
     packageVersion: packageJson?.version,
+    strict,
     errors,
     warnings,
     checks
@@ -192,7 +204,7 @@ function checkReadme(root, errors, checks) {
   }
 }
 
-function checkReleaseDocs(root, errors, warnings, checks) {
+function checkReleaseDocs(root, errors, warnings, checks, strict) {
   const milestones = readText(path.join(root, 'docs', 'release-milestones.md'), errors);
   if (milestones === undefined) {
     return;
@@ -217,7 +229,22 @@ function checkReleaseDocs(root, errors, warnings, checks) {
 
   for (const blocker of releaseBlockers) {
     if (roadmap.includes(blocker.marker)) {
-      warnings.push(blocker.message);
+      checks.push({
+        id: `release-blocker:${blocker.id}`,
+        ok: !strict,
+        message: blocker.message
+      });
+      if (strict) {
+        errors.push(`${blocker.message} (strict-release mode)`);
+      } else {
+        warnings.push(blocker.message);
+      }
+    } else {
+      checks.push({
+        id: `release-blocker:${blocker.id}`,
+        ok: true,
+        message: `${blocker.id} blocker is marked complete`
+      });
     }
   }
 }
@@ -299,8 +326,10 @@ function printReport(report) {
 function printUsage() {
   process.stdout.write(`Pass Lens release readiness check
 
-Usage:
-  node scripts/release-readiness.js [--json] [--root <repo>]
+  Usage:
+  node scripts/release-readiness.js [--json] [--root <repo>] [--strict-release]
+  --strict-release, --strict
+      Treat roadmap release blockers as hard errors.
 
 The check validates public release entry points, package metadata, release
 docs, and sample trace provenance. It does not publish to Marketplace/Open VSX.

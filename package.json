@@ -141,6 +141,7 @@
     "smoke:iree-case-study": "npm run compile && node scripts/iree-case-study-smoke.js",
     "smoke:deepseek-agent": "npm run compile && node scripts/deepseek-agent-smoke.js",
     "release:check": "node scripts/release-readiness.js",
+    "release:check:strict": "node scripts/release-readiness.js --strict-release",
     "package": "vsce package",
     "vscode:prepublish": "npm run compile"
   },

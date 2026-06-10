@@ -22,6 +22,17 @@ test('release readiness passes for the repository public entry points', () => {
   assert.ok(report.checks.some((check) => check.id === 'release-doc:Open VSX'));
 });
 
+test('release readiness strict mode treats roadmap blockers as hard failures', () => {
+  const report = checkReleaseReadiness(process.cwd(), { strict: true });
+  assert.equal(report.ok, false);
+  assert.equal(report.strict, true);
+  assert.equal(report.errors.length > 0, true);
+  assert.ok(report.errors.some((error) => error.includes('release blocker')));
+  assert.ok(report.checks.some((check) => check.id === 'release-blocker:marketplace-preview'));
+  assert.ok(report.checks.some((check) => check.id === 'release-blocker:open-vsx-preview'));
+  assert.ok(report.checks.some((check) => check.id === 'release-blocker:demo-gif'));
+});
+
 test('release readiness CLI emits machine-readable JSON', () => {
   const result = spawnSync(node, [cli, '--json'], {
     cwd: process.cwd(),
@@ -39,6 +50,17 @@ test('parseArgs accepts explicit root and JSON mode', () => {
 
   assert.deepEqual(options, {
     json: true,
+    strict: false,
     root: 'repo'
+  });
+});
+
+test('parseArgs accepts strict release mode', () => {
+  const options = parseArgs(['--strict-release']);
+
+  assert.deepEqual(options, {
+    json: false,
+    strict: true,
+    root: process.cwd()
   });
 });
