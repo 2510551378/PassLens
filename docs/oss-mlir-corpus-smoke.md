@@ -22,6 +22,19 @@ Build or locate `pass-lens-mlir-opt`, then run:
 PASS_LENS_MLIR_OPT=/path/to/pass-lens-mlir-opt npm run smoke:oss-mlir
 ```
 
+Optional local source override:
+
+```bash
+PASS_LENS_OSS_SOURCE_ROOT=/path/to/llvm-project/mlir/test \
+npm run smoke:oss-mlir
+```
+
+or
+
+```bash
+npm run smoke:oss-mlir -- --source-root /path/to/llvm-project/mlir/test
+```
+
 Optional environment variables:
 
 | Variable | Purpose | Default |
@@ -29,6 +42,7 @@ Optional environment variables:
 | `PASS_LENS_MLIR_OPT` | Structured collector executable | `pass-lens-mlir-opt` |
 | `PASS_LENS_OSS_LLVM_TAG` | LLVM source tag to download | `llvmorg-20.1.2` |
 | `PASS_LENS_OSS_SMOKE_DIR` | Output directory for inputs/traces/artifacts | OS temp dir |
+| `PASS_LENS_OSS_SOURCE_ROOT` | Optional local `mlir/test` input root; skips network fetches when set | unset |
 
 The script downloads selected files from:
 

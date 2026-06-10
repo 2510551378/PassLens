@@ -10,6 +10,7 @@ const defaultLlvmTag = 'llvmorg-20.1.2';
 const llvmTag = process.env.PASS_LENS_OSS_LLVM_TAG || defaultLlvmTag;
 const collector = process.env.PASS_LENS_MLIR_OPT || process.env.PASS_LENS_MLIR_DRIVER || 'pass-lens-mlir-opt';
 const outputRoot = path.resolve(process.env.PASS_LENS_OSS_SMOKE_DIR || path.join(os.tmpdir(), 'passlens-oss-mlir-smoke'));
+const sourceRoot = process.env.PASS_LENS_OSS_SOURCE_ROOT ? path.resolve(process.env.PASS_LENS_OSS_SOURCE_ROOT) : undefined;
 const baseUrl = `https://raw.githubusercontent.com/llvm/llvm-project/${llvmTag}/mlir/test`;
 
 const cases = [
@@ -57,6 +58,13 @@ if (require.main === module) {
 }
 
 async function main() {
+  const options = parseArgs(process.argv.slice(2));
+  if (options.help) {
+    printUsage();
+    return;
+  }
+  const effectiveSourceRoot = options.sourceRoot ? path.resolve(options.sourceRoot) : sourceRoot;
+
   resetDirectory(outputRoot);
   fs.mkdirSync(path.join(outputRoot, 'inputs'), { recursive: true });
   fs.mkdirSync(path.join(outputRoot, 'traces'), { recursive: true });
@@ -65,11 +73,11 @@ async function main() {
   const caseSummaries = [];
   for (const entry of cases) {
     if (entry.mode === 'litSections') {
-      const sectionResult = await runLitSectionCase(entry);
+      const sectionResult = await runLitSectionCase(entry, effectiveSourceRoot);
       results.push(...sectionResult.results);
       caseSummaries.push(sectionResult.summary);
     } else {
-      const result = await runCase(entry);
+      const result = await runCase(entry, effectiveSourceRoot);
       results.push(result);
       caseSummaries.push({
         name: entry.name,
@@ -101,17 +109,25 @@ async function main() {
   }
 }
 
-async function runCase(entry) {
-  const sourceUrl = entry.sourceUrl || `${baseUrl}/${entry.source}`;
+async function runCase(entry, effectiveSourceRoot) {
+  const source = resolveCaseSource(entry, effectiveSourceRoot);
   const inputPath = path.join(outputRoot, 'inputs', `${entry.name}.mlir`);
-  await download(sourceUrl, inputPath);
-  return runInput(entry, inputPath, sourceUrl);
+  if (source.kind === 'local') {
+    fs.copyFileSync(source.sourcePath, inputPath);
+  } else {
+    await download(source.sourceUrl, inputPath);
+  }
+  return runInput(entry, inputPath, source.sourceUrl);
 }
 
-async function runLitSectionCase(entry) {
-  const sourceUrl = `${baseUrl}/${entry.source}`;
+async function runLitSectionCase(entry, effectiveSourceRoot) {
+  const source = resolveCaseSource(entry, effectiveSourceRoot);
   const sourcePath = path.join(outputRoot, 'inputs', `${entry.name}.source.mlir`);
-  await download(sourceUrl, sourcePath);
+  if (source.kind === 'local') {
+    fs.copyFileSync(source.sourcePath, sourcePath);
+  } else {
+    await download(source.sourceUrl, sourcePath);
+  }
   const sections = splitLitSections(fs.readFileSync(sourcePath, 'utf8'))
     .slice(0, entry.maxSections ?? Number.POSITIVE_INFINITY);
   const results = [];
@@ -127,7 +143,7 @@ async function runLitSectionCase(entry) {
     const result = await runInput({
       ...entry,
       name: chunkName
-    }, inputPath, `${sourceUrl}#section-${sectionIndex}`);
+    }, inputPath, `${source.sourceUrl}#section-${sectionIndex}`);
     if (result.status === 'ok') {
       successfulChunks += 1;
       results.push(result);
@@ -199,6 +215,29 @@ async function runInput(entry, inputPath, sourceUrl) {
   };
 }
 
+function parseArgs(argv) {
+  const options = {
+    sourceRoot,
+    help: false
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === '--help' || arg === '-h') {
+      options.help = true;
+    } else if (arg === '--source-root') {
+      options.sourceRoot = argv[index + 1] || options.sourceRoot;
+      index += 1;
+    } else if (arg.startsWith('--source-root=')) {
+      options.sourceRoot = arg.slice('--source-root='.length);
+    } else {
+      throw new Error(`Unknown argument: ${arg}`);
+    }
+  }
+
+  return options;
+}
+
 function validateTraces(tracePaths) {
   if (tracePaths.length === 0) {
     return { status: 1, stdout: '', stderr: 'No traces generated.' };
@@ -246,11 +285,42 @@ function printSummary(results, caseSummaries, validation) {
   }
 }
 
+function printUsage() {
+  console.log(`Usage: npm run smoke:oss-mlir -- [--source-root <path>]
+
+Collect Pass Lens traces for open-source LLVM MLIR files.
+
+Options:
+  --source-root <path>     Optional directory containing llvm/mlir/test files.
+                          If set, entries use local files for:
+                          Dialect/Arith/canonicalize.mlir, etc.
+  --help, -h              Show this help.
+
+Environment:
+  PASS_LENS_OSS_SOURCE_ROOT
+  PASS_LENS_OSS_SMOKE_DIR
+  PASS_LENS_OSS_LLVM_TAG
+  PASS_LENS_MLIR_OPT
+`);
+}
+
 function splitLitSections(text) {
   return text
     .split(/^\/\/ -----\s*$/mu)
     .map((section) => section.trim())
     .filter((section) => section.length > 0 && !section.includes('expected-error'));
+}
+
+function resolveCaseSource(entry, effectiveSourceRoot) {
+  const defaultSourceUrl = entry.sourceUrl || `${baseUrl}/${entry.source}`;
+  if (!effectiveSourceRoot || !entry.source) {
+    return { kind: 'remote', sourceUrl: defaultSourceUrl };
+  }
+  const localPath = path.join(effectiveSourceRoot, entry.source);
+  if (fs.existsSync(localPath)) {
+    return { kind: 'local', sourcePath: localPath, sourceUrl: `file://${localPath}` };
+  }
+  return { kind: 'remote', sourceUrl: defaultSourceUrl };
 }
 
 function resetDirectory(directory) {
@@ -299,5 +369,7 @@ function download(url, targetPath) {
 }
 
 module.exports = {
-  splitLitSections
+  splitLitSections,
+  parseArgs,
+  resolveCaseSource
 };
