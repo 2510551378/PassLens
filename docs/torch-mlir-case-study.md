@@ -21,6 +21,32 @@ export PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-pass-lens-driver"
 npm run smoke:torch-mlir-case-study
 ```
 
+### Minimal real-driver verification
+
+For successful downstream integration, confirm these minimum signals:
+
+1. `npm run validate:trace -- --strict-only --check-artifacts <summary.trace>` passes.
+2. `summary.errors` is empty.
+3. `summary.stageCount >= 1`.
+4. `summary.provenanceKind === "live-pass-instrumentation"`.
+
+If torch-mlir uses non-standard pipeline flags, keep a minimal runner command and
+forward custom options with `--driver-arg`:
+
+```bash
+node scripts/torch-mlir-case-study-smoke.js \
+  --driver /path/to/downstream-pass-lens-driver \
+  --input /path/to/input.mlir \
+  --driver-arg --my-pass-pipeline-flag \
+  --driver-arg func.func(canonicalize,cse)
+```
+
+### Optional driver arguments
+
+- `--driver-arg` is repeatable and preserved as raw driver arguments.
+- `--no-check-artifacts` can be used temporarily if artifact path materialization is
+  still in progress.
+
 Optional:
 
 ```bash
@@ -50,6 +76,10 @@ The runner checks:
 - optional artifact path existence check (`--no-check-artifacts` to skip);
 - at least one stage;
 - `provenance.kind === live-pass-instrumentation`.
+
+When a real redacted driver output exists, add it under `sample-traces/` with
+`provenance.kind = "live-pass-instrumentation"`, then call out in
+`docs/sample-provenance.md`.
 
 ## Next Step
 

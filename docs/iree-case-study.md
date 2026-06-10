@@ -27,6 +27,38 @@ $env:PASS_LENS_IREE_DRIVER = "/path/to/downstream-pass-lens-driver"   # or just 
 npm run smoke:iree-case-study
 ```
 
+### Minimal real-driver verification
+
+For external contributors, the following is the required minimum signal before
+declaring a successful real downstream structured case:
+
+1. A trace JSON is produced and validates with:
+   `npm run validate:trace -- --strict-only --check-artifacts <summary.trace>`.
+2. `summary.errors` is empty.
+3. `summary.stageCount >= 1`.
+4. `summary.provenanceKind === "live-pass-instrumentation"`.
+5. The per-stage artifact references are readable in trace root (or are intentionally
+   omitted for inline captures).
+
+If your compiler wraps or renames pipeline flags, keep the smoke runner defaults and
+pass your own flag through `--driver-arg`, for example:
+
+```bash
+node scripts/iree-case-study-smoke.js \
+  --driver /path/to/downstream-pass-lens-driver \
+  --pipeline builtin.module(func.func(canonicalize,cse)) \
+  --driver-arg --my-pass-pipeline-flag \
+  --driver-arg builtin.module(func.func(canonicalize,cse))
+```
+
+### Optional driver arguments
+
+Commonly useful options:
+
+- `--driver-arg` can be repeated for project-specific options.
+- `--no-check-artifacts` is useful on first bring-up if artifact paths are
+  intentionally deferred.
+
 Optional:
 
 ```bash
@@ -72,6 +104,10 @@ The runner checks:
   pass compiler/project-specific options.
 - Some downstreams may use custom pipeline argument names; pass `--pipeline` only
   when that flag is recognized.
+
+If you want to provide a redacted real trace to upstream later, prefer adding a
+fixture under `sample-traces/` and mark it as `live-pass-instrumentation` in
+`docs/sample-provenance.md`.
 
 ## Next Step
 
