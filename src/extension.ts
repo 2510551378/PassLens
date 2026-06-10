@@ -532,7 +532,11 @@ async function resolveIssueSummary(
     return renderTraceQualityMarkdown(evaluateTraceQuality(loaded.trace));
   }
   if (summaryKind === 'traceSize') {
-    return renderTraceSizeMarkdown(loaded.sizeSummary);
+    const fullTraceSizeSummary = await evaluateTraceSize(loaded.trace, sourceUri.fsPath, {
+      includeArtifactStats: true
+    });
+    loaded.sizeSummary = fullTraceSizeSummary;
+    return renderTraceSizeMarkdown(fullTraceSizeSummary);
   }
   return undefined;
 }
@@ -631,7 +635,7 @@ async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
       trace,
       issues: validateTrace(trace),
       anomalies: computeTraceAnomalies(trace),
-      sizeSummary: await evaluateTraceSize(trace, uri.fsPath)
+      sizeSummary: await evaluateTraceSize(trace, uri.fsPath, { includeArtifactStats: false })
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -644,7 +648,7 @@ async function toLoadedTrace(trace: PassTrace, tracePath?: string): Promise<Load
     trace,
     issues: validateTrace(trace),
     anomalies: computeTraceAnomalies(trace),
-    sizeSummary: await evaluateTraceSize(trace, tracePath)
+    sizeSummary: await evaluateTraceSize(trace, tracePath, { includeArtifactStats: false })
   };
 }
 

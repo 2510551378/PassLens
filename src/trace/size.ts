@@ -11,9 +11,14 @@ export interface TraceSizeSummary {
   missingArtifactCount: number;
   diagnosticsBytes: number;
   totalKnownBytes: number;
+  artifactStatsAvailable: boolean;
   warnings: TraceSizeWarning[];
   largestInlineStage?: StageSizeSummary;
   largestArtifact?: ArtifactSizeSummary;
+}
+
+export interface TraceSizeOptions {
+  includeArtifactStats?: boolean;
 }
 
 export interface TraceSizeWarning {
@@ -40,8 +45,17 @@ export interface ArtifactSizeSummary {
 
 export async function evaluateTraceSize(
   trace: PassTrace,
-  tracePath?: string
+  tracePath?: string,
+  options: TraceSizeOptions = {}
 ): Promise<TraceSizeSummary> {
+  const includeArtifactStats = options.includeArtifactStats ?? true;
+  const hasArtifactRefs = trace.stages.some((stage) => Boolean(
+    stage.artifacts?.beforePath ||
+    stage.artifacts?.afterPath ||
+    stage.artifacts?.diagnosticsPath
+  ));
+  const shouldScanArtifacts = Boolean(tracePath) && includeArtifactStats;
+
   const summary: TraceSizeSummary = {
     stageCount: trace.stages.length,
     inlineIrBytes: 0,
@@ -50,6 +64,7 @@ export async function evaluateTraceSize(
     missingArtifactCount: 0,
     diagnosticsBytes: byteLength(trace.diagnostics ?? ''),
     totalKnownBytes: 0,
+    artifactStatsAvailable: shouldScanArtifacts,
     warnings: []
   };
 
@@ -70,33 +85,54 @@ export async function evaluateTraceSize(
     }
   }
 
-  if (tracePath) {
+  const traceSizeWarnings: TraceSizeWarning[] = [];
+
+  if (shouldScanArtifacts && tracePath) {
     const artifactSummary = await evaluateArtifactSizes(trace, tracePath);
     summary.artifactBytes = artifactSummary.artifactBytes;
     summary.artifactCount = artifactSummary.artifactCount;
     summary.missingArtifactCount = artifactSummary.missingArtifactCount;
     summary.largestArtifact = artifactSummary.largestArtifact;
+  } else if (hasArtifactRefs) {
+    traceSizeWarnings.push({
+      id: 'artifact-size-deferred',
+      severity: 'info',
+      message: tracePath
+        ? 'Artifact size accounting was skipped on open to keep trace load fast.'
+        : 'Artifact size accounting was skipped because the trace file path was not provided.',
+      quickFix: 'Use "Generate trace size report" to compute artifact-backed size details.'
+    });
   }
 
   summary.totalKnownBytes = summary.inlineIrBytes + summary.artifactBytes + summary.diagnosticsBytes;
-  summary.warnings = createSizeWarnings(summary, trace);
+  summary.warnings = [...traceSizeWarnings, ...createSizeWarnings(summary, trace)];
   return summary;
 }
 
 export function renderTraceSizeMarkdown(summary: TraceSizeSummary): string {
+  const artifactBytesLabel = summary.artifactStatsAvailable
+    ? formatBytes(summary.artifactBytes)
+    : 'unknown (deferred)';
+  const artifactCountLabel = summary.artifactStatsAvailable
+    ? `${summary.artifactCount}`
+    : 'unknown (deferred)';
+  const missingArtifactLabel = summary.artifactStatsAvailable
+    ? `${summary.missingArtifactCount}`
+    : 'unknown (deferred)';
+
   const lines = [
     '# Pass Lens Trace Size Report',
     '',
     `- Stages: ${summary.stageCount}`,
     `- Inline IR: ${formatBytes(summary.inlineIrBytes)}`,
-    `- Artifact files: ${summary.artifactCount}`,
-    `- Artifact bytes: ${formatBytes(summary.artifactBytes)}`,
+    `- Artifact files: ${artifactCountLabel}`,
+    `- Artifact bytes: ${artifactBytesLabel}`,
     `- Diagnostics: ${formatBytes(summary.diagnosticsBytes)}`,
     `- Total known payload: ${formatBytes(summary.totalKnownBytes)}`
   ];
 
-  if (summary.missingArtifactCount > 0) {
-    lines.push(`- Missing/unreadable artifacts: ${summary.missingArtifactCount}`);
+  if (summary.artifactStatsAvailable && summary.missingArtifactCount > 0) {
+    lines.push(`- Missing/unreadable artifacts: ${missingArtifactLabel}`);
   }
   if (summary.largestInlineStage && summary.largestInlineStage.bytes > 0) {
     lines.push(
