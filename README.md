@@ -98,6 +98,8 @@ npm run package
 code --install-extension pass-lens-0.1.0.vsix
 ```
 
+![Pass Lens 30-second demo](docs/images/pass-lens-first-bad-pass.gif)
+
 Open VS Code and run `Pass Lens: Open Sample Trace`.
 
 Good first samples:

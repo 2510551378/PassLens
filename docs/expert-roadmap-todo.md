@@ -380,7 +380,7 @@ repro/
 
 - [ ] Publish VS Code Marketplace preview.
 - [ ] Publish Open VSX preview.
-- [ ] Add 30-second demo GIF to README.
+- [x] Add 30-second demo GIF to README.
 - [x] Add an executable release readiness check before publishing.
   - `npm run release:check` validates public entry-point docs, Marketplace
     metadata, release milestone coverage, and sample trace provenance coverage.

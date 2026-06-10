@@ -1,7 +1,9 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const { spawnSync } = require('node:child_process');
 
 const { buildDriverArgs, parseArgs } = require('../scripts/iree-case-study-smoke.js');
 
@@ -89,4 +91,116 @@ test('buildDriverArgs omits empty pipeline flag when not provided', () => {
   assert.equal(args.some((entry) => entry.startsWith('--pass-pipeline=')), false);
   assert.equal(args[0], '--keep');
   assert.equal(args[1], path.join(os.tmpdir(), 'input.mlir'));
+});
+
+test('smoke script validates a structured downstream driver fixture', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-iree-mock-'));
+  try {
+    const inputPath = path.join(root, 'input.mlir');
+    const outputRoot = path.join(root, 'case-dir');
+    const mockDriverPath = path.join(root, 'mock-pass-lens-driver.js');
+    const caseName = 'mock-downstream';
+
+    fs.mkdirSync(outputRoot, { recursive: true });
+    fs.writeFileSync(inputPath, 'module { func.func @main() { return } }', 'utf8');
+    const mockDriverContent = `
+const fs = require('node:fs');
+const path = require('node:path');
+
+const args = process.argv.slice(2);
+let tracePath = '';
+let artifactDir = '';
+let outputMlir = '';
+
+for (let i = 0; i < args.length; i += 1) {
+  const arg = args[i];
+  if (arg.startsWith('--pass-lens-trace=')) {
+    tracePath = arg.slice('--pass-lens-trace='.length);
+  } else if (arg.startsWith('--pass-lens-artifact-dir=')) {
+    artifactDir = arg.slice('--pass-lens-artifact-dir='.length);
+  } else if (arg === '-o' && args[i + 1]) {
+    outputMlir = args[i + 1];
+    i += 1;
+  }
+}
+
+if (!tracePath) {
+  process.exit(1);
+}
+
+const artifactRelDir = artifactDir ? path.basename(artifactDir) : 'mock-artifacts';
+const trace = {
+  schemaVersion: 1,
+  tool: 'mock-downstream-driver',
+  command: 'mock-downstream-driver',
+  provenance: { kind: 'live-pass-instrumentation', description: 'mocked downstream run' },
+  capture: { ir: 'artifact', metrics: true, timing: true },
+  input: '${path.toNamespacedPath(inputPath)}',
+  pipeline: 'builtin.module(func.func(canonicalize,cse))',
+  stages: [
+    {
+      index: 0,
+      pass: 'canonicalize',
+      status: 'changed',
+      changed: true,
+      durationMs: 1.0,
+      verifier: 'ok',
+      opName: 'builtin.module',
+      argument: 'canonicalize',
+      metricsBefore: { ops: 7 },
+      metricsAfter: { ops: 9 },
+      artifacts: {
+        beforePath: artifactRelDir + '/stage-000000.before.mlir',
+        afterPath: artifactRelDir + '/stage-000000.after.mlir'
+      }
+    }
+  ]
+};
+
+fs.mkdirSync(path.dirname(tracePath), { recursive: true });
+if (artifactDir) {
+  fs.mkdirSync(artifactDir, { recursive: true });
+  fs.writeFileSync(path.join(artifactDir, 'stage-000000.before.mlir'), '(before)', 'utf8');
+  fs.writeFileSync(path.join(artifactDir, 'stage-000000.after.mlir'), '(after)', 'utf8');
+}
+
+fs.writeFileSync(tracePath, JSON.stringify(trace, null, 2), 'utf8');
+if (outputMlir) {
+  fs.writeFileSync(outputMlir, 'module {}', 'utf8');
+}
+process.exit(0);
+`;
+    fs.writeFileSync(mockDriverPath, mockDriverContent, 'utf8');
+
+    const result = spawnSync(process.execPath, [
+      path.join(process.cwd(), 'scripts', 'iree-case-study-smoke.js'),
+      '--driver', process.execPath,
+      '--driver-arg', mockDriverPath,
+      '--input', inputPath,
+      '--pipeline', 'builtin.module(func.func(canonicalize,cse))',
+      '--case-name', caseName,
+      '--output', outputRoot
+    ], {
+      cwd: process.cwd(),
+      encoding: 'utf8'
+    });
+
+    assert.equal(result.status, 0, `expected script success, got: ${result.stdout}\\n${result.stderr}`);
+    const summaryPath = path.join(outputRoot, 'summary.json');
+    const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+    assert.equal(summary.case, caseName);
+    assert.equal(summary.driver, process.execPath);
+    assert.equal(summary.exitCode, 0);
+    assert.equal(summary.stageCount, 1);
+    assert.equal(summary.provenanceKind, 'live-pass-instrumentation');
+    assert.equal(summary.errors.length, 0);
+
+    const outputTrace = path.join(outputRoot, `${caseName}.trace.json`);
+    assert.ok(fs.existsSync(outputTrace));
+    const trace = JSON.parse(fs.readFileSync(outputTrace, 'utf8'));
+    assert.equal(trace.stages.length, 1);
+    assert.equal(trace.stages[0].artifacts.beforePath, `${caseName}-artifacts/stage-000000.before.mlir`);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
