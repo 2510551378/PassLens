@@ -49,7 +49,7 @@ function parseArgs(argv) {
     forceIree: false,
     forceTorch: false,
     failFast: false,
-    minQuality: 0
+    minQuality: readPositiveInt(process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY, 0)
   };
 
   for (let index = 0; index < argv.length; index += 1) {

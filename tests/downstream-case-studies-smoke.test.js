@@ -41,6 +41,21 @@ test('parseArgs handles invalid min-quality input', () => {
   assert.equal(options.minQuality, 88);
 });
 
+test('parseArgs uses PASS_LENS_CASE_STUDY_MIN_QUALITY env as default', () => {
+  const previousValue = process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY;
+  try {
+    process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY = '99';
+    const options = parseArgs(['--torch']);
+    assert.equal(options.minQuality, 99);
+  } finally {
+    if (previousValue === undefined) {
+      delete process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY;
+    } else {
+      process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY = previousValue;
+    }
+  }
+});
+
 test('resolveTargets respects forced selection without driver env', () => {
   const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
   const previousIreeDriver = process.env.PASS_LENS_IREE_DRIVER;
