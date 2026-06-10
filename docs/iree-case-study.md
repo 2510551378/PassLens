@@ -22,7 +22,8 @@ Current implementation status:
 Set up a structured driver that supports the Pass Lens trace flags, then run:
 
 ```bash
-$env:PASS_LENS_IREE_DRIVER = "/path/to/downstream-pass-lens-driver"
+$env:PASS_LENS_IREE_DRIVER = "/path/to/downstream-pass-lens-driver"   # or just "downstream-pass-lens-driver" on PATH
+# The runner resolves either a full executable path or a command name from PATH.
 npm run smoke:iree-case-study
 ```
 
