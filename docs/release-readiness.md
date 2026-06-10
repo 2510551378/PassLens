@@ -39,6 +39,14 @@ npm run release:smoke
 npm run package
 ```
 
+CI can also generate and persist the publish plan:
+
+```text
+Run `release-preview-plan` workflow to generate
+`pass-lens-release-preview-plan` artifact containing the latest publish
+readiness summary.
+```
+
 Publishing itself is intentionally guarded:
 
 - VS Code Marketplace: `node scripts/release-publish.js marketplace --dry-run` for a dry run,
