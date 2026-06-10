@@ -1,4 +1,5 @@
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
 const test = require('node:test');
@@ -69,4 +70,20 @@ test('parseArgs accepts strict release mode', () => {
     strict: true,
     root: process.cwd()
   });
+});
+
+test('release docs include publish playbook links', () => {
+  const readinessPath = path.join(process.cwd(), 'docs', 'release-readiness.md');
+  const readmePath = path.join(process.cwd(), 'README.md');
+  const readmeZhPath = path.join(process.cwd(), 'README.zh-CN.md');
+  const playbookPath = path.join(process.cwd(), 'docs', 'release-publish-playbook.md');
+
+  const readiness = fs.readFileSync(readinessPath, 'utf8');
+  const readme = fs.readFileSync(readmePath, 'utf8');
+  const readmeZh = fs.readFileSync(readmeZhPath, 'utf8');
+
+  assert.match(readiness, /release-publish-playbook\.md/);
+  assert.match(readme, /release-publish-playbook\.md/);
+  assert.match(readmeZh, /release-publish-playbook\.md/);
+  assert.equal(fs.existsSync(playbookPath), true);
 });

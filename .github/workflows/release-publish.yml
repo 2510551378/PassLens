@@ -1,0 +1,92 @@
+name: Release Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Publish target.
+        required: true
+        default: both
+        type: choice
+        options:
+          - both
+          - marketplace
+          - open-vsx
+      execute:
+        description: Set true to execute actual publish commands.
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  publish:
+    name: Publish Pass Lens VSIX
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - marketplace
+          - open-vsx
+    if: |
+      github.repository == '2510551378/PassLens' &&
+      (github.event_name == 'workflow_dispatch')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build package and publish plan
+        run: npm run release:preflight
+
+      - name: Skip unrelated target
+        if: |
+          github.event.inputs.target != 'both' &&
+          github.event.inputs.target != matrix.target
+        run: echo "Skipping target ${{ matrix.target }}."
+
+      - name: Upload publish plan artifact for target
+        if: |
+          github.event.inputs.target == 'both' ||
+          github.event.inputs.target == matrix.target
+        run: |
+          mkdir -p artifacts
+          node scripts/release-preview-plan.js --output artifacts/${{ matrix.target }}-release-preview-plan.json
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+
+      - name: Upload publish plan artifact
+        if: |
+          github.event.inputs.target == 'both' ||
+          github.event.inputs.target == matrix.target
+        uses: actions/upload-artifact@v4
+        with:
+          name: pass-lens-release-preview-plan-${{ matrix.target }}
+          path: artifacts/${{ matrix.target }}-release-preview-plan.json
+
+      - name: Install publish CLIs
+        if: |
+          github.event.inputs.execute == 'true' &&
+          (github.event.inputs.target == 'both' || github.event.inputs.target == matrix.target)
+        run: npm install -g @vscode/vsce ovsx
+
+      - name: Execute publish
+        if: |
+          github.event_name == 'workflow_dispatch' &&
+          github.event.inputs.execute == 'true' &&
+          (github.ref == 'refs/heads/main') &&
+          (github.event.inputs.target == 'both' || github.event.inputs.target == matrix.target)
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          npm run release:publish:${{ matrix.target }} -- --execute

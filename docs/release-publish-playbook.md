@@ -64,6 +64,16 @@ Dry-run should print:
 
 If token is missing, publish will be blocked by design.
 
+In GitHub Actions, use the same plan/verify pattern with:
+
+- `workflow_dispatch` on `Release Publish`
+- `target: both` (default) or a single target
+- `execute: false` for plan-only output
+
+The workflow uploads `pass-lens-release-preview-plan-<target>.json` artifacts for each
+selected target. This mirrors local `npm run release:preview:plan` output and is useful
+for keeping a publication audit record with the workflow run.
+
 ## 4) Execute publish
 
 Execute only after dry-run is clean and you are ready to publish the current
