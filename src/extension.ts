@@ -279,8 +279,9 @@ async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise
     return;
   }
 
-  const activeSession = tracePanelSessionManager.getActiveSession();
-  const defaultPipeline = activeSession?.loaded.trace.pipeline ?? 'builtin.module(func.func(canonicalize,cse))';
+  const activeSessionForDefaults = tracePanelSessionManager.getActiveSession();
+  const defaultPipeline = activeSessionForDefaults?.loaded.trace.pipeline ??
+    'builtin.module(func.func(canonicalize,cse))';
   const pipeline = await vscode.window.showInputBox({
     title: 'MLIR pass pipeline to bisect',
     prompt: 'Pass Lens will rerun textual prefixes of this pipeline with verifier enabled.',
@@ -309,8 +310,10 @@ async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise
         return runPrefixBisect(pipeline.trim(), runner);
       }
     );
-  const activeSession = tracePanelSessionManager.getActiveSession();
-  await showMarkdownDocument(createMinimalFailingPrefixReport(result, activeSession?.loaded.trace));
+    const activeSessionForReport = tracePanelSessionManager.getActiveSession();
+    await showMarkdownDocument(
+      createMinimalFailingPrefixReport(result, activeSessionForReport?.loaded.trace)
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const action = await vscode.window.showErrorMessage(

@@ -136,6 +136,43 @@ npm run release:publish:open-vsx
 See [`docs/release-readiness.md`](docs/release-readiness.md) for the
 Marketplace / Open VSX checklist.
 
+### Real Data Validation Checklist
+
+Pass Lens should also work on real compiler traces, not only bundled fixtures.
+Use these checks to validate end-to-end evidence capture on your machine:
+
+```powershell
+# 1) Open-source LLVM MLIR cases (structured collector + artifact-backed IR)
+npm run smoke:oss-mlir
+
+# 2) Real downstream integration, when a driver is available
+npm run smoke:heir-case-study
+npm run smoke:iree-case-study
+npm run smoke:torch-mlir-case-study
+npm run smoke:downstream-case-studies
+```
+
+Required environment variables:
+
+- `PASS_LENS_MLIR_OPT` (or `PASS_LENS_MLIR_DRIVER`) for `smoke:oss-mlir`
+- `PASS_LENS_OSS_SOURCE_ROOT` to reuse local llvm mlir test files (optional)
+- `PASS_LENS_IREE_DRIVER` / `PASS_LENS_TORCH_MLIR_DRIVER` for downstream
+  scripts
+- `PASS_LENS_HEIR_ROOT` for `smoke:heir-case-study`
+- `PASS_LENS_IREE_CASE_DIR` and `PASS_LENS_TORCH_MLIR_CASE_DIR` to control output
+  directories
+
+Acceptance criteria for a successful smoke run:
+
+- trace files validate with `npm run validate:trace -- --strict-only ...`
+- no error summary entries for stage count, schema, or artifact references
+- `provenance.kind` matches expected source:
+  - `live-pass-instrumentation` for structured collector runs
+  - `converted-dump` for fallback or textual-imported samples
+- summary JSON in the case output directory has:
+  - `stageCount >= 1`
+  - `errors.length === 0`
+
 Hands-on guides:
 
 - [`docs/first-bad-pass-workflow.md`](docs/first-bad-pass-workflow.md)
