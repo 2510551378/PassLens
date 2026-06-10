@@ -206,7 +206,12 @@ maintainability work.
     dot-product lowering to OpenFHE, converts textual before/after IR dumps
     into a Pass Lens trace, and validates strict schema plus viewer checks.
   - Result and limitations are documented in `docs/heir-case-study.md`.
-- [ ] Replace or supplement synthetic samples with 2-3 real trace cases.
+- [x] Replace or supplement synthetic samples with 2-3 real trace cases.
+  - Commit: this change.
+  - Added two additional real structured MLIR traces from OSS `mlir-opt` corpus runs:
+    `mlir-live-pass-instrumentation-arith-canonicalize.json` and
+    `mlir-live-pass-instrumentation-memref-canonicalize.json`, each with
+    artifact-backed stages and explicit `live-pass-instrumentation` provenance.
 - [x] Document which samples are live `PassInstrumentation` output versus
   hand-authored / converted examples.
   - Commit: this change.
