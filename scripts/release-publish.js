@@ -31,6 +31,37 @@ if (require.main === module) {
 
 function main(options) {
   const { target, dryRun, root } = options;
+  const plan = buildPublishPlan({ target, root });
+  const token = process.env[plan.requiredEnv];
+
+  if (dryRun) {
+    console.log('[dry-run] release publish plan');
+    console.log(`target=${target}`);
+    console.log(`vsix=${plan.vsix}`);
+    console.log(`command=${plan.command}`);
+    console.log(`${plan.command} ${plan.args.join(' ')}`);
+    console.log(`required env token: ${plan.requiredEnv}`);
+    console.log(`token available: ${token ? 'yes' : 'no'}`);
+    return;
+  }
+
+  if (!token) {
+    throw new Error(
+      `Missing ${plan.requiredEnv}. Set ${plan.requiredEnv} in environment and rerun with --execute.`
+    );
+  }
+
+  const result = spawnSync(plan.command, plan.args, {
+    stdio: 'inherit',
+    cwd: root
+  });
+  if (result.error) {
+    throw new Error(`Failed to spawn ${plan.command}: ${result.error.message}`);
+  }
+  process.exitCode = result.status ?? 1;
+}
+
+function buildPublishPlan({ target, root }) {
   if (!Object.keys(TARGETS).includes(target)) {
     throw new Error(
       `Unknown target '${target}'. Use --target marketplace|open-vsx or pass it as first arg.`
@@ -51,39 +82,34 @@ function main(options) {
 
   const token = process.env[targetSpec.requiredEnv];
   const extraArgs = ['--packagePath', vsix];
+  if (target === 'marketplace' && token) {
+    extraArgs.push('--pat', token);
+  }
   if (target === 'open-vsx' && token) {
     extraArgs.push('--pat', token);
   }
 
-  const plan = {
+  return {
+    target,
+    requiredEnv: targetSpec.requiredEnv,
     command: resolvePublishCommand(targetSpec.command),
-    args: [...targetSpec.args, ...extraArgs]
+    args: [...targetSpec.args, ...extraArgs],
+    vsix
   };
+}
 
-  if (dryRun) {
-    console.log('[dry-run] release publish plan');
-    console.log(`target=${target}`);
-    console.log(`vsix=${vsix}`);
-    console.log(`command=${plan.command}`);
-    console.log(`${plan.command} ${plan.args.join(' ')}`);
-    console.log(`required env token: ${targetSpec.envHint}`);
-    return;
-  }
-
-  if (!token) {
-    throw new Error(
-      `Missing ${targetSpec.requiredEnv}. Set ${targetSpec.envHint} in environment and rerun with --execute.`
-    );
-  }
-
-  const result = spawnSync(plan.command, plan.args, {
-    stdio: 'inherit',
-    cwd: root
+function listPublishPlans(root) {
+  return Object.keys(TARGETS).map((target) => {
+    try {
+      return buildPublishPlan({ target, root });
+    } catch (error) {
+      return {
+        target,
+        requiredEnv: TARGETS[target].requiredEnv,
+        error: error instanceof Error ? error.message : String(error)
+      };
+    }
   });
-  if (result.error) {
-    throw new Error(`Failed to spawn ${plan.command}: ${result.error.message}`);
-  }
-  process.exitCode = result.status ?? 1;
 }
 
 function resolvePublishCommand(commandName) {
@@ -183,5 +209,7 @@ function readJson(filePath) {
 
 module.exports = {
   parseArgs,
-  TARGETS
+  TARGETS,
+  buildPublishPlan,
+  listPublishPlans
 };

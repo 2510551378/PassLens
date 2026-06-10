@@ -20,6 +20,16 @@ The check validates:
 - `docs/sample-provenance.md` and `sample-traces/` are kept in sync (every sample
   JSON has a matching provenance record).
 
+Before you publish, you can also generate an executable publish plan:
+
+```powershell
+npm run release:preview:plan -- --output .github/release-preview-plan.json
+```
+
+This command writes a structured summary for `marketplace` and `open-vsx` plans,
+including resolved command path, target VSIX artifact, required env token check, and
+any blockers such as missing publish binaries.
+
 Before publishing a preview:
 
 ```powershell

@@ -137,6 +137,14 @@ npm run release:publish:open-vsx          # dry-run preview plan
 npm run release:publish:open-vsx -- --execute      # real publish
 ```
 
+You can also run the release plan preview to review both target plans in one
+JSON payload before publish:
+
+```powershell
+npm run release:preview:plan -- --json
+npm run release:preview:plan -- --output .github/release-preview-plan.json
+```
+
 See [`docs/release-readiness.md`](docs/release-readiness.md) for the
 Marketplace / Open VSX checklist.
 
