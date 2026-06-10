@@ -94,11 +94,11 @@ Why this matters:
 
 Minimum implementation:
 
-- Audit the MLIR `PassInstrumentation` hooks available to the collector.
-- Emit `status: "verifier_failed"` only when the failure is known to be a
+- [x] Audit the MLIR `PassInstrumentation` hooks available to the collector.
+- [x] Emit `status: "verifier_failed"` only when the failure is known to be a
   verifier failure.
-- Emit `status: "pass_failed"` for pass execution failures.
-- Preserve `verifier: "failed"` as supporting evidence, not as a replacement
+- [x] Emit `status: "pass_failed"` for pass execution failures.
+- [x] Preserve `verifier: "failed"` as supporting evidence, not as a replacement
   for `status`.
 
 Acceptance checks:

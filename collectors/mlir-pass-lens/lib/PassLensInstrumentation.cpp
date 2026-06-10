@@ -7,7 +7,6 @@
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
-#include "mlir/IR/Verifier.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
@@ -233,21 +232,16 @@ bool hasVerifierFailureSignal(llvm::StringRef diagnostics) {
          text.find("failed to legalize") != std::string::npos;
 }
 
-bool isVerifierFailure(mlir::Operation *op, const std::string &diagnostics) {
-  if (hasVerifierFailureSignal(diagnostics))
-    return true;
-
-  // If the operation is no longer verifiable after this callback, treat the
-  // failure as verifier-related. This helps distinguish verifier failures from
-  // pass execution failures when no custom diagnostics hook is unavailable.
-  return mlir::failed(mlir::verify(op));
+bool isVerifierFailure(const std::string &diagnostics) {
+  return hasVerifierFailureSignal(diagnostics);
 }
 
 std::string inferFailureStatus(mlir::Pass *pass,
                               mlir::Operation *op,
                               const std::string &diagnostics) {
   (void)pass;
-  return isVerifierFailure(op, diagnostics) ? "verifier_failed" : "pass_failed";
+  (void)op;
+  return isVerifierFailure(diagnostics) ? "verifier_failed" : "pass_failed";
 }
 
 bool hasProvenanceFields(const PassLensProvenance &provenance) {

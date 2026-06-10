@@ -67,8 +67,8 @@ Each recorded stage corresponds to one MLIR pass callback pair:
 - `runAfterPass` records after IR, after metrics, duration, verifier status
   `ok`, and status `ok` or `changed`.
 - `runAfterPassFailed` infers failure kind and records:
-  - `status: "verifier_failed"` when verifier evidence is detected (diagnostic
-    markers and post-failure IR validity checks).
+  - `status: "verifier_failed"` when verifier evidence is explicitly detected
+    from diagnostics markers.
   - `status: "pass_failed"` otherwise.
   `verifier` is set to `"failed"` only for `verifier_failed` stages and remains
   `"ok"` for `pass_failed` stages.

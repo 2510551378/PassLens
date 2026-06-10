@@ -124,14 +124,57 @@ trace 应符合 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json)。
 npm run validate:trace -- --check-artifacts path\to\trace.json
 ```
 
-准备公开 preview build 前，先运行 release entry-point check：
+准备公开 preview build 前，先运行 release smoke：
 
 ```powershell
-npm run release:check
+npm run release:smoke
 ```
 
-Marketplace / Open VSX checklist 见
+如果要进行实际发布，可按目标逐步运行：
+
+```powershell
+npm run release:publish:marketplace
+npm run release:publish:open-vsx
+```
+
+Marketplace / Open VSX 发布和准备检查说明见
 [`docs/release-readiness.md`](docs/release-readiness.md)。
+
+### 真实数据验证清单
+
+Pass Lens 不应只依赖内置样例，关键是能在真实 compiler pipeline 上复现闭环。
+你可以按下面命令做完整检查：
+
+```powershell
+# 1) 开源 MLIR 真实 case（结构化 collector + artifact-backed）
+npm run smoke:oss-mlir
+
+# 2) 下游集成（有 driver 时）
+npm run smoke:heir-case-study
+npm run smoke:iree-case-study
+npm run smoke:torch-mlir-case-study
+npm run smoke:downstream-case-studies
+```
+
+常用环境变量：
+
+- `PASS_LENS_MLIR_OPT`（或 `PASS_LENS_MLIR_DRIVER`）：用于 `smoke:oss-mlir`
+- `PASS_LENS_OSS_SOURCE_ROOT`：重用本地 LLVM MLIR 测试文件（可选）
+- `PASS_LENS_IREE_DRIVER` / `PASS_LENS_TORCH_MLIR_DRIVER`：下游脚本的 collector driver
+- `PASS_LENS_HEIR_ROOT`：`smoke:heir-case-study` 输入来源
+- `PASS_LENS_IREE_CASE_DIR`、`PASS_LENS_TORCH_MLIR_CASE_DIR`：控制输出目录
+
+通过条件：
+
+- trace 能通过 `npm run validate:trace -- --strict-only ...` 且 artifact 检查通过；
+- 总结 JSON 的 `errors.length === 0`，`stageCount >= 1`；
+- `provenance.kind` 与来源一致：
+  - `live-pass-instrumentation`：结构化 collector 直接输出；
+  - `converted-dump`：fallback / 文本导入样例；
+- 下游输出目录里的 summary 文件展示：
+  - 无错误；
+  - 阶段数 >= 1；
+  - `provenanceKind`、artifact 状态可信。
 
 ## 使用指南
 
