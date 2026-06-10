@@ -56,7 +56,7 @@ function main(options) {
   }
 
   const plan = {
-    command: targetSpec.command,
+    command: resolvePublishCommand(targetSpec.command),
     args: [...targetSpec.args, ...extraArgs]
   };
 
@@ -64,6 +64,7 @@ function main(options) {
     console.log('[dry-run] release publish plan');
     console.log(`target=${target}`);
     console.log(`vsix=${vsix}`);
+    console.log(`command=${plan.command}`);
     console.log(`${plan.command} ${plan.args.join(' ')}`);
     console.log(`required env token: ${targetSpec.envHint}`);
     return;
@@ -83,6 +84,36 @@ function main(options) {
     throw new Error(`Failed to spawn ${plan.command}: ${result.error.message}`);
   }
   process.exitCode = result.status ?? 1;
+}
+
+function resolvePublishCommand(commandName) {
+  if (path.isAbsolute(commandName)) {
+    if (!fs.existsSync(commandName)) {
+      throw new Error(`Publish command not found: ${commandName}`);
+    }
+    return commandName;
+  }
+
+  const pathExts = process.platform === 'win32'
+    ? process.env.PATHEXT?.split(path.delimiter).map((entry) => entry.toLowerCase()) ?? ['.exe', '.cmd', '.bat', '.com']
+    : [''];
+
+  const searchPaths = process.env.PATH || '';
+  for (const directory of searchPaths.split(path.delimiter)) {
+    for (const ext of pathExts) {
+      const candidate = path.join(directory, `${commandName}${ext}`);
+      try {
+        if (fs.existsSync(candidate)) {
+          return candidate;
+        }
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  const prettyPaths = searchPaths ? `PATH=${searchPaths}` : 'PATH is empty';
+  throw new Error(`Publish command '${commandName}' was not found on PATH (${prettyPaths}).`);
 }
 
 function parseArgs(argv) {

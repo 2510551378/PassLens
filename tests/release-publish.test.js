@@ -69,6 +69,8 @@ test('release publish fails in dry-run when the VSIX package is missing', () => 
 test('release publish supports dry-run and execute token gating', () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-release-token-'));
   const vsixName = 'pass-lens-0.0.1.vsix';
+  const pathDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-release-fake-command-'));
+
   fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify({
     name: 'pass-lens',
     version: '0.0.1'
@@ -76,6 +78,23 @@ test('release publish supports dry-run and execute token gating', () => {
   fs.writeFileSync(path.join(tempDir, vsixName), 'binary', 'utf8');
 
   try {
+    const commandLines = process.platform === 'win32'
+      ? ['ovsx.cmd', 'vsce.cmd']
+      : ['ovsx', 'vsce'];
+    for (const commandName of commandLines) {
+      const fakeCommandPath = path.join(pathDir, commandName);
+      fs.writeFileSync(
+        fakeCommandPath,
+        process.platform === 'win32'
+          ? '@echo off\nexit /b 0\n'
+          : '#!/bin/sh\necho publish ok\n',
+        'utf8'
+      );
+      if (process.platform !== 'win32') {
+        fs.chmodSync(fakeCommandPath, 0o755);
+      }
+    }
+
     const dryRun = spawnSync(process.execPath, [
       path.join(process.cwd(), 'scripts', 'release-publish.js'),
       'marketplace',
@@ -95,10 +114,42 @@ test('release publish supports dry-run and execute token gating', () => {
       '--execute'
     ], {
       encoding: 'utf8',
-      env: { ...process.env }
+      env: {
+        ...process.env,
+        OVSX_PAT: '',
+        PATH: `${pathDir}${path.delimiter}${process.env.PATH ?? ''}`
+      }
     });
     assert.equal(execute.status, 1, execute.stderr || execute.stdout);
     assert.match(execute.stderr + execute.stdout, /Missing OVSX_PAT/);
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+    fs.rmSync(pathDir, { recursive: true, force: true });
+  }
+});
+
+test('release publish execute requires publish command on PATH', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-release-command-'));
+  const vsixName = 'pass-lens-0.0.1.vsix';
+  fs.writeFileSync(path.join(tempDir, 'package.json'), JSON.stringify({
+    name: 'pass-lens',
+    version: '0.0.1'
+  }), 'utf8');
+  fs.writeFileSync(path.join(tempDir, vsixName), 'binary', 'utf8');
+
+  try {
+    const executeWithoutPath = spawnSync(process.execPath, [
+      path.join(process.cwd(), 'scripts', 'release-publish.js'),
+      'marketplace',
+      '--root',
+      tempDir,
+      '--execute'
+    ], {
+      encoding: 'utf8',
+      env: { ...process.env, VSCE_PAT: 'test-token', PATH: '' }
+    });
+    assert.equal(executeWithoutPath.status, 1, executeWithoutPath.stderr || executeWithoutPath.stdout);
+    assert.match(executeWithoutPath.stderr + executeWithoutPath.stdout, /Publish command 'vsce' was not found on PATH/);
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
