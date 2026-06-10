@@ -192,6 +192,14 @@ Suggested files:
 - `sample-traces/*`
 - `docs/sample-provenance.md`
 
+Status update (current turn):
+
+- IREE structured case study has been completed end-to-end and promoted as a
+  redacted public sample:
+  - `sample-traces/iree-downstream-lowering-live.json`
+  - `docs/sample-provenance.md`
+  - `docs/iree-case-study.md`
+
 ### P1: Large Trace First-Screen Performance
 
 Risk:
