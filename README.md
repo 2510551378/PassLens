@@ -137,10 +137,13 @@ npm run release:publish:open-vsx          # dry-run preview plan
 npm run release:publish:open-vsx -- --execute      # real publish
 ```
 
-You can also run the release plan preview to review both target plans in one
-JSON payload before publish:
+You can also run a release preflight before publish:
 
 ```powershell
+# full smoke + package + publish plan artifact
+npm run release:preflight
+
+# quick plan-only checks
 npm run release:preview:plan -- --json
 npm run release:preview:plan -- --output .github/release-preview-plan.json
 ```

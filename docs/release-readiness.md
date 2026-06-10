@@ -39,6 +39,15 @@ npm run release:smoke
 npm run package
 ```
 
+For the full preflight sequence in one command:
+
+```powershell
+npm run release:preflight
+```
+
+This runs the release smoke checks, packages VSIX, and writes a
+`artifacts/release-preview-plan.json` report.
+
 CI can also generate and persist the publish plan:
 
 ```text

@@ -18,6 +18,10 @@ function main(argv) {
   };
 
   if (options.output) {
+    const outputDir = path.dirname(path.resolve(options.output));
+    if (outputDir && outputDir !== '.') {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
     fs.writeFileSync(options.output, JSON.stringify(summary, null, 2), 'utf8');
     console.log(`release preview plan written to ${options.output}`);
   }
@@ -103,4 +107,3 @@ module.exports = {
   isExecutable,
   parseArgs
 };
-
