@@ -17,6 +17,35 @@ Current implementation status:
   - viewer checks;
   - artifact path existence checks (when enabled).
 
+### L20 verification note
+
+On an internal L20 machine, we validated the runner end-to-end using the locally
+built `build/pass-lens-mlir/pass-lens-mlir-opt` as a structured downstream
+driver:
+
+```bash
+cd ~/PassLens
+PASS_LENS_IREE_DRIVER=$PWD/build/pass-lens-mlir/pass-lens-mlir-opt \\
+PASS_LENS_IREE_CASE_DIR=/tmp/pass-lens-iree-smoke \\
+PASS_LENS_IREE_PIPELINE='builtin.module(func.func(canonicalize,cse))' \\
+npm run smoke:iree-case-study
+```
+
+Observed result:
+
+- `exitCode: 0`
+- `stageCount: 2`
+- `artifactCount: 4`
+- `missingArtifacts: 0`
+- `provenanceKind: live-pass-instrumentation`
+- `checks: ok`
+
+The generated trace also passes strict schema and artifact validation:
+
+```bash
+npm run validate:trace -- --strict-only --check-artifacts /tmp/pass-lens-iree-smoke/iree-downstream-lowering.trace.json
+```
+
 ## Run
 
 Set up a structured driver that supports the Pass Lens trace flags, then run:
