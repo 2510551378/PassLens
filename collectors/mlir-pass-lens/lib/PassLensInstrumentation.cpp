@@ -7,6 +7,7 @@
 #include "mlir/IR/SymbolTable.h"
 #include "mlir/Pass/Pass.h"
 #include "mlir/Pass/PassManager.h"
+#include "mlir/IR/Verifier.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
@@ -210,6 +211,43 @@ std::string collectDiagnostics(mlir::Pass *pass, mlir::Operation *op,
   if (!options.diagnosticsHook)
     return "";
   return options.diagnosticsHook(pass, op);
+}
+
+std::string lowerAscii(llvm::StringRef value) {
+  std::string lowered = value.str();
+  std::transform(lowered.begin(), lowered.end(), lowered.begin(),
+                 [](unsigned char ch) {
+                   return static_cast<char>(std::tolower(ch));
+                 });
+  return lowered;
+}
+
+bool hasVerifierFailureSignal(llvm::StringRef diagnostics) {
+  const std::string text = lowerAscii(diagnostics);
+  if (text.empty())
+    return false;
+  return text.find("verifier failed") != std::string::npos ||
+         text.find("failed verifier") != std::string::npos ||
+         text.find("verification failed") != std::string::npos ||
+         text.find("failed to verify") != std::string::npos ||
+         text.find("failed to legalize") != std::string::npos;
+}
+
+bool isVerifierFailure(mlir::Operation *op, const std::string &diagnostics) {
+  if (hasVerifierFailureSignal(diagnostics))
+    return true;
+
+  // If the operation is no longer verifiable after this callback, treat the
+  // failure as verifier-related. This helps distinguish verifier failures from
+  // pass execution failures when no custom diagnostics hook is unavailable.
+  return mlir::failed(mlir::verify(op));
+}
+
+std::string inferFailureStatus(mlir::Pass *pass,
+                              mlir::Operation *op,
+                              const std::string &diagnostics) {
+  (void)pass;
+  return isVerifierFailure(op, diagnostics) ? "verifier_failed" : "pass_failed";
 }
 
 std::string getScope(mlir::Operation *op) {
@@ -450,10 +488,10 @@ void PassLensInstrumentation::runAfterPassFailed(mlir::Pass *pass,
   stage.symbol = it->second.symbol;
   stage.scope = it->second.scope;
   stage.durationMs = elapsedMs(it->second.startedAt);
-  stage.status = "pass_failed";
-  stage.verifier = "failed";
   stage.location = it->second.location;
   stage.diagnostics = collectDiagnostics(pass, op, impl->options);
+  stage.status = inferFailureStatus(pass, op, stage.diagnostics);
+  stage.verifier = "failed";
   stage.metricsBefore = std::move(it->second.metricsBefore);
   stage.metricsAfter = collectMetrics(op, irAfter, impl->options);
   stage.irBefore = std::move(it->second.irBefore);

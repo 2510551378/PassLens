@@ -53,7 +53,10 @@ Each recorded stage corresponds to one MLIR pass callback pair:
   and before metrics.
 - `runAfterPass` records after IR, after metrics, duration, verifier status
   `ok`, and status `ok` or `changed`.
-- `runAfterPassFailed` records status `pass_failed` and verifier `failed`.
+- `runAfterPassFailed` records `verifier: "failed"` and prefers `status:
+  verifier_failed` when verifier evidence is detected (diagnostic markers and
+  post-failure IR validity checks). If verifier evidence is not detected, it
+  records `status: pass_failed`.
 
 The collector skips MLIR's internal `OpToOpPassAdaptor` wrapper so the trace
 focuses on user-visible pass invocations.
