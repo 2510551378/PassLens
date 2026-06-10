@@ -169,10 +169,11 @@ async function runLitSectionCase(entry, effectiveSourceRoot) {
 
 async function runInput(entry, inputPath, sourceUrl) {
   const tracePath = path.join(outputRoot, 'traces', `${entry.name}.json`);
-  const artifactDir = path.join(outputRoot, 'traces', `${entry.name}-artifacts`);
+  const traceDirectory = path.join(outputRoot, 'traces');
+  const artifactDir = `${entry.name}-artifacts`;
   const stdoutPath = path.join(outputRoot, 'traces', `${entry.name}.stdout.txt`);
   const stderrPath = path.join(outputRoot, 'traces', `${entry.name}.stderr.txt`);
-  fs.mkdirSync(artifactDir, { recursive: true });
+  fs.mkdirSync(path.join(traceDirectory, artifactDir), { recursive: true });
 
   const args = [
     ...entry.args,
@@ -181,9 +182,12 @@ async function runInput(entry, inputPath, sourceUrl) {
     `--pass-lens-trace=${tracePath}`,
     `--pass-lens-artifact-dir=${artifactDir}`,
     '-o',
-    path.join(outputRoot, 'traces', `${entry.name}.out.mlir`)
+    path.join(traceDirectory, `${entry.name}.out.mlir`)
   ];
-  const proc = spawnSync(collector, args, { encoding: 'utf8' });
+  const proc = spawnSync(collector, args, {
+    encoding: 'utf8',
+    cwd: traceDirectory
+  });
   fs.writeFileSync(stdoutPath, proc.stdout || '', 'utf8');
   fs.writeFileSync(stderrPath, proc.stderr || '', 'utf8');
 
