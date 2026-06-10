@@ -8,6 +8,9 @@ same JSON schema consumed by the VSCode extension.
 The collector emits the v1 schema fields that the viewer relies on for
 postmortem debugging, including `collectorVersion`, `capture`, `status`,
 `argument`, `opName`, `symbol`, and `location`.
+On a failed pass, `status` is `verifier_failed` when verifier-related evidence
+is detected and `pass_failed` for other pass exceptions, with `verifier` set to
+`"failed"` only for `verifier_failed`.
 
 ## Important Boundary
 

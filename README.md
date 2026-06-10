@@ -259,12 +259,21 @@ authors can use the small C++ SDK surface documented in
 
 ### 5. Run a Downstream Structured Case Study
 
-For real compiler pipelines that already support Pass Lens flags, use the
-downstream smoke runner:
+For real compiler pipelines that already support Pass Lens flags, use a downstream
+smoke runner.
+
+IREE:
 
 ```powershell
 $env:PASS_LENS_IREE_DRIVER="/path/to/downstream-driver"
 npm run smoke:iree-case-study
+```
+
+Torch-MLIR:
+
+```powershell
+$env:PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-driver"
+npm run smoke:torch-mlir-case-study
 ```
 
 The runner validates:
@@ -284,6 +293,16 @@ node scripts/iree-case-study-smoke.js \
   --input /path/to/input.mlir \
   --driver-arg --my-driver-extra-flag \
   --driver-arg --other-extra-flag
+```
+
+Torch-MLIR equivalent:
+
+```bash
+node scripts/torch-mlir-case-study-smoke.js \
+  --driver /path/to/downstream-driver \
+  --input /path/to/input.mlir \
+  --pipeline builtin.module(func.func(canonicalize,cse)) \
+  --driver-arg --my-driver-extra-flag
 ```
 
 ### 6. Generate Reports and Repro Artifacts
@@ -404,6 +423,7 @@ $env:PASS_LENS_MLIR_OPT="/path/to/pass-lens-mlir-opt"; npm run smoke:oss-mlir
 npm run smoke:large-trace
 $env:PASS_LENS_HEIR_ROOT="/path/to/heir"; npm run smoke:heir-case-study
 $env:PASS_LENS_IREE_DRIVER="/path/to/downstream-driver"; npm run smoke:iree-case-study
+npm run smoke:torch-mlir-case-study
 npm run package
 ```
 
@@ -433,7 +453,9 @@ smoke:heir-case-study`. See [`docs/heir-case-study.md`](docs/heir-case-study.md)
 
 To validate a real downstream structured integration, set
 `PASS_LENS_IREE_DRIVER` and run `npm run smoke:iree-case-study`. See
-[`docs/iree-case-study.md`](docs/iree-case-study.md).
+[`docs/iree-case-study.md`](docs/iree-case-study.md). Torch-MLIR follows the same
+pattern via `PASS_LENS_TORCH_MLIR_DRIVER`, `npm run smoke:torch-mlir-case-study`,
+and [`docs/torch-mlir-case-study.md`](docs/torch-mlir-case-study.md).
 
 ## Project Status
 

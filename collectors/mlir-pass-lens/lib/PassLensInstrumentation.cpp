@@ -540,7 +540,7 @@ void PassLensInstrumentation::runAfterPassFailed(mlir::Pass *pass,
   stage.location = it->second.location;
   stage.diagnostics = collectDiagnostics(pass, op, impl->options);
   stage.status = inferFailureStatus(pass, op, stage.diagnostics);
-  stage.verifier = "failed";
+  stage.verifier = stage.status == "verifier_failed" ? "failed" : "ok";
   stage.metricsBefore = std::move(it->second.metricsBefore);
   stage.metricsAfter = collectMetrics(op, irAfter, impl->options);
   stage.irBefore = std::move(it->second.irBefore);
