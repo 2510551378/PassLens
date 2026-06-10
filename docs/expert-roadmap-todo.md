@@ -192,14 +192,14 @@ maintainability work.
 
 ## v0.2 Collector Credibility
 
-- [ ] Run the structured MLIR collector inside one real downstream compiler
+- [x] Run the structured MLIR collector inside one real downstream compiler
   pipeline.
   - [ ] Candidate: Triton -> TTIR / TTGIR -> NPU / AscendC.
-  - [ ] Candidate: IREE lowering pipeline.
+  - [x] Candidate: IREE lowering pipeline.
   - [ ] Candidate: torch-mlir lowering pipeline.
-  - [ ] Capture one external redacted real trace and publish it in `sample-traces`
+  - [x] Capture one external redacted real trace and publish it in `sample-traces`
     as `live-pass-instrumentation` once driver output is verified.
-  - [ ] Add the redacted trace to `docs/sample-provenance.md` and keep
+  - [x] Add the redacted trace to `docs/sample-provenance.md` and keep
     `npm run validate:trace:all` green.
   - Workflow reference:
     [`docs/downstream-structured-integration-workflow.md`](downstream-structured-integration-workflow.md)

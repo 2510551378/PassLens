@@ -30,6 +30,13 @@ export const sampleTraces: SampleTraceEntry[] = [
     provenanceKind: 'live-pass-instrumentation'
   },
   {
+    label: 'Live IREE lowering (PassInstrumentation)',
+    description: provenanceLabel('live-pass-instrumentation'),
+    detail: 'Redacted real downstream sample from L20 pass-lens-mlir-opt running a simple IREE-style lowering case.',
+    file: 'iree-downstream-lowering-live.json',
+    provenanceKind: 'live-pass-instrumentation'
+  },
+  {
     label: 'Live MLIR Arith canonicalize',
     description: provenanceLabel('live-pass-instrumentation'),
     detail: 'Real LLVM MLIR Arith canonicalize sample with artifact-backed IR.',

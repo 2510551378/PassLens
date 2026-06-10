@@ -139,16 +139,15 @@ The runner checks:
 - Some downstreams may use custom pipeline argument names; pass `--pipeline` only
   when that flag is recognized.
 
-If you want to provide a redacted real trace to upstream later, prefer adding a
-fixture under `sample-traces/` and mark it as `live-pass-instrumentation` in
-`docs/sample-provenance.md`.
+The redacted real downstream trace from this case study has been promoted to
+`sample-traces/iree-downstream-lowering-live.json` and is documented in
+[`docs/sample-provenance.md`](sample-provenance.md) as
+`live-pass-instrumentation`. It is validated with
+`npm run validate:trace -- --strict-only --check-artifacts` and included in
+the public sample catalog.
 
 ## Next Step
 
-Once you confirm one real structured case, we can add a redacted trace artifact
-to `sample-traces/` and link it from:
-
-- `docs/sample-provenance.md`
-- `docs/large-trace-smoke.md`
-- `docs/expert-roadmap-todo.md`
-- this case study's `summary.json` can be attached to issue/discussion posts.
+For downstream contributors, this case study now serves as the open
+`live-pass-instrumentation` reference in the public sample set and can be used
+to compare integration ergonomics with your own compiler pipeline.
