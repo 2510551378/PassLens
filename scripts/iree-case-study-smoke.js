@@ -9,6 +9,7 @@ const { normalizeTrace } = require('../out/trace/schema.js');
 const { resolveArtifactPathWithinTraceRoot } = require('../out/trace/artifactPaths.js');
 const { validateTraceStrict } = require('../out/trace/strictValidation.js');
 const { validateTrace } = require('../out/trace/validation.js');
+const { evaluateTraceQuality } = require('../out/trace/quality.js');
 
 const defaultCase = {
   name: 'iree-downstream-lowering',
@@ -23,6 +24,7 @@ const defaultCase = {
 
 const defaultOutputRoot = path.join(process.cwd(), '.pass-lens-iree-case-study');
 const defaultTimeoutMs = 180000;
+const defaultMinQuality = 0;
 
 if (require.main === module) {
   main(process.argv.slice(2)).catch((error) => {
@@ -74,7 +76,8 @@ async function main(argv) {
 
   const validation = validateTraceOutputs({
     tracePath,
-    checkArtifacts: options.checkArtifacts
+    checkArtifacts: options.checkArtifacts,
+    minQuality: options.minQuality
   });
 
   const errors = [
@@ -83,6 +86,9 @@ async function main(argv) {
     validation.fileMissing ? 'trace file was not produced' : undefined,
     validation.validationError ? validation.validationError : undefined,
     validation.stageCount <= 0 ? `expected at least one stage, got ${validation.stageCount}` : undefined,
+    validation.qualityScore !== undefined && validation.qualityScore < options.minQuality
+      ? `trace quality score ${validation.qualityScore} below minimum ${options.minQuality}`
+      : undefined,
     validation.provenanceKind === 'live-pass-instrumentation' ? undefined : 'provenance.kind is not live-pass-instrumentation'
   ].filter(Boolean);
 
@@ -107,6 +113,8 @@ async function main(argv) {
     strictIssueCount: validation.strictIssueCount,
     viewerIssueCount: validation.viewerIssueCount,
     artifactIssueCount: validation.artifactIssueCount,
+    qualityScore: validation.qualityScore,
+    qualitySummary: validation.qualitySummary,
     provenanceKind: validation.provenanceKind,
     checkArtifacts: options.checkArtifacts,
     errors
@@ -130,7 +138,11 @@ function parseArgs(argv) {
     outputRoot: process.env.PASS_LENS_IREE_CASE_DIR || defaultOutputRoot,
     pipeline: process.env.PASS_LENS_IREE_PIPELINE || '',
     timeoutMs: readPositiveInt(process.env.PASS_LENS_IREE_TIMEOUT_MS, defaultTimeoutMs),
-    workdir: process.env.PASS_LENS_IREE_WORKDIR
+    workdir: process.env.PASS_LENS_IREE_WORKDIR,
+    minQuality: readPositiveInt(
+      process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY,
+      readPositiveInt(process.env.PASS_LENS_IREE_MIN_QUALITY, defaultMinQuality)
+    )
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -177,6 +189,11 @@ function parseArgs(argv) {
       index += 1;
     } else if (arg.startsWith('--timeout-ms=')) {
       options.timeoutMs = readPositiveInt(arg.slice('--timeout-ms='.length), options.timeoutMs);
+    } else if (arg === '--min-quality') {
+      options.minQuality = readPositiveInt(argv[index + 1], options.minQuality);
+      index += 1;
+    } else if (arg.startsWith('--min-quality=')) {
+      options.minQuality = readPositiveInt(arg.slice('--min-quality='.length), options.minQuality);
     } else if (arg === '--no-check-artifacts') {
       options.checkArtifacts = false;
     } else {
@@ -273,6 +290,8 @@ function validateTraceOutputs({ tracePath, checkArtifacts }) {
       strictIssueCount: 0,
       viewerIssueCount: 0,
       artifactIssueCount: 0,
+      qualityScore: undefined,
+      qualitySummary: undefined,
       provenanceKind: undefined
     };
   }
@@ -291,6 +310,8 @@ function validateTraceOutputs({ tracePath, checkArtifacts }) {
       strictIssueCount: 0,
       viewerIssueCount: 0,
       artifactIssueCount: 0,
+      qualityScore: undefined,
+      qualitySummary: undefined,
       provenanceKind: undefined
     };
   }
@@ -300,6 +321,7 @@ function validateTraceOutputs({ tracePath, checkArtifacts }) {
   const normalized = strictError ? undefined : normalizeTrace(raw);
   const viewerIssues = normalized ? validateTrace(normalized) : [];
   const artifactIssues = (normalized && checkArtifacts) ? validateArtifactReferences(normalized, tracePath) : [];
+  const qualityReport = normalized ? evaluateTraceQuality(normalized) : undefined;
   const summary = {
     fileMissing: false,
     validationError: strictIssueText(strictIssues, viewerIssues, artifactIssues),
@@ -315,6 +337,8 @@ function validateTraceOutputs({ tracePath, checkArtifacts }) {
     strictIssueCount: strictIssues.length,
     viewerIssueCount: viewerIssues.length,
     artifactIssueCount: artifactIssues.length,
+    qualityScore: qualityReport?.score,
+    qualitySummary: qualityReport?.summary,
     provenanceKind: raw.provenance?.kind
   };
 
@@ -402,6 +426,8 @@ function printSummary(summary) {
   console.log(`strictIssues\t${summary.strictIssueCount}`);
   console.log(`viewerIssues\t${summary.viewerIssueCount}`);
   console.log(`artifactIssues\t${summary.artifactIssueCount}`);
+  console.log(`qualityScore\t${summary.qualityScore ?? '(missing)'}`);
+  console.log(`qualitySummary\t${summary.qualitySummary || '(missing)'}`);
   console.log(`provenanceKind\t${summary.provenanceKind || '(missing)'}`);
   if (summary.errors.length > 0) {
     console.log('\nerrors');
@@ -425,6 +451,7 @@ Options:
   --workdir <path>          Optional working directory for the driver.
   --driver-arg <arg>        Additional raw args to pass to the driver. Repeatable.
   --timeout-ms <ms>         Driver timeout. Default: 180000
+  --min-quality <score>     Minimum required trace quality score (default 0).
   --no-check-artifacts       Skip artifact path validation.
   -h, --help                Show this help.
 
@@ -434,6 +461,8 @@ Environment:
   PASS_LENS_IREE_PIPELINE
   PASS_LENS_IREE_CASE_DIR
   PASS_LENS_IREE_TIMEOUT_MS
+  PASS_LENS_CASE_STUDY_MIN_QUALITY
+  PASS_LENS_IREE_MIN_QUALITY
   PASS_LENS_IREE_WORKDIR
 
 Expected conventions:

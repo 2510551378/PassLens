@@ -32,6 +32,7 @@ For successful downstream integration, confirm these minimum signals:
 2. `summary.errors` is empty.
 3. `summary.stageCount >= 1`.
 4. `summary.provenanceKind === "live-pass-instrumentation"`.
+5. `summary.qualityScore >= 80` (or the threshold passed via `--min-quality`).
 
 If torch-mlir uses non-standard pipeline flags, keep a minimal runner command and
 forward custom options with `--driver-arg`:
@@ -78,7 +79,8 @@ The runner checks:
 - viewer-level validation;
 - optional artifact path existence check (`--no-check-artifacts` to skip);
 - at least one stage;
-- `provenance.kind === live-pass-instrumentation`.
+- `provenance.kind === live-pass-instrumentation`;
+- quality summary and score (`qualityScore`, `qualitySummary`) pass the configured minimum.
 
 When a real redacted driver output exists, add it under `sample-traces/` with
 `provenance.kind = "live-pass-instrumentation"`, then call out in

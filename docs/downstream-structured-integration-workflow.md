@@ -42,6 +42,7 @@ npm run smoke:torch-mlir-case-study
   - `summary.errors.length === 0`
   - `summary.stageCount >= 1`
   - `summary.provenanceKind === "live-pass-instrumentation"`
+  - `summary.qualityScore >= 80` (configurable via `--min-quality`).
   - strict schema and viewer checks are clean (already enforced by smoke scripts).
 - Optional artifact check:
   - if `--pass-lens-artifact-dir` is used, run the driver smoke with default

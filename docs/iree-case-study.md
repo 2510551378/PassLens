@@ -37,7 +37,8 @@ declaring a successful real downstream structured case:
 2. `summary.errors` is empty.
 3. `summary.stageCount >= 1`.
 4. `summary.provenanceKind === "live-pass-instrumentation"`.
-5. The per-stage artifact references are readable in trace root (or are intentionally
+5. `summary.qualityScore >= 80` (or the threshold passed via `--min-quality`).
+6. The per-stage artifact references are readable in trace root (or are intentionally
    omitted for inline captures).
 
 For a complete acceptance workflow checklist and optional redacted sample publication
@@ -99,7 +100,8 @@ The runner checks:
 - viewer validation has no errors;
 - trace artifacts exist and are readable (if `--pass-lens-artifact-dir` is used);
 - trace has at least one stage;
-- provenance is `live-pass-instrumentation`.
+- provenance is `live-pass-instrumentation`;
+- trace quality summary exists and passes minimum threshold (`qualityScore`, `qualitySummary`).
 
 ## Limitations
 

@@ -25,7 +25,8 @@ test('parseArgs accepts torch-mlir case study smoke flags', () => {
       '--output', '/tmp/case',
       '--timeout-ms', '15000',
       '--driver-arg', '--foo',
-      '--driver-arg', '--bar'
+      '--driver-arg', '--bar',
+      '--min-quality', '82'
     ]);
     assert.equal(parsed.driver, '/tmp/override-driver');
     assert.equal(parsed.inputPath, '/tmp/input.mlir');
@@ -34,6 +35,7 @@ test('parseArgs accepts torch-mlir case study smoke flags', () => {
     assert.equal(parsed.outputRoot, '/tmp/case');
     assert.equal(parsed.timeoutMs, 15000);
     assert.deepEqual(parsed.driverArgs, ['--foo', '--bar']);
+    assert.equal(parsed.minQuality, 82);
   } finally {
     if (previousDriver === undefined) {
       delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
@@ -233,6 +235,7 @@ process.exit(0);
     assert.equal(summary.stageCount, 1);
     assert.equal(summary.provenanceKind, 'live-pass-instrumentation');
     assert.equal(summary.errors.length, 0);
+    assert.equal(typeof summary.qualityScore, 'number');
 
     const outputTrace = path.join(outputRoot, `${caseName}.trace.json`);
     assert.ok(fs.existsSync(outputTrace));
