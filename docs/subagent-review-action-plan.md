@@ -281,7 +281,7 @@ Minimum implementation:
 
 Acceptance checks:
 
-- Add a focused session manager unit test.
+- [x] Add a focused session manager unit test.
 - Manual VS Code check with two opened trace panels.
 
 Suggested files:

@@ -32,6 +32,7 @@ import { createTraceExplanation } from './traceExplanation';
 import { renderTraceQueryResultMarkdown, runTraceQuery, type TraceQuery } from './traceQuery';
 import { normalizeTrace } from './trace/schema';
 import { summarizeTraceIssues, validateTrace } from './trace/validation';
+import { createTracePanelSessionManager } from './tracePanelSession';
 import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
 import { parseTracePanelMessage } from './webview/messages';
 
@@ -41,33 +42,11 @@ interface TraceQueryPick extends vscode.QuickPickItem {
   summaryKind?: string;
 }
 
-const tracePanelSessions = new WeakMap<
-  vscode.WebviewPanel,
-  {
-    loaded: LoadedTrace;
-    sourceUri: vscode.Uri;
-  }
->();
-let activeTracePanel: vscode.WebviewPanel | undefined;
+const tracePanelSessionManager = createTracePanelSessionManager<LoadedTraceSession>();
 
-function getCurrentTraceSession(): { loaded: LoadedTrace; sourceUri: vscode.Uri } | undefined {
-  return activeTracePanel ? tracePanelSessions.get(activeTracePanel) : undefined;
-}
-
-function setActiveTracePanel(panel: vscode.WebviewPanel): void {
-  activeTracePanel = panel;
-}
-
-function removeTracePanel(panel: vscode.WebviewPanel): void {
-  if (activeTracePanel === panel) {
-    activeTracePanel = undefined;
-  }
-  tracePanelSessions.delete(panel);
-}
-
-function registerTracePanelSession(panel: vscode.WebviewPanel, session: { loaded: LoadedTrace; sourceUri: vscode.Uri }): void {
-  tracePanelSessions.set(panel, session);
-  setActiveTracePanel(panel);
+interface LoadedTraceSession {
+  loaded: LoadedTrace;
+  sourceUri: vscode.Uri;
 }
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -296,7 +275,7 @@ async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise
     return;
   }
 
-  const activeSession = getCurrentTraceSession();
+  const activeSession = tracePanelSessionManager.getActiveSession();
   const defaultPipeline = activeSession?.loaded.trace.pipeline ?? 'builtin.module(func.func(canonicalize,cse))';
   const pipeline = await vscode.window.showInputBox({
     title: 'MLIR pass pipeline to bisect',
@@ -326,7 +305,7 @@ async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise
         return runPrefixBisect(pipeline.trim(), runner);
       }
     );
-  const activeSession = getCurrentTraceSession();
+  const activeSession = tracePanelSessionManager.getActiveSession();
   await showMarkdownDocument(createMinimalFailingPrefixReport(result, activeSession?.loaded.trace));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -407,7 +386,7 @@ async function checkMlirCollectorSetupCommand(context: vscode.ExtensionContext):
 }
 
 async function queryCurrentTraceCommand(): Promise<void> {
-  const currentSession = getCurrentTraceSession();
+  const currentSession = tracePanelSessionManager.getActiveSession();
   if (!currentSession) {
     const action = await vscode.window.showWarningMessage(
       'Pass Lens has no current trace to query.',
@@ -694,14 +673,14 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     }
   );
 
-  registerTracePanelSession(panel, { loaded, sourceUri });
+  tracePanelSessionManager.register(panel, { loaded, sourceUri });
   panel.onDidChangeViewState((event) => {
     if (event.webviewPanel.active) {
-      setActiveTracePanel(event.webviewPanel);
+      tracePanelSessionManager.setActivePanel(event.webviewPanel);
     }
   });
   panel.onDidDispose(() => {
-    removeTracePanel(panel);
+    tracePanelSessionManager.unregister(panel);
   });
   panel.webview.onDidReceiveMessage(async (message: unknown) => {
     const parsed = parseTracePanelMessage(message);
