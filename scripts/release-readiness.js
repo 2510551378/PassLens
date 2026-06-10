@@ -112,6 +112,7 @@ function checkReleaseReadiness(root, override = {}) {
   checkRequiredFiles(resolvedRoot, errors, checks);
   const packageJson = checkPackageMetadata(resolvedRoot, errors, checks);
   checkReadme(resolvedRoot, errors, checks);
+  checkSampleProvenanceCatalog(resolvedRoot, errors, checks);
   checkReleaseDocs(resolvedRoot, errors, warnings, checks, strict);
   checkSampleProvenance(resolvedRoot, errors, checks);
 
@@ -136,6 +137,95 @@ function checkRequiredFiles(root, errors, checks) {
     });
     if (!exists) {
       errors.push(`${relativePath} is required for the public release entry point.`);
+    }
+  }
+}
+
+function parseSampleProvenanceTable(fileText) {
+  const lines = fileText.split(/\r?\n/);
+  const entries = new Map();
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('|') || trimmed.startsWith('| Sample ')) {
+      continue;
+    }
+    if (/^\|\s*[-|]+\s*\|/.test(trimmed)) {
+      continue;
+    }
+
+    const columns = trimmed
+      .split('|')
+      .map((column) => column.trim())
+      .filter((column) => column.length > 0);
+    if (columns.length < 2) {
+      continue;
+    }
+
+    const file = columns[0].replace(/`/g, '');
+    const kind = columns[1].replace(/`/g, '');
+    if (!/\.json$/i.test(file) || !file || !kind) {
+      continue;
+    }
+
+    entries.set(file, kind);
+  }
+
+  return entries;
+}
+
+function checkSampleProvenanceCatalog(root, errors, checks) {
+  const sampleDir = path.join(root, 'sample-traces');
+  const provenancePath = path.join(root, 'docs', 'sample-provenance.md');
+
+  if (!fs.existsSync(sampleDir) || !fs.existsSync(provenancePath)) {
+    return;
+  }
+
+  const sampleFiles = fs
+    .readdirSync(sampleDir)
+    .filter((file) => file.endsWith('.json'))
+    .sort();
+  const provenanceText = fs.readFileSync(provenancePath, 'utf8');
+  const provenanceEntries = parseSampleProvenanceTable(provenanceText);
+
+  checks.push({
+    id: 'release:provenance-doc-sync',
+    ok: provenanceEntries.size > 0,
+    message: 'sample provenance table is parseable'
+  });
+  if (provenanceEntries.size === 0) {
+    errors.push('docs/sample-provenance.md table is not parseable.');
+    return;
+  }
+
+  for (const sample of sampleFiles) {
+    const expected = provenanceEntries.get(sample);
+    if (!expected) {
+      checks.push({
+        id: `sample-provenance-doc:${sample}`,
+        ok: false,
+        message: `sample-provenance.md missing entry for ${sample}`
+      });
+      errors.push(`docs/sample-provenance.md missing provenance entry for ${sample}`);
+      continue;
+    }
+    checks.push({
+      id: `sample-provenance-doc:${sample}`,
+      ok: true,
+      message: `sample-provenance.md documents ${sample}`
+    });
+  }
+
+  const sampleFileSet = new Set(sampleFiles);
+  for (const sample of provenanceEntries.keys()) {
+    if (!sampleFileSet.has(sample)) {
+      checks.push({
+        id: `sample-provenance-doc:orphan:${sample}`,
+        ok: false,
+        message: `sample-provenance entry references missing sample ${sample}`
+      });
+      errors.push(`sample-provenance.md entry ${sample} does not match an existing sample file`);
     }
   }
 }

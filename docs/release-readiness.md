@@ -17,6 +17,8 @@ The check validates:
   work.
 - Public docs required by new users and collector authors.
 - Bundled sample traces with credible `provenance.kind` coverage.
+- `docs/sample-provenance.md` and `sample-traces/` are kept in sync (every sample
+  JSON has a matching provenance record).
 
 Before publishing a preview:
 
