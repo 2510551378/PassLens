@@ -56,7 +56,32 @@ Re-run strict+artifact validation directly for the generated trace:
 npm run validate:trace -- --strict-only --check-artifacts <trace.json>
 ```
 
-## Step 5: Publish a redacted sample (optional, recommended)
+## Step 5: Promote a redacted sample (optional, recommended)
+
+After the trace is validated and stable, promote it into the local sample
+catalog:
+
+```bash
+npm run compile
+npm run promote:downstream-sample -- \
+  --source <trace.json> \
+  --sample-dir sample-traces \
+  --sample-name iree-structured-downstream \
+  --redact-input \
+  --redact-command
+```
+
+The promotion helper:
+
+- validates trace strictness and viewer constraints;
+- validates artifact references by default;
+- copies referenced artifacts into the target sample directory;
+- writes a summary JSON as `<sample-name>.downstream-promote-summary.json`.
+
+If you want to ship a metadata-only sample first, pass `--no-copy-artifacts`
+and keep `--redact-command`/`--redact-input` enabled.
+
+## Step 6: Publish a redacted sample (optional, recommended)
 
 Once the trace is verified and safe, add a redacted sample to `sample-traces/`
 and record its provenance in `docs/sample-provenance.md`:

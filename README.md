@@ -338,6 +338,19 @@ The runner validates:
 - artifact path existence checks (when enabled);
 - provenance kind (`live-pass-instrumentation`).
 
+Once a trace is validated, you can promote it into the local sample set:
+
+```bash
+npm run promote:downstream-sample -- \
+  --source .pass-lens-iree-case-study/iree-downstream-lowering.trace.json \
+  --sample-name iree-structured-downstream \
+  --sample-dir sample-traces \
+  --redact-input --redact-command
+```
+
+This helper validates the same strict/viewer contract and, by default, copies
+referenced artifacts into `sample-traces/` (override with `--no-copy-artifacts`).
+
 If your compiler needs extra flags, pass them with `--driver-arg`:
 
 ```bash

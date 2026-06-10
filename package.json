@@ -148,7 +148,8 @@
     "package": "vsce package",
     "release:publish:marketplace": "node scripts/release-publish.js marketplace",
     "release:publish:open-vsx": "node scripts/release-publish.js open-vsx",
-    "vscode:prepublish": "npm run compile"
+    "vscode:prepublish": "npm run compile",
+    "promote:downstream-sample": "npm run compile && node scripts/promote-downstream-trace-sample.js"
   },
   "devDependencies": {
     "@vscode/vsce": "^3.9.1",
