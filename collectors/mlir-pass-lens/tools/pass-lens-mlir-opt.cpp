@@ -64,6 +64,12 @@ static cl::opt<bool>
                      cl::desc("Disable MLIR threading for deterministic traces"),
                      cl::init(true));
 
+static std::string quoteArg(llvm::StringRef value) {
+  if (value.find(' ') == llvm::StringRef::npos)
+    return value.str();
+  return "\"" + value.str() + "\"";
+}
+
 int main(int argc, char **argv) {
   llvm::InitLLVM initLLVM(argc, argv);
   mlir::registerAllPasses();
@@ -106,6 +112,18 @@ int main(int argc, char **argv) {
   traceOptions.pipeline = passPipeline;
   traceOptions.artifactDir = artifactDir;
   traceOptions.includeIr = !omitIr;
+  traceOptions.command = "pass-lens-mlir-opt " + quoteArg(inputFilename) +
+                        " --pass-pipeline=" + quoteArg(passPipeline) +
+                        " --pass-lens-trace=" + quoteArg(traceFilename) +
+                        " -o " + quoteArg(outputFilename);
+  if (disableThreading)
+    traceOptions.command += " --pass-lens-disable-threading";
+  if (omitIr)
+    traceOptions.command += " --pass-lens-no-ir";
+  if (!artifactDir.empty())
+    traceOptions.command +=
+        " --pass-lens-artifact-dir=" + quoteArg(artifactDir);
+  traceOptions.compilerName = "pass-lens-mlir-opt";
 
   mlir::PassManager pm(&context, mlir::ModuleOp::getOperationName());
 
@@ -120,12 +138,17 @@ int main(int argc, char **argv) {
   }
 
   pm.enableVerifier(true);
-  passlens::addPassLensInstrumentation(pm, std::move(traceOptions));
+  auto traceInstrumentation =
+      std::make_unique<passlens::PassLensInstrumentation>(std::move(traceOptions));
+  auto *traceInstrumentationPtr = traceInstrumentation.get();
+  pm.addInstrumentation(std::move(traceInstrumentation));
 
   if (failed(pm.run(module.get()))) {
+    traceInstrumentationPtr->setExitCode(1);
     llvm::errs() << "pass-lens: pass pipeline failed\n";
     return 1;
   }
+  traceInstrumentationPtr->setExitCode(0);
 
   std::unique_ptr<llvm::ToolOutputFile> output =
       mlir::openOutputFile(outputFilename, &errorMessage);

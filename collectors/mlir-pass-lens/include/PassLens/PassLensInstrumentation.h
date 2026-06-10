@@ -8,6 +8,7 @@
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace mlir {
@@ -31,8 +32,17 @@ struct PassLensOptions {
   std::string tool = "pass-lens-mlir";
   std::string input;
   std::string pipeline;
+  std::string command;
   std::string artifactDir;
   bool includeIr = true;
+  std::optional<int> exitCode;
+  std::string diagnostics;
+  std::string compilerName;
+  std::string compilerVersion;
+  std::string compilerGitSha;
+  std::string targetBackend;
+  std::string targetPlatform;
+  std::string targetTriple;
   PassLensMetricsHook metricsHook;
   PassLensDiagnosticsHook diagnosticsHook;
 };
@@ -47,6 +57,7 @@ public:
   void runAfterPassFailed(mlir::Pass *pass, mlir::Operation *op) override;
 
   void writeTrace();
+  void setExitCode(int exitCode);
 
 private:
   struct Impl;

@@ -23,6 +23,14 @@ Minimal valid trace:
 {
   "schemaVersion": 1,
   "tool": "my-compiler",
+  "command": "my-compiler input.mlir --pass-pipeline=...",
+  "input": "kernel.mlir",
+  "pipeline": "builtin.module(func.func(canonicalize,cse))",
+  "exitCode": 1,
+  "compiler": {
+    "name": "my-compiler",
+    "version": "git:..."
+  },
   "provenance": {
     "kind": "live-pass-instrumentation",
     "description": "Collected from the compiler pass instrumentation hook."
@@ -72,7 +80,20 @@ Guidelines:
 - `scope`, `opName`, and `nestingDepth` are optional but valuable for nested
   MLIR pass managers.
 
-## 3. Record Before/After IR
+## 3. Record Producer Metadata
+
+For reproducibility, include at least these top-level fields when available:
+
+- `command`: canonical reproduction command.
+- `exitCode`: process exit status from the run.
+- `compiler`: `{ name, version, gitSha }` as available.
+- `target`: `{ backend, platform, triple }` if relevant.
+- `diagnostics`: command-level diagnostics not tied to one stage.
+
+This makes downstream users clear about how a trace was produced before they
+inspect stage-level evidence.
+
+## 4. Record Before/After IR
 
 For real compiler pipelines, prefer artifact-backed IR:
 
@@ -101,7 +122,7 @@ Inline `irBefore` / `irAfter` is fine for tiny examples, but large inline IR
 hurts editor startup, GitHub diffs, CI uploads, and agent context size. If a
 trace may contain real functions/modules, default to sidecar files.
 
-## 4. Record Diagnostics
+## 5. Record Diagnostics
 
 Use stage-local diagnostics when a pass or verifier produced evidence tied to a
 specific stage:
@@ -119,7 +140,7 @@ specific stage:
 Use top-level `diagnostics` only for command-level stderr, driver setup errors,
 or messages that cannot be attributed to one stage.
 
-## 5. Record Metrics
+## 6. Record Metrics
 
 Metrics must be finite numbers:
 
@@ -155,7 +176,7 @@ Use `metricProfiles` when a backend has important budgets:
 }
 ```
 
-## 6. Record Status And Timing
+## 7. Record Status And Timing
 
 Recommended `status` values:
 
@@ -179,7 +200,7 @@ not available, set:
 }
 ```
 
-## 7. Set Provenance
+## 8. Set Provenance
 
 Every bundled or shared trace should tell users how it was produced:
 
@@ -193,7 +214,7 @@ Every bundled or shared trace should tell users how it was produced:
 This is a credibility label. It helps users distinguish a real collector trace
 from a shape-only example.
 
-## 8. Validate In CI
+## 9. Validate In CI
 
 Add trace validation before uploading or publishing trace artifacts:
 
@@ -220,7 +241,7 @@ producer templates rather than checked-in sidecars.
 Use `--warnings-as-errors` when CI should reject viewer-level warnings such as
 unstable pass names, duplicate stage indexes, or large inline IR.
 
-## 9. Upload Repro Evidence
+## 10. Upload Repro Evidence
 
 A useful CI artifact usually contains:
 
@@ -242,7 +263,7 @@ The important property is not the exact directory name. The important property
 is that a maintainer can open `trace.json` in Pass Lens and rerun or inspect the
 same evidence without reconstructing context from scattered logs.
 
-## 10. Common Mistakes
+## 11. Common Mistakes
 
 - Adding backend-specific top-level fields instead of using metrics,
   diagnostics, target metadata, or artifacts.
@@ -254,7 +275,7 @@ same evidence without reconstructing context from scattered logs.
 - Treating suspicious-pass reports as proven root causes without rerun,
   verifier, prefix-bisect, or source-level evidence.
 
-## References
+## 12. References
 
 - [Trace schema](trace-schema.md)
 - [JSON schema](pass-lens.schema.json)

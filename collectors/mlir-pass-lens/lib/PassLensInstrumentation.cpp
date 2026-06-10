@@ -413,6 +413,11 @@ PassLensInstrumentation::PassLensInstrumentation(PassLensOptions options)
 
 PassLensInstrumentation::~PassLensInstrumentation() { writeTrace(); }
 
+void PassLensInstrumentation::setExitCode(int exitCode) {
+  std::lock_guard<std::mutex> lock(impl->mutex);
+  impl->options.exitCode = exitCode;
+}
+
 void PassLensInstrumentation::runBeforePass(mlir::Pass *pass,
                                             mlir::Operation *op) {
   if (!shouldRecordPass(pass))
@@ -527,6 +532,56 @@ void PassLensInstrumentation::writeTrace() {
   os << "  \"collectorVersion\": "
      << jsonString(kPassLensCollectorVersion) << ",\n";
   os << "  \"tool\": " << jsonString(impl->options.tool) << ",\n";
+  if (!impl->options.command.empty())
+    os << "  \"command\": " << jsonString(impl->options.command) << ",\n";
+  if (impl->options.exitCode.has_value())
+    os << "  \"exitCode\": " << *impl->options.exitCode << ",\n";
+  if (!impl->options.diagnostics.empty())
+    os << "  \"diagnostics\": " << jsonString(impl->options.diagnostics) << ",\n";
+  if (!impl->options.compilerName.empty() ||
+      !impl->options.compilerVersion.empty() ||
+      !impl->options.compilerGitSha.empty()) {
+    os << "  \"compiler\": {\n";
+    bool firstCompilerField = true;
+    if (!impl->options.compilerName.empty()) {
+      os << "    \"name\": " << jsonString(impl->options.compilerName);
+      firstCompilerField = false;
+    }
+    if (!impl->options.compilerVersion.empty()) {
+      if (!firstCompilerField)
+        os << ",\n";
+      os << "    \"version\": " << jsonString(impl->options.compilerVersion);
+      firstCompilerField = false;
+    }
+    if (!impl->options.compilerGitSha.empty()) {
+      if (!firstCompilerField)
+        os << ",\n";
+      os << "    \"gitSha\": " << jsonString(impl->options.compilerGitSha);
+    }
+    os << "\n  },\n";
+  }
+  if (!impl->options.targetBackend.empty() ||
+      !impl->options.targetPlatform.empty() ||
+      !impl->options.targetTriple.empty()) {
+    os << "  \"target\": {\n";
+    bool firstTargetField = true;
+    if (!impl->options.targetBackend.empty()) {
+      os << "    \"backend\": " << jsonString(impl->options.targetBackend);
+      firstTargetField = false;
+    }
+    if (!impl->options.targetPlatform.empty()) {
+      if (!firstTargetField)
+        os << ",\n";
+      os << "    \"platform\": " << jsonString(impl->options.targetPlatform);
+      firstTargetField = false;
+    }
+    if (!impl->options.targetTriple.empty()) {
+      if (!firstTargetField)
+        os << ",\n";
+      os << "    \"triple\": " << jsonString(impl->options.targetTriple);
+    }
+    os << "\n  },\n";
+  }
   os << "  \"capture\": {\n";
   const bool artifactIr =
       impl->options.includeIr && !impl->options.artifactDir.empty();
