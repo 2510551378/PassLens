@@ -43,7 +43,7 @@ async function main(argv) {
   const caseName = options.caseName || defaultCase.name;
   const inputPath = path.resolve(options.inputPath || path.join(outputRoot, `${caseName}.mlir`));
   const tracePath = path.join(outputRoot, `${caseName}.trace.json`);
-  const artifactDir = path.join(outputRoot, `${caseName}-artifacts`);
+  const artifactDir = `${caseName}-artifacts`;
   const outputMlir = path.join(outputRoot, `${caseName}.output.mlir`);
   const stdoutPath = path.join(outputRoot, `${caseName}.stdout.txt`);
   const stderrPath = path.join(outputRoot, `${caseName}.stderr.txt`);

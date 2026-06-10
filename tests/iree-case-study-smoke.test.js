@@ -103,7 +103,7 @@ test('smoke script validates a structured downstream driver fixture', () => {
 
     fs.mkdirSync(outputRoot, { recursive: true });
     fs.writeFileSync(inputPath, 'module { func.func @main() { return } }', 'utf8');
-    const mockDriverContent = `
+const mockDriverContent = `
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -128,7 +128,11 @@ if (!tracePath) {
   process.exit(1);
 }
 
-const artifactRelDir = artifactDir ? path.basename(artifactDir) : 'mock-artifacts';
+const traceDirectory = path.dirname(tracePath);
+const artifactRelDir = artifactDir || 'mock-artifacts';
+const resolvedArtifactDir = path.isAbsolute(artifactRelDir)
+  ? artifactRelDir
+  : path.join(traceDirectory, artifactRelDir);
 const trace = {
   schemaVersion: 1,
   tool: 'mock-downstream-driver',
@@ -159,9 +163,9 @@ const trace = {
 
 fs.mkdirSync(path.dirname(tracePath), { recursive: true });
 if (artifactDir) {
-  fs.mkdirSync(artifactDir, { recursive: true });
-  fs.writeFileSync(path.join(artifactDir, 'stage-000000.before.mlir'), '(before)', 'utf8');
-  fs.writeFileSync(path.join(artifactDir, 'stage-000000.after.mlir'), '(after)', 'utf8');
+  fs.mkdirSync(resolvedArtifactDir, { recursive: true });
+  fs.writeFileSync(path.join(resolvedArtifactDir, 'stage-000000.before.mlir'), '(before)', 'utf8');
+  fs.writeFileSync(path.join(resolvedArtifactDir, 'stage-000000.after.mlir'), '(after)', 'utf8');
 }
 
 fs.writeFileSync(tracePath, JSON.stringify(trace, null, 2), 'utf8');
