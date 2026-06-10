@@ -97,6 +97,8 @@ function parseArgs(argv) {
     if (arg === '--target') {
       options.target = argv[i + 1];
       i += 1;
+    } else if (arg === '--dry-run') {
+      options.dryRun = true;
     } else if (arg === '--execute') {
       options.dryRun = false;
     } else if (arg === '--root') {
@@ -131,14 +133,15 @@ function printUsage() {
   process.stdout.write(`Pass Lens release publishing helper
 
 Usage:
-  node scripts/release-publish.js <target> [--execute] [--root <repo>]
+  node scripts/release-publish.js <target> [--dry-run] [--execute] [--root <repo>]
 
 Targets:
   marketplace  publish with vsce (requires VSCE_PAT).
   open-vsx     publish with ovsx (requires OVSX_PAT).
 
 By default, this runs in dry-run mode and prints the command only.
-Use --execute to run the selected publish command.
+Use --dry-run (explicit) or --execute to control whether the selected publish
+command is run.
 `);
 }
 

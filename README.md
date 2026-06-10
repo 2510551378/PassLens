@@ -129,8 +129,10 @@ npm run release:smoke
 Then publish with an explicit target (default is dry-run):
 
 ```powershell
-npm run release:publish:marketplace
-npm run release:publish:open-vsx
+npm run release:publish:marketplace      # dry-run preview plan
+npm run release:publish:marketplace -- --execute   # real publish
+npm run release:publish:open-vsx          # dry-run preview plan
+npm run release:publish:open-vsx -- --execute      # real publish
 ```
 
 See [`docs/release-readiness.md`](docs/release-readiness.md) for the

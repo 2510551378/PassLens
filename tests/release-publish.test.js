@@ -26,6 +26,14 @@ test('parseArgs supports explicit --target and --execute', () => {
   assert.equal(options.root, 'repo');
 });
 
+test('parseArgs supports explicit --dry-run', () => {
+  const options = parseArgs(['--target', 'marketplace', '--dry-run', '--root', 'repo']);
+
+  assert.equal(options.target, 'marketplace');
+  assert.equal(options.dryRun, true);
+  assert.equal(options.root, 'repo');
+});
+
 test('parseArgs rejects unknown target', () => {
   assert.throws(() => {
     parseArgs(['bad-target']);

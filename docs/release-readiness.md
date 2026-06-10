@@ -29,9 +29,9 @@ npm run package
 
 Publishing itself is intentionally guarded:
 
-- VS Code Marketplace: `node scripts/release-publish.js marketplace` for a dry run,
+- VS Code Marketplace: `node scripts/release-publish.js marketplace --dry-run` for a dry run,
   `node scripts/release-publish.js marketplace --execute` to actually publish.
-- Open VSX: `node scripts/release-publish.js open-vsx` for a dry run,
+- Open VSX: `node scripts/release-publish.js open-vsx --dry-run` for a dry run,
   `node scripts/release-publish.js open-vsx --execute` to actually publish.
 
 The publish commands are also available as npm scripts:
