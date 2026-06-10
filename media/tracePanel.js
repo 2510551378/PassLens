@@ -17,6 +17,8 @@
   const maxOverviewSegments = 600;
   const stageImpactCache = new WeakMap(trace.stages.map((stage) => [stage, metricImpact(stage)]));
   const maxMetricImpact = Math.max(1, ...trace.stages.map((stage) => stageImpactCache.get(stage) ?? 0));
+  const anomaliesByStage = buildAnomaliesByStage(traceAnomalies);
+  const slowestStageIndex = computeSlowestStageIndex(trace.stages);
   let latestVisibleStages = [];
   let pendingTimelineRender = false;
   
@@ -161,15 +163,7 @@
   }
   
   function slowestIndex() {
-    let bestIndex = -1;
-    let bestDuration = -1;
-    trace.stages.forEach((stage, index) => {
-      if (typeof stage.durationMs === 'number' && stage.durationMs > bestDuration) {
-        bestDuration = stage.durationMs;
-        bestIndex = index;
-      }
-    });
-    return bestIndex;
+    return slowestStageIndex;
   }
   
   function firstAnomalyIndex() {
@@ -181,7 +175,7 @@
   }
   
   function anomaliesForStage(stageIndex) {
-    return traceAnomalies.filter((entry) => entry.stageIndex === stageIndex);
+    return anomaliesByStage.get(stageIndex) ?? [];
   }
 
   function visibleStageEntries() {
@@ -325,6 +319,32 @@
     renderIssuePanel();
     renderTimeline();
     renderDetails();
+  }
+
+  function buildAnomaliesByStage(anomalies) {
+    const byStage = new Map();
+    for (const anomaly of anomalies) {
+      const stageIndex = anomaly.stageIndex;
+      if (typeof stageIndex !== 'number') {
+        continue;
+      }
+      const entries = byStage.get(stageIndex) ?? [];
+      entries.push(anomaly);
+      byStage.set(stageIndex, entries);
+    }
+    return byStage;
+  }
+
+  function computeSlowestStageIndex(stages) {
+    let bestIndex = -1;
+    let bestDuration = -1;
+    stages.forEach((stage, index) => {
+      if (typeof stage.durationMs === 'number' && stage.durationMs > bestDuration) {
+        bestDuration = stage.durationMs;
+        bestIndex = index;
+      }
+    });
+    return bestIndex;
   }
 
   function handleKeydown(event) {
