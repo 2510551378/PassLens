@@ -129,6 +129,11 @@ npm run release:check
 See [`docs/release-readiness.md`](docs/release-readiness.md) for the
 Marketplace / Open VSX checklist.
 
+Hands-on guides:
+
+- [`docs/first-bad-pass-workflow.md`](docs/first-bad-pass-workflow.md)
+- [`docs/from-ir-dumps-to-observability.md`](docs/from-ir-dumps-to-observability.md)
+
 ## Usage Guide
 
 ### 1. Inspect a Trace

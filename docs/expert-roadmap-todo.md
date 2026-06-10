@@ -391,8 +391,12 @@ repro/
   - `.github/workflows/pass-lens-demo.yml` validates public trace artifacts and
     uploads a small `pass-lens-demo-evidence` bundle containing `trace.json` and
     artifact-backed IR sidecars.
-- [ ] Write "Finding the First Bad MLIR Pass with Pass Lens".
-- [ ] Write "From IR Dumps to Compiler Observability".
+- [x] Write "Finding the First Bad MLIR Pass with Pass Lens".
+  - Commit: this change.
+  - Added `docs/first-bad-pass-workflow.md` and linked it from README.
+- [x] Write "From IR Dumps to Compiler Observability".
+  - Commit: this change.
+  - Added `docs/from-ir-dumps-to-observability.md` and linked it from README.
 - [ ] Prepare an MLIR discourse post with a concrete real trace demo.
 - [ ] Consider Triton / IREE / torch-mlir issue-style demos.
 
