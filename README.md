@@ -110,6 +110,8 @@ Good first samples:
 - `External IR artifacts`: demonstrates lazy artifact-backed IR loading.
 - `Toy MLIR pipeline`: smallest end-to-end viewer smoke test.
 - `Long lowering pipeline`: useful for filtering, navigation, and slow-pass UX.
+- `Live IREE lowering (PassInstrumentation)`: redacted real downstream
+  structured sample from L20 with artifact-backed stages.
 
 Open your own trace with `Pass Lens: Open Trace File`. The trace should follow
 [`docs/pass-lens.schema.json`](docs/pass-lens.schema.json).
