@@ -194,6 +194,7 @@ Acceptance criteria for a successful smoke run:
 Hands-on guides:
 
 - [`docs/first-bad-pass-workflow.md`](docs/first-bad-pass-workflow.md)
+- [`docs/issue-style-demo-playbook.md`](docs/issue-style-demo-playbook.md)
 - [`docs/mlir-discourse-post-draft.md`](docs/mlir-discourse-post-draft.md)
 - [`docs/from-ir-dumps-to-observability.md`](docs/from-ir-dumps-to-observability.md)
 

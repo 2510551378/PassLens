@@ -417,7 +417,10 @@ repro/
   - Added `docs/from-ir-dumps-to-observability.md` and linked it from README.
 - [x] Prepare an MLIR discourse post with a concrete real trace demo.
   - Added `docs/mlir-discourse-post-draft.md` with a ready-to-post draft and reproducible steps.
-- [ ] Consider Triton / IREE / torch-mlir issue-style demos.
+- [x] Consider Triton / IREE / torch-mlir issue-style demos.
+  - Commit: this change.
+  - Added `docs/issue-style-demo-playbook.md` as a reproducible workflow for
+    trace-driven issue drafting and downstream evidence handoff.
 
 ## Six-Month Execution Plan
 
