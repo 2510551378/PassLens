@@ -16,11 +16,13 @@ if (require.main === module) {
 
 function main(argv) {
   const options = parseArgs(argv);
-  const targets = resolveTargets(options);
+  const { targets, skippedTargets } = resolveTargetsWithDiagnostics(options);
   if (targets.length === 0) {
-    throw new Error(
-      'No downstream targets selected. Set PASS_LENS_IREE_DRIVER and/or PASS_LENS_TORCH_MLIR_DRIVER, or pass --iree/--torch.'
-    );
+    throw new Error(formatNoTargetError(skippedTargets, options));
+  }
+
+  if (skippedTargets.length > 0) {
+    returnLine(formatSkippedTargetsWarning(skippedTargets));
   }
 
   const errors = [];
@@ -79,7 +81,12 @@ function parseArgs(argv) {
 }
 
 function resolveTargets(options) {
+  return resolveTargetsWithDiagnostics(options).targets;
+}
+
+function resolveTargetsWithDiagnostics(options) {
   const candidates = [];
+  const skippedTargets = [];
   if (!options.all) {
     if (options.forceIree) {
       candidates.push('iree');
@@ -96,6 +103,16 @@ function resolveTargets(options) {
     if (candidate === 'iree') {
       const driver = process.env.PASS_LENS_IREE_DRIVER;
       if (!driver) {
+        skippedTargets.push({
+          key: 'iree',
+          label: 'IREE structured case study',
+          requiredEnv: 'PASS_LENS_IREE_DRIVER',
+          script: 'npm run smoke:iree-case-study',
+          envExample: {
+            powershell: '$env:PASS_LENS_IREE_DRIVER = "C:\\path\\to\\downstream-pass-lens-driver"',
+            posix: 'export PASS_LENS_IREE_DRIVER="/path/to/downstream-pass-lens-driver"'
+          }
+        });
         continue;
       }
       targets.push({
@@ -107,6 +124,16 @@ function resolveTargets(options) {
     } else if (candidate === 'torch') {
       const driver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
       if (!driver) {
+        skippedTargets.push({
+          key: 'torch',
+          label: 'Torch-MLIR structured case study',
+          requiredEnv: 'PASS_LENS_TORCH_MLIR_DRIVER',
+          script: 'npm run smoke:torch-mlir-case-study',
+          envExample: {
+            powershell: '$env:PASS_LENS_TORCH_MLIR_DRIVER = "C:\\path\\to\\downstream-pass-lens-driver"',
+            posix: 'export PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-pass-lens-driver"'
+          }
+        });
         continue;
       }
       targets.push({
@@ -118,7 +145,7 @@ function resolveTargets(options) {
     }
   }
 
-  return targets;
+  return { targets, skippedTargets };
 }
 
 function runTarget(target, minQuality) {
@@ -147,6 +174,52 @@ function runTarget(target, minQuality) {
     success: child.status === 0,
     summary: `status=${child.status}, ${summary || 'no output'}`
   };
+}
+
+function formatNoTargetError(skippedTargets, options) {
+  const requested = [];
+  if (options.forceIree) {
+    requested.push('IREE (--iree)');
+  }
+  if (options.forceTorch) {
+    requested.push('Torch-MLIR (--torch)');
+  }
+  if (options.all || requested.length === 0) {
+    requested.push('IREE/torch-mlir (default auto-detection)');
+  }
+
+  const header = `No runnable downstream case study target selected.`;
+  const missingLines = skippedTargets.length > 0
+    ? skippedTargets.map((target) => (
+        `- ${target.label}: set ${target.requiredEnv} and run ${target.script}.`
+      ))
+    : ['- Set PASS_LENS_IREE_DRIVER and/or PASS_LENS_TORCH_MLIR_DRIVER.'];
+
+  const envHints = skippedTargets
+    .map((target) => `- ${target.label}: ${target.envExample.powershell} (powershell) / ${target.envExample.posix} (shell)`)
+    .join('\n');
+
+  const commandHints = [
+    '- Then set one env and run:',
+    '  # IREE only',
+    '  npm run smoke:iree-case-study',
+    '  # Torch-MLIR only',
+    '  npm run smoke:torch-mlir-case-study',
+    '  # Both (auto-detected)',
+    '  npm run smoke:downstream-case-studies',
+    '',
+    `Requested scope: ${requested.join(', ')}`
+  ].join('\n');
+
+  const envHintSection = envHints.length > 0 ? `\nExamples:\n${envHints}` : '';
+  return `${header}\nMissing:\n${missingLines.join('\n')}${envHintSection}\n${commandHints}`;
+}
+
+function formatSkippedTargetsWarning(skippedTargets) {
+  const lines = skippedTargets.map((target) => (
+    `Skipping ${target.label}: missing ${target.requiredEnv}`
+  ));
+  return `Warning: ${lines.join('; ')}`;
 }
 
 function printUsage() {
@@ -182,6 +255,7 @@ module.exports = {
   main,
   parseArgs,
   resolveTargets,
+  resolveTargetsWithDiagnostics,
   runTarget
 };
 

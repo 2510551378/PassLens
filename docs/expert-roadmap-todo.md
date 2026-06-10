@@ -438,12 +438,13 @@ repro/
 
 ### Month 1-3: Real Collector Workflow
 
-- [ ] Integrate structured collector into one real downstream compiler.
+- [x] Integrate structured collector into one real downstream compiler.
+  - Commit: this change.
   - Acceptance:
-    - run `smoke:iree-case-study` and/or `smoke:torch-mlir-case-study` successfully;
-    - strict validation + artifact check are clean on generated traces;
-    - output trace is marked `live-pass-instrumentation`.
-  - Follow the shared acceptance checklist in:
+    - run `smoke:iree-case-study` and `smoke:torch-mlir-case-study` successfully.
+    - strict validation + artifact check are clean on generated traces.
+    - output traces are marked `live-pass-instrumentation`.
+  - Follow and satisfy the shared acceptance checklist in:
     [`docs/downstream-structured-integration-workflow.md`](downstream-structured-integration-workflow.md)
 - [x] Add artifact lazy loading.
   - Commit: this change.

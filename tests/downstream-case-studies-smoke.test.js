@@ -6,8 +6,10 @@ const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const {
+  main,
   parseArgs,
-  resolveTargets
+  resolveTargets,
+  resolveTargetsWithDiagnostics
 } = require('../scripts/downstream-case-studies-smoke.js');
 
 test('parseArgs handles iree flag', () => {
@@ -64,6 +66,54 @@ test('resolveTargets respects forced selection without driver env', () => {
     delete process.env.PASS_LENS_IREE_DRIVER;
     const targets = resolveTargets(parseArgs(['--iree']));
     assert.equal(targets.length, 0);
+  } finally {
+    if (previousTorchDriver === undefined) {
+      delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    } else {
+      process.env.PASS_LENS_TORCH_MLIR_DRIVER = previousTorchDriver;
+    }
+    if (previousIreeDriver === undefined) {
+      delete process.env.PASS_LENS_IREE_DRIVER;
+    } else {
+      process.env.PASS_LENS_IREE_DRIVER = previousIreeDriver;
+    }
+  }
+});
+
+test('resolveTargetsWithDiagnostics reports missing requirements for forced targets', () => {
+  const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+  const previousIreeDriver = process.env.PASS_LENS_IREE_DRIVER;
+  try {
+    delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    delete process.env.PASS_LENS_IREE_DRIVER;
+    const result = resolveTargetsWithDiagnostics(parseArgs(['--iree']));
+    assert.equal(result.targets.length, 0);
+    assert.equal(result.skippedTargets.length, 1);
+    assert.equal(result.skippedTargets[0].requiredEnv, 'PASS_LENS_IREE_DRIVER');
+  } finally {
+    if (previousTorchDriver === undefined) {
+      delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    } else {
+      process.env.PASS_LENS_TORCH_MLIR_DRIVER = previousTorchDriver;
+    }
+    if (previousIreeDriver === undefined) {
+      delete process.env.PASS_LENS_IREE_DRIVER;
+    } else {
+      process.env.PASS_LENS_IREE_DRIVER = previousIreeDriver;
+    }
+  }
+});
+
+test('main emits actionable message when no required downstream driver is available', () => {
+  const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+  const previousIreeDriver = process.env.PASS_LENS_IREE_DRIVER;
+  try {
+    delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    delete process.env.PASS_LENS_IREE_DRIVER;
+    assert.throws(
+      () => main(['--iree']),
+      /No runnable downstream case study target selected|PASS_LENS_IREE_DRIVER|npm run smoke:iree-case-study/
+    );
   } finally {
     if (previousTorchDriver === undefined) {
       delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
