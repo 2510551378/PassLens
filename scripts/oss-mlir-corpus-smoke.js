@@ -214,7 +214,7 @@ async function runInput(entry, inputPath, sourceUrl) {
     tracePath,
     artifactDir,
     stageCount: Array.isArray(trace.stages) ? trace.stages.length : 0,
-    artifactCount: countFiles(artifactDir),
+    artifactCount: countFiles(path.join(traceDirectory, artifactDir)),
     stderrPath
   };
 }
