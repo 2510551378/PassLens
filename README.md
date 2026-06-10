@@ -276,6 +276,14 @@ $env:PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-driver"
 npm run smoke:torch-mlir-case-study
 ```
 
+Or run both available downstream structured case studies in one shot:
+
+```powershell
+$env:PASS_LENS_IREE_DRIVER="/path/to/iree-driver"
+$env:PASS_LENS_TORCH_MLIR_DRIVER="/path/to/torch-mlir-driver"
+npm run smoke:downstream-case-studies
+```
+
 The runner validates:
 
 - zero driver exit code;
@@ -424,6 +432,7 @@ npm run smoke:large-trace
 $env:PASS_LENS_HEIR_ROOT="/path/to/heir"; npm run smoke:heir-case-study
 $env:PASS_LENS_IREE_DRIVER="/path/to/downstream-driver"; npm run smoke:iree-case-study
 npm run smoke:torch-mlir-case-study
+npm run smoke:downstream-case-studies
 npm run package
 ```
 
