@@ -296,3 +296,204 @@ test('smoke script runs both available downstream case studies', () => {
       fs.rmSync(root, { recursive: true, force: true });
     }
 });
+
+test('fail-fast stops after the first downstream target failure', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-downstream-failfast-'));
+  const ireeCaseRoot = path.join(root, 'iree');
+  const torchCaseRoot = path.join(root, 'torch');
+  const markerDir = path.join(root, 'markers');
+  const ireeCalledMarker = path.join(markerDir, 'iree-called');
+  const torchCalledMarker = path.join(markerDir, 'torch-called');
+  const ireeDriverScript = path.join(root, 'mock-iree-driver.js');
+  const torchDriverScript = path.join(root, 'mock-torch-driver.js');
+
+  try {
+    fs.mkdirSync(markerDir, { recursive: true });
+
+    const goodDriverJs = [
+      "const fs = require('node:fs');",
+      "const path = require('node:path');",
+      "const markerPath = process.env.PASS_LENS_TEST_MARKER;",
+      '',
+      'if (markerPath) {',
+      "  fs.mkdirSync(path.dirname(markerPath), { recursive: true });",
+      "  fs.writeFileSync(markerPath, 'ok', 'utf8');",
+      '}',
+      '',
+      'const args = process.argv.slice(2);',
+      'let tracePath = \'\';',
+      'let artifactDir = \'\';',
+      'let outputMlir = \'\';',
+      '',
+      'for (let i = 0; i < args.length; i += 1) {',
+      '  const arg = args[i];',
+      "  if (arg.startsWith('--pass-lens-trace=')) {",
+      "    tracePath = arg.slice('--pass-lens-trace='.length);",
+      "  } else if (arg.startsWith('--pass-lens-artifact-dir=')) {",
+      "    artifactDir = arg.slice('--pass-lens-artifact-dir='.length);",
+      "  } else if (arg === '-o' && args[i + 1]) {",
+      '    outputMlir = args[i + 1];',
+      '    i += 1;',
+      '  }',
+      '}',
+      '',
+      'if (!tracePath) {',
+      '  process.exit(1);',
+      '}',
+      '',
+      'const traceDirectory = path.dirname(tracePath);',
+      "const artifactRelDir = artifactDir || 'mock-artifacts';",
+      'const resolvedArtifactDir = path.isAbsolute(artifactRelDir)',
+      '  ? artifactRelDir',
+      '  : path.join(traceDirectory, artifactRelDir);',
+      '',
+      'const trace = {',
+      '  schemaVersion: 1,',
+      "  tool: 'mock-downstream-driver',",
+      "  command: 'mock-downstream-driver',",
+      "  collectorVersion: 'mock.1',",
+      "  provenance: { kind: 'live-pass-instrumentation', description: 'mock case study driver' },",
+      "  capture: { ir: 'artifact', metrics: true, timing: true },",
+      "  input: 'input.mlir',",
+      "  pipeline: 'builtin.module(func.func(canonicalize,cse))',",
+      '  stages: [',
+      '    {',
+      '      index: 0,',
+      "      pass: 'canonicalize',",
+      "      status: 'changed',",
+      '      changed: true,',
+      '      durationMs: 1.0,',
+      "      verifier: 'ok',",
+      "      opName: 'builtin.module',",
+      "      argument: 'canonicalize',",
+      '      metricsBefore: { ops: 7 },',
+      '      metricsAfter: { ops: 9 },',
+      '      artifacts: {',
+      "        beforePath: artifactRelDir + '/stage-000000.before.mlir',",
+      "        afterPath: artifactRelDir + '/stage-000000.after.mlir'",
+      '      }',
+      '    }',
+      '  ]',
+      '};',
+      '',
+      "fs.mkdirSync(path.dirname(tracePath), { recursive: true });",
+      'if (artifactDir) {',
+      '  fs.mkdirSync(resolvedArtifactDir, { recursive: true });',
+      "  fs.writeFileSync(path.join(resolvedArtifactDir, 'stage-000000.before.mlir'), '(before)', 'utf8');",
+      "  fs.writeFileSync(path.join(resolvedArtifactDir, 'stage-000000.after.mlir'), '(after)', 'utf8');",
+      '}',
+      "fs.writeFileSync(tracePath, JSON.stringify(trace, null, 2), 'utf8');",
+      'if (outputMlir) {',
+      "  fs.writeFileSync(outputMlir, 'module {}', 'utf8');",
+      '}',
+      'process.exit(0);',
+      ''
+    ].join('\n');
+
+    fs.writeFileSync(ireeDriverScript, goodDriverJs, 'utf8');
+    fs.writeFileSync(torchDriverScript, goodDriverJs, 'utf8');
+
+    const ireeDriver = path.join(root, 'mock-iree-driver.cmd');
+    const torchDriver = path.join(root, 'mock-torch-driver.cmd');
+    if (process.platform === 'win32') {
+      fs.writeFileSync(
+        ireeDriver,
+        `@echo off\r\nset PASS_LENS_TEST_MARKER=${ireeCalledMarker}\r\n"${process.execPath}" "${ireeDriverScript}" %*\r\n`,
+        'utf8'
+      );
+      fs.writeFileSync(
+        torchDriver,
+        `@echo off\r\nset PASS_LENS_TEST_MARKER=${torchCalledMarker}\r\n"${process.execPath}" "${torchDriverScript}" %*\r\n`,
+        'utf8'
+      );
+    } else {
+      fs.writeFileSync(
+        ireeDriver,
+        `#!/bin/sh\nexport PASS_LENS_TEST_MARKER=${ireeCalledMarker}\n"${process.execPath}" "${ireeDriverScript}" "$@"\n`,
+        'utf8'
+      );
+      fs.writeFileSync(
+        torchDriver,
+        `#!/bin/sh\nexport PASS_LENS_TEST_MARKER=${torchCalledMarker}\n"${process.execPath}" "${torchDriverScript}" "$@"\n`,
+        'utf8'
+      );
+      fs.chmodSync(ireeDriver, 0o755);
+      fs.chmodSync(torchDriver, 0o755);
+    }
+
+    const previousIreeDriver = process.env.PASS_LENS_IREE_DRIVER;
+    const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    const previousIreeCaseDir = process.env.PASS_LENS_IREE_CASE_DIR;
+    const previousTorchCaseDir = process.env.PASS_LENS_TORCH_MLIR_CASE_DIR;
+    const previousIreePipeline = process.env.PASS_LENS_IREE_PIPELINE;
+    const previousTorchPipeline = process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
+    const previousQuality = process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY;
+
+    try {
+      process.env.PASS_LENS_IREE_DRIVER = ireeDriver;
+      process.env.PASS_LENS_TORCH_MLIR_DRIVER = torchDriver;
+      process.env.PASS_LENS_IREE_CASE_DIR = ireeCaseRoot;
+      process.env.PASS_LENS_TORCH_MLIR_CASE_DIR = torchCaseRoot;
+      process.env.PASS_LENS_IREE_PIPELINE = 'builtin.module(func.func(canonicalize))';
+      process.env.PASS_LENS_TORCH_MLIR_PIPELINE = 'builtin.module(func.func(canonicalize))';
+
+      const result = spawnSync(process.execPath, [
+        path.join(process.cwd(), 'scripts', 'downstream-case-studies-smoke.js'),
+        '--iree',
+        '--torch',
+        '--fail-fast',
+        '--min-quality',
+        '101'
+      ], {
+        cwd: process.cwd(),
+        encoding: 'utf8'
+      });
+
+      assert.equal(result.status, 1);
+      assert.equal(fs.existsSync(ireeCalledMarker), true);
+      assert.equal(fs.existsSync(torchCalledMarker), false);
+
+      const ireeSummaryPath = path.join(ireeCaseRoot, 'summary.json');
+      const ireeSummary = JSON.parse(fs.readFileSync(ireeSummaryPath, 'utf8'));
+      assert.equal(ireeSummary.errors.length > 0, true);
+    } finally {
+      if (previousIreeDriver === undefined) {
+        delete process.env.PASS_LENS_IREE_DRIVER;
+      } else {
+        process.env.PASS_LENS_IREE_DRIVER = previousIreeDriver;
+      }
+      if (previousTorchDriver === undefined) {
+        delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+      } else {
+        process.env.PASS_LENS_TORCH_MLIR_DRIVER = previousTorchDriver;
+      }
+      if (previousIreeCaseDir === undefined) {
+        delete process.env.PASS_LENS_IREE_CASE_DIR;
+      } else {
+        process.env.PASS_LENS_IREE_CASE_DIR = previousIreeCaseDir;
+      }
+      if (previousTorchCaseDir === undefined) {
+        delete process.env.PASS_LENS_TORCH_MLIR_CASE_DIR;
+      } else {
+        process.env.PASS_LENS_TORCH_MLIR_CASE_DIR = previousTorchCaseDir;
+      }
+      if (previousIreePipeline === undefined) {
+        delete process.env.PASS_LENS_IREE_PIPELINE;
+      } else {
+        process.env.PASS_LENS_IREE_PIPELINE = previousIreePipeline;
+      }
+      if (previousTorchPipeline === undefined) {
+        delete process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
+      } else {
+        process.env.PASS_LENS_TORCH_MLIR_PIPELINE = previousTorchPipeline;
+      }
+      if (previousQuality === undefined) {
+        delete process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY;
+      } else {
+        process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY = previousQuality;
+      }
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
