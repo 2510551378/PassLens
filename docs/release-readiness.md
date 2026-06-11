@@ -61,16 +61,18 @@ readiness summary.
 
 Publishing itself is intentionally guarded:
 
-- VS Code Marketplace: `node scripts/release-publish.js marketplace --dry-run` for a dry run,
-  `node scripts/release-publish.js marketplace --execute` to actually publish.
-- Open VSX: `node scripts/release-publish.js open-vsx --dry-run` for a dry run,
-  `node scripts/release-publish.js open-vsx --execute` to actually publish.
+- VS Code Marketplace: `npm run release:publish:marketplace:json` for dry run,
+  `npm run release:publish:marketplace:execute` to publish.
+- Open VSX: `npm run release:publish:open-vsx:json` for a dry run,
+  `npm run release:publish:open-vsx:execute` to publish.
 
 The publish commands are also available as npm scripts:
 
 ```powershell
-npm run release:publish:marketplace
-npm run release:publish:open-vsx
+npm run release:publish:marketplace:json
+npm run release:publish:marketplace:execute
+npm run release:publish:open-vsx:json
+npm run release:publish:open-vsx:execute
 ```
 
 Dry-run mode prints the exact CLI invocation and verifies that the VSIX

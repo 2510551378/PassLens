@@ -25,9 +25,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - marketplace
-          - open-vsx
+        include:
+          - target: marketplace
+            publishScript: release:publish:marketplace:execute
+          - target: open-vsx
+            publishScript: release:publish:open-vsx:execute
     if: |
       github.repository == '2510551378/PassLens' &&
       (github.event_name == 'workflow_dispatch')
@@ -89,4 +91,4 @@ jobs:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
         run: |
-          npm run release:publish:${{ matrix.target }} -- --execute
+          npm run ${{ matrix.publishScript }}
