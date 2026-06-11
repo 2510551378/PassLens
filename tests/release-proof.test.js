@@ -20,6 +20,22 @@ test('parseArgs accepts root and json/output options', () => {
   assert.equal(options.output, 'artifacts/release-proof.json');
 });
 
+test('parseArgs tolerates npm-style -- separator', () => {
+  const options = parseArgs(['--', '--root', '/tmp/pass-lens', '--json', '--output', 'artifacts/release-proof.json']);
+
+  assert.equal(options.root, '/tmp/pass-lens');
+  assert.equal(options.json, true);
+  assert.equal(options.output, 'artifacts/release-proof.json');
+});
+
+test('parseArgs treats single positional path as output when --json is active', () => {
+  const options = parseArgs(['--root', '.', '--json', 'artifacts/release-proof-positional.json']);
+
+  assert.equal(options.root, '.');
+  assert.equal(options.json, true);
+  assert.equal(options.output, 'artifacts/release-proof-positional.json');
+});
+
 test('buildReleaseProof returns publish readiness payload for repository context', () => {
   const repoRoot = path.resolve(__dirname, '..');
   const packageJson = JSON.parse(fs.readFileSync(path.join(repoRoot, 'package.json'), 'utf8'));

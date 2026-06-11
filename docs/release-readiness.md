@@ -25,7 +25,7 @@ The check validates:
 Before you publish, you can also generate an executable publish plan:
 
 ```powershell
-npm run release:preview:plan -- --output .github/release-preview-plan.json
+npm run release:preview:plan -- -- --output .github/release-preview-plan.json
 ```
 
 This command writes a structured summary for `marketplace` and `open-vsx` plans,

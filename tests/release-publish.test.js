@@ -43,6 +43,15 @@ test('parseArgs supports --json and --output', () => {
   assert.equal(options.output, 'artifacts/publish.json');
 });
 
+test('parseArgs tolerates npm-style -- separator before target', () => {
+  const options = parseArgs(['--', 'marketplace', '--json']);
+
+  assert.equal(options.target, 'marketplace');
+  assert.equal(options.dryRun, true);
+  assert.equal(options.json, true);
+  assert.equal(options.root, process.cwd());
+});
+
 test('parseArgs rejects unknown target', () => {
   assert.throws(() => {
     parseArgs(['bad-target']);

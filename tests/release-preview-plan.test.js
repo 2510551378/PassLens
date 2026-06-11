@@ -15,6 +15,20 @@ test('parseArgs parses json and output options', () => {
   assert.equal(options.output, tempOutput);
 });
 
+test('parseArgs tolerates npm-style -- separator', () => {
+  const tempOutput = path.join(os.tmpdir(), 'pass-lens-release-preview-plan-sep.json');
+  const options = parseArgs(['--', '--output', tempOutput, '--json']);
+  assert.equal(options.json, true);
+  assert.equal(options.output, tempOutput);
+});
+
+test('parseArgs treats single positional path as output when --json is active', () => {
+  const tempOutput = path.join(os.tmpdir(), 'pass-lens-release-preview-plan-positional.json');
+  const options = parseArgs(['--json', tempOutput]);
+  assert.equal(options.json, true);
+  assert.equal(options.output, tempOutput);
+});
+
 test('isExecutable reflects required environment token availability', () => {
   const plan = {
     target: 'marketplace',

@@ -61,25 +61,34 @@ function isExecutable(plan, root) {
 }
 
 function parseArgs(argv) {
+  const args = Array.isArray(argv) ? [...argv] : [];
+  while (args.length > 0 && args[0] === '--') {
+    args.shift();
+  }
+
   const options = {
     json: false,
     root: process.cwd(),
     output: undefined
   };
 
-  for (let index = 0; index < argv.length; index += 1) {
-    const arg = argv[index];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
     if (arg === '--json') {
       options.json = true;
     } else if (arg === '--root') {
-      options.root = argv[index + 1] ?? options.root;
+      options.root = args[index + 1] ?? options.root;
       index += 1;
     } else if (arg === '--output') {
-      options.output = argv[index + 1] ?? options.output;
+      options.output = args[index + 1] ?? options.output;
       index += 1;
+    } else if (arg.startsWith('--output=')) {
+      options.output = arg.slice('--output='.length);
     } else if (arg === '--help' || arg === '-h') {
       printUsage();
       process.exit(0);
+    } else if (!arg.startsWith('--') && options.output === undefined && options.json) {
+      options.output = arg;
     } else {
       throw new Error(`Unknown argument: ${arg}`);
     }
