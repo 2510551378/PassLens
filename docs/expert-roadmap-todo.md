@@ -404,7 +404,10 @@ repro/
     onboarding checks.
 
 - [ ] Publish VS Code Marketplace preview.
+  - `docs/release-publication-blockers.md` and `release:publish` playbook show the
+    explicit token/command/verification steps.
 - [ ] Publish Open VSX preview.
+  - Clear both checklist items in `docs/release-publication-blockers.md` before marking complete.
 - [x] Add 30-second demo GIF to README.
 - [x] Add an executable release readiness check before publishing.
   - `npm run release:check` validates public entry-point docs, Marketplace

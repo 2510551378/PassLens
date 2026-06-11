@@ -11,6 +11,7 @@ const requiredDocs = [
   'docs/sample-provenance.md',
   'docs/collector-author-guide.md',
   'CONTRIBUTING.md',
+  'docs/release-publication-blockers.md',
   'docs/pass-lens.schema.json',
   'docs/images/pass-lens-logo.png',
   'docs/images/pass-lens-hero.png',

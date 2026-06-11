@@ -17,6 +17,7 @@ The check validates:
   work.
 - Public docs required by new users and collector authors.
 - `CONTRIBUTING.md` contribution rules and sample/collector contribution checks.
+- `docs/release-publication-blockers.md` publication blocker checklist.
 - Bundled sample traces with credible `provenance.kind` coverage.
 - `docs/sample-provenance.md` and `sample-traces/` are kept in sync (every sample
   JSON has a matching provenance record).
@@ -56,6 +57,9 @@ This runs the release smoke checks, packages VSIX, and writes a
 
 For a step-by-step dry-run/execute sequence and post-publish verification checklist,
 follow [`release-publish-playbook.md`](release-publish-playbook.md).
+
+For the explicit external-release blocker tracking checklist, see
+[`release-publication-blockers.md`](release-publication-blockers.md).
 
 CI can also generate and persist the publish plan:
 
