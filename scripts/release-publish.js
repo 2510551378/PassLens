@@ -35,13 +35,33 @@ function main(options) {
   const token = process.env[plan.requiredEnv];
 
   if (dryRun) {
-    console.log('[dry-run] release publish plan');
-    console.log(`target=${target}`);
-    console.log(`vsix=${plan.vsix}`);
-    console.log(`command=${plan.command}`);
-    console.log(`${plan.command} ${plan.args.join(' ')}`);
-    console.log(`required env token: ${plan.requiredEnv}`);
-    console.log(`token available: ${token ? 'yes' : 'no'}`);
+    const output = {
+      ok: true,
+      mode: 'dry-run',
+      target,
+      requiredEnv: plan.requiredEnv,
+      tokenAvailable: Boolean(token),
+      command: plan.command,
+      args: [...plan.args],
+      vsix: plan.vsix
+    };
+
+    if (options.json) {
+      const serialized = `${JSON.stringify(output, null, 2)}\n`;
+      if (options.output) {
+        fs.writeFileSync(options.output, serialized, 'utf8');
+      } else {
+        process.stdout.write(serialized);
+      }
+    } else {
+      console.log('[dry-run] release publish plan');
+      console.log(`target=${target}`);
+      console.log(`vsix=${plan.vsix}`);
+      console.log(`command=${plan.command}`);
+      console.log(`${plan.command} ${plan.args.join(' ')}`);
+      console.log(`required env token: ${plan.requiredEnv}`);
+      console.log(`token available: ${token ? 'yes' : 'no'}`);
+    }
     return;
   }
 
@@ -59,6 +79,26 @@ function main(options) {
     throw new Error(`Failed to spawn ${plan.command}: ${result.error.message}`);
   }
   process.exitCode = result.status ?? 1;
+
+  if (options.json) {
+    const output = {
+      ok: process.exitCode === 0,
+      mode: 'execute',
+      target,
+      requiredEnv: plan.requiredEnv,
+      tokenAvailable: Boolean(token),
+      command: plan.command,
+      args: [...plan.args],
+      vsix: plan.vsix,
+      exitCode: process.exitCode
+    };
+    const serialized = `${JSON.stringify(output, null, 2)}\n`;
+    if (options.output) {
+      fs.writeFileSync(options.output, serialized, 'utf8');
+    } else {
+      process.stdout.write(serialized);
+    }
+  }
 }
 
 function buildPublishPlan({ target, root }) {
@@ -146,6 +186,8 @@ function parseArgs(argv) {
   const options = {
     target: undefined,
     dryRun: true,
+    json: false,
+    output: undefined,
     root: process.cwd()
   };
 
@@ -158,6 +200,13 @@ function parseArgs(argv) {
       options.dryRun = true;
     } else if (arg === '--execute') {
       options.dryRun = false;
+    } else if (arg === '--json') {
+      options.json = true;
+    } else if (arg === '--output') {
+      options.output = argv[i + 1] ?? options.output;
+      i += 1;
+    } else if (arg.startsWith('--output=')) {
+      options.output = arg.slice('--output='.length);
     } else if (arg === '--root') {
       options.root = argv[i + 1] ?? options.root;
       i += 1;
@@ -190,7 +239,7 @@ function printUsage() {
   process.stdout.write(`Pass Lens release publishing helper
 
 Usage:
-  node scripts/release-publish.js <target> [--dry-run] [--execute] [--root <repo>]
+  node scripts/release-publish.js <target> [--dry-run] [--execute] [--json] [--output <file>] [--root <repo>]
 
 Targets:
   marketplace  publish with vsce (requires VSCE_PAT).
@@ -199,6 +248,8 @@ Targets:
 By default, this runs in dry-run mode and prints the command only.
 Use --dry-run (explicit) or --execute to control whether the selected publish
 command is run.
+Use --json to print machine-readable output for dry-run or execute mode.
+Use --output <path> with --json to write the machine-readable output to file.
 `);
 }
 

@@ -52,8 +52,8 @@ Scope tokens narrowly:
 Run for both targets before any real publish:
 
 ```powershell
-npm run release:publish:marketplace
-npm run release:publish:open-vsx
+npm run release:publish:marketplace -- --dry-run
+npm run release:publish:open-vsx -- --dry-run
 ```
 
 Dry-run should print:
@@ -61,6 +61,16 @@ Dry-run should print:
 - final command line,
 - required token,
 - token availability (`yes`/`no`).
+
+For a machine-readable audit record:
+
+```powershell
+npm run release:preview:plan -- --json --output artifacts/release-preview-plan.json
+npm run release:publish:marketplace -- --dry-run --json --output artifacts/marketplace-publish-plan.json
+npm run release:publish:open-vsx -- --dry-run --json --output artifacts/open-vsx-publish-plan.json
+```
+
+These files are useful to keep with release notes and CI artifacts.
 
 If token is missing, publish will be blocked by design.
 
