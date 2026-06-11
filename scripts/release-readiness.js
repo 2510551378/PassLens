@@ -10,6 +10,7 @@ const requiredDocs = [
   'docs/release-milestones.md',
   'docs/sample-provenance.md',
   'docs/collector-author-guide.md',
+  'CONTRIBUTING.md',
   'docs/pass-lens.schema.json',
   'docs/images/pass-lens-logo.png',
   'docs/images/pass-lens-hero.png',
@@ -22,6 +23,7 @@ const requiredReadmeNeedles = [
   'Pass Lens: Open Sample Trace',
   'docs/sample-provenance.md',
   'docs/collector-author-guide.md',
+  'CONTRIBUTING.md',
   'docs/release-milestones.md',
   'smoke:heir-case-study'
 ];

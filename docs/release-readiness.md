@@ -16,6 +16,7 @@ The check validates:
 - Release milestone coverage for VS Code Marketplace, Open VSX, and demo GIF
   work.
 - Public docs required by new users and collector authors.
+- `CONTRIBUTING.md` contribution rules and sample/collector contribution checks.
 - Bundled sample traces with credible `provenance.kind` coverage.
 - `docs/sample-provenance.md` and `sample-traces/` are kept in sync (every sample
   JSON has a matching provenance record).

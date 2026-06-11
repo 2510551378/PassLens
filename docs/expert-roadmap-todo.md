@@ -396,6 +396,13 @@ repro/
 
 ## Marketplace And Ecosystem
 
+- [x] Add a `CONTRIBUTING.md` for trace/collector contribution rules.
+  - `CONTRIBUTING.md` now defines trace sample rules, artifact and provenance
+    requirements, collector integration checks, and reporting expectations.
+  - README now links to `CONTRIBUTING.md` and `release:check` verifies it.
+  - `tests/release-readiness.test.js` validates that CONTRIBUTING appears in public
+    onboarding checks.
+
 - [ ] Publish VS Code Marketplace preview.
 - [ ] Publish Open VSX preview.
 - [x] Add 30-second demo GIF to README.
