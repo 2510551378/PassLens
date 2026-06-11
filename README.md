@@ -14,16 +14,15 @@
 </p>
 
 <p align="center">
-  <a href="README.zh-CN.md">中文</a>
-  ·
+  <a href="README.zh-CN.md">中文</a> |
   <a href="docs/trace-schema.md">Trace Schema</a>
-  ·
+  |
   <a href="docs/collector-author-guide.md">Collector Guide</a>
-  ·
+  |
   <a href="docs/sample-provenance.md">Sample Provenance</a>
-  ·
+  |
   <a href="docs/release-milestones.md">Milestones</a>
-  ·
+  |
   <a href="collectors/mlir-pass-lens">MLIR Collector</a>
 </p>
 
@@ -131,10 +130,10 @@ npm run release:smoke
 Then publish with an explicit target (default is dry-run):
 
 ```powershell
-npm run release:publish:marketplace      # dry-run preview plan
-npm run release:publish:marketplace -- --execute   # real publish
-npm run release:publish:open-vsx          # dry-run preview plan
-npm run release:publish:open-vsx -- --execute      # real publish
+npm run release:publish:marketplace:json       # machine-readable dry-run
+npm run release:publish:marketplace:execute    # real publish
+npm run release:publish:open-vsx:json          # machine-readable dry-run
+npm run release:publish:open-vsx:execute       # real publish
 ```
 
 You can also run a release preflight before publish:

@@ -52,8 +52,8 @@ Scope tokens narrowly:
 Run for both targets before any real publish:
 
 ```powershell
-npm run release:publish:marketplace -- --dry-run
-npm run release:publish:open-vsx -- --dry-run
+npm run release:publish:marketplace:json
+npm run release:publish:open-vsx:json
 ```
 
 Dry-run should print:
@@ -66,8 +66,8 @@ For a machine-readable audit record:
 
 ```powershell
 npm run release:preview:plan -- --json --output artifacts/release-preview-plan.json
-npm run release:publish:marketplace -- --dry-run --json --output artifacts/marketplace-publish-plan.json
-npm run release:publish:open-vsx -- --dry-run --json --output artifacts/open-vsx-publish-plan.json
+npm run release:publish:marketplace:json -- --output artifacts/marketplace-publish-plan.json
+npm run release:publish:open-vsx:json -- --output artifacts/open-vsx-publish-plan.json
 ```
 
 These files are useful to keep with release notes and CI artifacts.
@@ -90,8 +90,8 @@ Execute only after dry-run is clean and you are ready to publish the current
 version:
 
 ```powershell
-npm run release:publish:marketplace -- --execute
-npm run release:publish:open-vsx -- --execute
+npm run release:publish:marketplace:execute
+npm run release:publish:open-vsx:execute
 ```
 
 Run in this order:
