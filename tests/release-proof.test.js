@@ -80,6 +80,8 @@ test('release proof CLI succeeds with require-tokens when all target prerequisit
   }
 
   try {
+    const vsceToken = 'secret-vsce';
+    const ovsxToken = 'secret-ovsx';
     const result = spawnSync(process.execPath, [
       cli,
       '--json',
@@ -92,8 +94,8 @@ test('release proof CLI succeeds with require-tokens when all target prerequisit
       env: {
         ...process.env,
         PATH: `${fakeCommandDir}${path.delimiter}${process.env.PATH ?? ''}`,
-        VSCE_PAT: 'token',
-        OVSX_PAT: 'token'
+        VSCE_PAT: vsceToken,
+        OVSX_PAT: ovsxToken
       }
     });
 
@@ -102,6 +104,14 @@ test('release proof CLI succeeds with require-tokens when all target prerequisit
     assert.equal(report.publishReady, true);
     assert.equal(report.blockers, 0);
     assert.equal(report.summary.readyTargets, 2);
+
+    for (const plan of report.publishPlans) {
+      assert.equal(typeof plan.args[0], 'string');
+      const argsText = plan.args.join(' ');
+      assert.ok(!argsText.includes(vsceToken));
+      assert.ok(!argsText.includes(ovsxToken));
+      assert.ok(plan.args.includes('********'));
+    }
   } finally {
     fs.rmSync(fakeCommandDir, { recursive: true, force: true });
   }

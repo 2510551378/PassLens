@@ -96,8 +96,14 @@ function buildReleaseProof(root) {
 }
 
 function outputProof(proof, options) {
+  const safePublishPlans = proof.publishPlans.map((plan) => ({
+    ...plan,
+    args: sanitizePublishArgs(plan.args)
+  }));
+
   const output = {
     ...proof,
+    publishPlans: safePublishPlans,
     blockers: proof.publishPlans.filter((plan) => plan.blocked || !plan.canExecute).length,
     publishReady: proof.publishPlans.every((plan) => plan.canExecute && !plan.blocked),
     summary: {
@@ -147,6 +153,40 @@ function outputProof(proof, options) {
   console.log(`vsix: ${output.vsix.path} (${output.vsix.exists ? 'exists' : 'missing'})`);
   console.log('publish plans:');
   console.log(blockerRows);
+}
+
+function sanitizePublishArgs(args) {
+  if (!Array.isArray(args)) {
+    return args;
+  }
+
+  const masked = [];
+  const replacement = '*'.repeat(8);
+
+  for (let index = 0; index < args.length; index += 1) {
+    const entry = args[index];
+    const previous = args[index - 1];
+
+    if (entry === '--pat' && index + 1 < args.length) {
+      masked.push(entry);
+      masked.push(replacement);
+      index += 1;
+      continue;
+    }
+
+    if (typeof entry === 'string' && entry.startsWith('--pat=')) {
+      masked.push('--pat=********');
+      continue;
+    }
+
+    if (previous === '--pat') {
+      continue;
+    }
+
+    masked.push(entry);
+  }
+
+  return masked;
 }
 
 function parseArgs(argv) {
