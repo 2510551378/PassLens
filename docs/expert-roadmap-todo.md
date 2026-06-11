@@ -483,7 +483,12 @@ repro/
   - Commit: this change.
   - `pass-lens.rerun.prefixBisect` is declared as a preview local tool contract
     requiring filesystem and compiler-driver access.
-- [ ] Defer patch suggestion until evidence and rerun tools are mature.
+- [x] Defer patch suggestion until evidence and rerun tools are mature.
+  - `generateCandidateRootCauses` + `buildNextExperiments` emit candidate hypotheses
+    with explicit uncertainty and rerun/verification guardrails.
+  - Candidate root causes, issue drafts, and regression sketches explicitly state:
+    no auto-edit patches from report-only evidence.
+  - `src/agentToolManifest.ts` advertises the same source-edit guardrail.
 
 ## Risks To Revisit
 
