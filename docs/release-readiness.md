@@ -32,6 +32,20 @@ This command writes a structured summary for `marketplace` and `open-vsx` plans,
 including resolved command path, target VSIX artifact, required env token check, and
 any blockers such as missing publish binaries.
 
+For a single proof payload that ties together the readiness check and both publish
+targets (token-gated/blocked state included), use:
+
+```powershell
+npm run release:proof
+```
+
+This is useful as a release-attached artifact because it captures:
+
+- package metadata used in the release,
+- `release-check` status and warnings,
+- resolved publish plan (command, args, required env, canExecute),
+- whether `pass-lens-<version>.vsix` exists.
+
 Before a dry-run publish attempt:
 
 ```powershell

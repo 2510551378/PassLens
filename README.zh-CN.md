@@ -142,6 +142,15 @@ npm run release:publish:open-vsx
 完整发布步骤（dry-run 校验、发布执行、发布后核验）见
 [`docs/release-publish-playbook.md`](docs/release-publish-playbook.md)。
 
+也可以输出一份发布 proof 存档：
+
+```powershell
+npm run release:proof -- --output artifacts/release-proof.json
+```
+
+该文件会记录 release-check、发布计划可执行状态、token 阻塞情况和
+VSIX 路径，适合用于发布归档与审计。
+
 Marketplace / Open VSX 发布和准备检查说明见
 [`docs/release-readiness.md`](docs/release-readiness.md)。
 

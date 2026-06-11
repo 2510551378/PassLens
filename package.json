@@ -155,6 +155,7 @@
     "release:publish:open-vsx": "node scripts/release-publish.js open-vsx",
     "release:publish:open-vsx:json": "node scripts/release-publish.js open-vsx --dry-run --json",
     "release:publish:open-vsx:execute": "node scripts/release-publish.js open-vsx --execute",
+    "release:proof": "node scripts/release-proof.js --json",
     "vscode:prepublish": "npm run compile",
     "promote:downstream-sample": "npm run compile && node scripts/promote-downstream-trace-sample.js"
   },
