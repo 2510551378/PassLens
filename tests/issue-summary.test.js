@@ -5,6 +5,7 @@ const {
   createCandidateRootCauses,
   createCandidateRootCausesMarkdown,
   createGithubIssueDescription,
+  createFirstFailureLocalizationMarkdown,
   createSuspiciousPassesMarkdown,
   explainFirstSignal,
   renderFirstSignalExplanation,
@@ -154,4 +155,14 @@ test('explainFirstSignal covers fallback, legality, and budget signals', () => {
   const budget = explainFirstSignal(trace, issues, anomalies, 'budget');
   assert.equal(budget.stage.stageIndex, 1);
   assert.match(budget.summary, /budget/);
+});
+
+test('first failure localization report summarizes candidate window and checks', () => {
+  const localization = createFirstFailureLocalizationMarkdown(makeTrace(), makeIssues(), makeAnomalies());
+
+  assert.match(localization, /Pass Lens First Failure Localization/);
+  assert.match(localization, /Localization Window/);
+  assert.match(localization, /stage 2/);
+  assert.match(localization, /Recommended Checks/);
+  assert.match(localization, /guardrails/i);
 });

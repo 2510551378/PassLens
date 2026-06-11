@@ -24,6 +24,7 @@ export function validateTraceStrict(raw: unknown): TraceIssue[] {
   validateOptionalString(raw.command, '$.command', issues);
   validateOptionalNumber(raw.exitCode, '$.exitCode', issues);
   validateOptionalString(raw.diagnostics, '$.diagnostics', issues);
+  validateOptionalObject(raw.extensions, '$.extensions', issues, validateExtensions);
   validateAllowedProperties(raw, '$', [
     'schemaVersion',
     'collectorVersion',
@@ -39,6 +40,7 @@ export function validateTraceStrict(raw: unknown): TraceIssue[] {
     'command',
     'exitCode',
     'diagnostics',
+    'extensions',
     'stages'
   ], issues);
 
@@ -82,6 +84,7 @@ function validateStage(raw: unknown, index: number, issues: TraceIssue[]): void 
     'diagnostics',
     'location',
     'artifacts',
+    'extensions',
     'metricsBefore',
     'metricsAfter',
     'irBefore',
@@ -98,6 +101,7 @@ function validateStage(raw: unknown, index: number, issues: TraceIssue[]): void 
   validateOptionalString(raw.verifier, `${path}.verifier`, issues, index);
   validateOptionalString(raw.diagnostics, `${path}.diagnostics`, issues, index);
   validateOptionalString(raw.location, `${path}.location`, issues, index);
+  validateOptionalObject(raw.extensions, `${path}.extensions`, issues, validateExtensions);
   validateOptionalString(raw.irBefore, `${path}.irBefore`, issues, index);
   validateOptionalString(raw.irAfter, `${path}.irAfter`, issues, index);
   validateMetrics(raw.metricsBefore, `${path}.metricsBefore`, issues, index);
@@ -189,6 +193,21 @@ function validateArtifacts(raw: unknown, path: string, issues: TraceIssue[], sta
   validateOptionalString(raw.beforePath, `${path}.beforePath`, issues, stageIndex);
   validateOptionalString(raw.afterPath, `${path}.afterPath`, issues, stageIndex);
   validateOptionalString(raw.diagnosticsPath, `${path}.diagnosticsPath`, issues, stageIndex);
+}
+
+function validateExtensions(raw: unknown, path: string, issues: TraceIssue[], stageIndex?: number): void {
+  if (raw === undefined) {
+    return;
+  }
+  if (!isRecord(raw)) {
+    issues.push(strictIssue(path, 'extensions must be an object.', stageIndex));
+    return;
+  }
+  for (const key of Object.keys(raw)) {
+    if (typeof key !== 'string') {
+      issues.push(strictIssue(`${path}[${key}]`, 'extension namespaces must be strings.', stageIndex));
+    }
+  }
 }
 
 function validateMetrics(raw: unknown, path: string, issues: TraceIssue[], stageIndex?: number): void {

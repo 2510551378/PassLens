@@ -123,6 +123,8 @@ remain portable across MLIR, LLVM, hardware backends, and other compiler stacks.
 - `command`: repro command, if the collector can provide one.
 - `exitCode`: process exit code for wrapper collectors.
 - `diagnostics`: bounded diagnostic text for failures or warnings.
+- `extensions`: implementation-defined namespaced auxiliary evidence map (for
+  examples: LLVM optimization remarks).
 - `stages`: ordered pass events.
 
 ## Compatibility Rules
@@ -131,7 +133,8 @@ remain portable across MLIR, LLVM, hardware backends, and other compiler stacks.
 - Unknown fields are rejected by strict validation.
 - Relative artifact paths are resolved relative to the trace JSON file.
 - Backend-specific evidence should live in `target`, `metricProfiles`,
-  `metricsBefore` / `metricsAfter`, `diagnostics`, or artifact files.
+  `metricsBefore` / `metricsAfter`, `extensions`, `diagnostics`, or artifact
+  files.
 - Sample traces should set `provenance` so users can distinguish live collector
   output from converted dumps and hand-authored examples.
 - If timing, metrics, or IR are intentionally unavailable, declare that through
@@ -154,6 +157,7 @@ remain portable across MLIR, LLVM, hardware backends, and other compiler stacks.
 - `verifier`: `ok`, `failed`, or a collector-specific status string.
 - `diagnostics`: stage-local diagnostic text.
 - `location`: source or IR location associated with the stage.
+- `extensions`: implementation-defined namespaced stage-local evidence.
 - `artifacts`: paths to external before/after/diagnostic artifacts. Relative
   paths are resolved against the trace JSON file location.
 - `metricsBefore` / `metricsAfter`: numeric scalar metrics only.

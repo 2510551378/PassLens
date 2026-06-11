@@ -19,6 +19,16 @@ export interface CandidateRootCause {
   evidenceIds: string[];
 }
 
+export interface FirstFailureLocalization {
+  stage: PassTrace['stages'][number];
+  priorChanged?: PassTrace['stages'][number];
+  priorAnomalies: MetricAnomaly[];
+  priorWarnings: TraceIssue[];
+  evidenceIds: string[];
+  confidence: 'high' | 'medium' | 'low';
+  recommendedChecks: string[];
+}
+
 export type FirstSignalKind = 'fallback' | 'legality' | 'budget';
 
 export interface FirstSignalExplanation {
@@ -77,6 +87,89 @@ export function createCandidateRootCausesMarkdown(
     '',
     renderCandidateRootCauses(candidates)
   ].join('\n')}\n`;
+}
+
+export function createFirstFailureLocalizationMarkdown(
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[]
+): string {
+  const localization = buildFirstFailureLocalization(trace, issues, anomalies);
+  if (!localization) {
+    return [
+      '# Pass Lens First Failure Localization',
+      '',
+      'No failing stage was recorded in this trace.',
+      '',
+      'Run with a collector or trace that captures `status: pass_failed` / `verifier_failed`.',
+      '',
+      '## Next Step',
+      '',
+      '- Verify that you are using a structured collector that records pass status.',
+      '- If needed, collect with `capture.ir` and `capture.metrics` enabled.',
+      '- Re-run the pipeline after tightening the anomaly metric profile.'
+    ].join('\n') + '\n';
+  }
+
+  const windowStart = determineWindowStart(localization);
+  const windowStages = trace.stages.filter((stage) => stage.index >= windowStart && stage.index <= localization.stage.index);
+  const evidenceLines = [
+    ...localization.evidenceIds.slice(0, 8),
+    ...localization.priorAnomalies.slice(0, 2).map((anomaly) => stageEvidenceId(anomaly.stageIndex, `metrics.${anomaly.metric}`)),
+    ...localization.priorWarnings.slice(0, 2).map((issue) => issueEvidenceId(issue))
+  ];
+  const uniqueEvidence = Array.from(new Set(evidenceLines.map(normalizeEvidenceId))).filter(Boolean);
+
+  return [
+    '# Pass Lens First Failure Localization',
+    '',
+    `Trace failure first localizes to stage ${localization.stage.index} (${localization.stage.pass}).`,
+    '',
+    '## Confidence',
+    '',
+    `${localization.confidence.toUpperCase()}`,
+    '',
+    '## Localization Window',
+    '',
+    ...windowStages.map((stage) => `- ${stage.index}: ${stage.pass}${describeStageSignals(stage)}`),
+    '',
+    `## Prior Changed Signal`,
+    '',
+    localization.priorChanged
+      ? `The nearest changed stage before the failure is #${localization.priorChanged.index} (${localization.priorChanged.pass}).`
+      : 'No changed stage was observed before the failure.',
+    '',
+    localization.priorAnomalies.length > 0
+      ? [
+        '## Prior or Concurrent Anomalies',
+        '',
+        ...localization.priorAnomalies.map((entry) =>
+          `- [${entry.severity}] #${entry.stageIndex} ${entry.pass}: ${entry.message}`
+        )
+      ].join('\n')
+      : '',
+    '',
+    localization.priorWarnings.length > 0
+      ? [
+        '## Trace Warnings Before Failure',
+        '',
+        ...localization.priorWarnings.map((entry) => `- [${entry.severity}] ${entry.message}`)
+      ].join('\n')
+      : '',
+    '',
+    '## Evidence IDs',
+    '',
+    ...uniqueEvidence.map((id) => `- ${id}`),
+    '',
+    '## Recommended Checks',
+    '',
+    ...localization.recommendedChecks.map((entry) => `- ${entry}`),
+    '',
+    '## Guardrails',
+    '',
+    '- Treat these as localization hypotheses until verified by rerun / prefix bisection.',
+    '- Do not edit compiler source from this report alone.'
+  ].filter((line) => typeof line === 'string' && line.length > 0).join('\n') + '\n';
 }
 
 export function createCandidateRootCauses(
@@ -234,6 +327,162 @@ function summarizeStageSuspicion(
     reasons: unique(reasons),
     evidenceIds: unique(evidenceIds)
   };
+}
+
+function buildFirstFailureLocalization(
+  trace: PassTrace,
+  issues: TraceIssue[],
+  anomalies: MetricAnomaly[]
+): FirstFailureLocalization | undefined {
+  const failure = trace.stages.find(isFailedStage);
+  if (!failure) {
+    return undefined;
+  }
+  const candidateAnomalies = anomalies.filter((anomaly) => anomaly.stageIndex <= failure.index);
+  const anomalyBudgetSignals = candidateAnomalies
+    .filter((anomaly) => anomaly.kind === 'budget');
+  const priorAnomalies = anomalyBudgetSignals.length > 0
+    ? anomalyBudgetSignals.slice(0, 4)
+    : candidateAnomalies.slice(0, 4);
+
+  const priorWarnings = issues.filter((entry) =>
+    entry.severity !== 'info' &&
+    typeof entry.stageIndex === 'number' &&
+    entry.stageIndex <= failure.index &&
+    !isQualityInfo(entry.field)
+  );
+
+  const priorChanged = trace.stages
+    .filter((stage) => typeof stage.changed === 'boolean' && stage.changed && stage.index <= failure.index)
+    .slice(-1)[0];
+
+  const confidence = confidenceFromFailureSignals(failure, priorChanged, priorAnomalies, priorWarnings);
+  const recommendedChecks = createLocalizationChecks(trace, failure, priorChanged);
+  const evidenceIds = collectLocalizationEvidenceIds(failure, priorChanged, priorAnomalies, priorWarnings);
+
+  return {
+    stage: failure,
+    priorChanged,
+    priorAnomalies,
+    priorWarnings,
+    confidence,
+    recommendedChecks,
+    evidenceIds
+  };
+}
+
+function confidenceFromFailureSignals(
+  stage: TraceStage,
+  priorChanged: TraceStage | undefined,
+  priorAnomalies: MetricAnomaly[],
+  priorWarnings: TraceIssue[]
+): FirstFailureLocalization['confidence'] {
+  const hasFailureEvidence = stage.diagnostics || stage.irBefore || stage.irAfter || stage.status;
+  const hasChanged = Boolean(stage.changed);
+  const hasChangedContext = Boolean(priorChanged && priorWarnings.length > 0);
+  const hasBudgetSignal = priorAnomalies.some((anomaly) => anomaly.kind === 'budget');
+  if ((hasFailureEvidence && hasChanged) || (priorChanged && priorWarnings.length > 1) || hasBudgetSignal) {
+    return 'high';
+  }
+  if (hasFailureEvidence || priorChanged || priorAnomalies.length > 0) {
+    return 'medium';
+  }
+  return 'low';
+}
+
+function createLocalizationChecks(
+  trace: PassTrace,
+  failure: TraceStage,
+  priorChanged: TraceStage | undefined
+): string[] {
+  const checks = [
+    `Open stage ${failure.index} details and confirm the failure kind (pass execution vs verifier).`,
+    'Run prefix rerun or bisect around the failure pass with verifier enabled.',
+    'Export a directory repro bundle to preserve the failing context.'
+  ];
+  if (priorChanged && priorChanged.index !== failure.index) {
+    checks.push(`Compare the IR diff of stage ${priorChanged.index} and failure context (${failure.index}) for the first concrete symbol mismatch.`);
+  }
+  if (!trace.stages.some((stage) => stage.artifacts?.beforePath || stage.artifacts?.afterPath)) {
+    checks.push('Collect a trace with artifact-backed stages for large IR confirmation.');
+  }
+  if (!failure.diagnostics) {
+    checks.push('Collect again with diagnostics tracing enabled before making root-cause claims.');
+  }
+  return checks;
+}
+
+function collectLocalizationEvidenceIds(
+  failure: TraceStage,
+  priorChanged: TraceStage | undefined,
+  priorAnomalies: MetricAnomaly[],
+  priorWarnings: TraceIssue[]
+): string[] {
+  const ids = [
+    stageEvidenceId(failure.index, 'status'),
+    stageEvidenceId(failure.index, 'verifier'),
+    stageEvidenceId(failure.index, 'diagnostics')
+  ];
+  if (priorChanged && priorChanged.index !== failure.index) {
+    ids.push(stageEvidenceId(priorChanged.index, 'changed'));
+  }
+  if (failure.irBefore) {
+    ids.push(stageEvidenceId(failure.index, 'irBefore'));
+  }
+  if (failure.irAfter) {
+    ids.push(stageEvidenceId(failure.index, 'irAfter'));
+  }
+  for (const anomaly of priorAnomalies.slice(0, 3)) {
+    ids.push(metricEvidenceId(anomaly.stageIndex, 'metricsBefore', anomaly.metric), metricEvidenceId(anomaly.stageIndex, 'metricsAfter', anomaly.metric));
+  }
+  for (const issue of priorWarnings.slice(0, 3)) {
+    if (typeof issue.field === 'string' && typeof issue.stageIndex === 'number') {
+      ids.push(stageEvidenceId(issue.stageIndex, issue.field));
+    }
+  }
+  return ids;
+}
+
+function describeStageSignals(stage: TraceStage): string {
+  const markers: string[] = [];
+  if (stage.changed) {
+    markers.push('changed');
+  }
+  if (stage.verifier) {
+    markers.push(`verifier=${stage.verifier}`);
+  }
+  if (stage.status) {
+    markers.push(`status=${stage.status}`);
+  }
+  if (stage.diagnostics) {
+    markers.push('diagnostics');
+  }
+  if (stage.metricsBefore && stage.metricsAfter && Object.keys(stage.metricsBefore).length > 0) {
+    markers.push('metrics');
+  }
+  return markers.length > 0 ? ` (${markers.join(', ')})` : '';
+}
+
+function determineWindowStart(localization: FirstFailureLocalization): number {
+  if (localization.priorChanged) {
+    return Math.max(0, localization.priorChanged.index - 1);
+  }
+  return Math.max(0, localization.stage.index - 2);
+}
+
+function issueEvidenceId(issue: TraceIssue): string {
+  if (typeof issue.stageIndex !== 'number' || typeof issue.field !== 'string') {
+    return 'trace.issue';
+  }
+  return stageEvidenceId(issue.stageIndex, issue.field);
+}
+
+function normalizeEvidenceId(candidate: string): string {
+  return candidate.trim();
+}
+
+function isQualityInfo(field?: string): boolean {
+  return field === 'quality' || field === 'traceQuality';
 }
 
 function explainFirstFallback(

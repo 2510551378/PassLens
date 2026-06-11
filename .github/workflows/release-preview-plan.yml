@@ -1,0 +1,55 @@
+name: Release Preview Plan
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - scripts/release-publish.js
+      - scripts/release-preview-plan.js
+      - scripts/release-readiness.js
+      - package.json
+      - package-lock.json
+      - .github/workflows/release-preview-plan.yml
+  push:
+    branches:
+      - main
+      - codex/**
+    paths:
+      - scripts/release-publish.js
+      - scripts/release-preview-plan.js
+      - scripts/release-readiness.js
+      - package.json
+      - package-lock.json
+      - .github/workflows/release-preview-plan.yml
+
+jobs:
+  publish-plan:
+    name: Generate publish readiness plan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build release artifacts
+        run: npm run package
+
+      - name: Generate release preview plans
+        run: |
+          mkdir -p artifacts
+          node scripts/release-preview-plan.js --json --output artifacts/release-preview-plan.json
+
+      - name: Upload release preview plan
+        uses: actions/upload-artifact@v4
+        with:
+          name: pass-lens-release-preview-plan
+          path: artifacts/release-preview-plan.json

@@ -32,8 +32,21 @@ options.outputPath = "trace.pass-lens.json";
 options.tool = "my-mlir-driver";
 options.input = inputPath;
 options.pipeline = pipelineText;
+options.command = "my-mlir-driver input.mlir --pass-pipeline=..."; // optional but
+                                                         // recommended
 options.artifactDir = "trace-artifacts";
 options.includeIr = true;
+options.compilerName = "my-mlir-driver";
+options.compilerVersion = "git:..."; // optional
+options.targetBackend = "llvm";
+options.exitCode = 0; // set explicitly when known
+options.provenance = {
+  .kind = "live-pass-instrumentation",
+  .description = "Collected from structured pass instrumentation callbacks.",
+  .source = "downstream compiler pass manager",
+  .generatedBy = "/path/to/downstream-driver",
+  .capturedAt = "2026-06-10T00:00:00Z"
+};
 
 passlens::addPassLensInstrumentation(pm, std::move(options));
 
@@ -53,10 +66,26 @@ Each recorded stage corresponds to one MLIR pass callback pair:
   and before metrics.
 - `runAfterPass` records after IR, after metrics, duration, verifier status
   `ok`, and status `ok` or `changed`.
-- `runAfterPassFailed` records status `pass_failed` and verifier `failed`.
+- `runAfterPassFailed` infers failure kind and records:
+  - `status: "verifier_failed"` when verifier evidence is explicitly detected
+    from diagnostics markers.
+  - `status: "pass_failed"` otherwise.
+  `verifier` is set to `"failed"` only for `verifier_failed` stages and remains
+  `"ok"` for `pass_failed` stages.
 
 The collector skips MLIR's internal `OpToOpPassAdaptor` wrapper so the trace
 focuses on user-visible pass invocations.
+
+## Self-Description
+
+Structured traces should include command and run metadata that explains how to
+reproduce the trace:
+
+- `command`: the full command that produced the trace.
+- `exitCode`: optional integer process exit status.
+- `diagnostics`: optional top-level stderr or driver-level diagnostics.
+- `compiler`: optional `{ name, version, gitSha }`.
+- `target`: optional `{ backend, platform, triple }`.
 
 For deterministic stage order while validating a new integration, disable MLIR
 threading in the driver. The collector sorts stages by callback order before

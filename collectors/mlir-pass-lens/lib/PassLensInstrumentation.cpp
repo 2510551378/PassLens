@@ -212,6 +212,82 @@ std::string collectDiagnostics(mlir::Pass *pass, mlir::Operation *op,
   return options.diagnosticsHook(pass, op);
 }
 
+std::string lowerAscii(llvm::StringRef value) {
+  std::string lowered = value.str();
+  std::transform(lowered.begin(), lowered.end(), lowered.begin(),
+                 [](unsigned char ch) {
+                   return static_cast<char>(std::tolower(ch));
+                 });
+  return lowered;
+}
+
+bool hasVerifierFailureSignal(llvm::StringRef diagnostics) {
+  const std::string text = lowerAscii(diagnostics);
+  if (text.empty())
+    return false;
+  return text.find("verifier failed") != std::string::npos ||
+         text.find("failed verifier") != std::string::npos ||
+         text.find("verification failed") != std::string::npos ||
+         text.find("failed to verify") != std::string::npos ||
+         text.find("failed to legalize") != std::string::npos;
+}
+
+bool isVerifierFailure(const std::string &diagnostics) {
+  return hasVerifierFailureSignal(diagnostics);
+}
+
+std::string inferFailureStatus(mlir::Pass *pass,
+                              mlir::Operation *op,
+                              const std::string &diagnostics) {
+  (void)pass;
+  (void)op;
+  return isVerifierFailure(diagnostics) ? "verifier_failed" : "pass_failed";
+}
+
+bool hasProvenanceFields(const PassLensProvenance &provenance) {
+  return !provenance.kind.empty() || !provenance.description.empty() ||
+         !provenance.source.empty() || !provenance.generatedBy.empty() ||
+         !provenance.capturedAt.empty();
+}
+
+void writeProvenance(llvm::raw_ostream &os,
+                     const PassLensProvenance &provenance) {
+  os << "  \"provenance\": {\n";
+  bool firstField = true;
+  if (!provenance.kind.empty()) {
+    os << "    \"kind\": " << jsonString(provenance.kind);
+    firstField = false;
+  }
+  if (!provenance.description.empty()) {
+    if (!firstField) {
+      os << ",\n";
+    }
+    os << "    \"description\": " << jsonString(provenance.description);
+    firstField = false;
+  }
+  if (!provenance.source.empty()) {
+    if (!firstField) {
+      os << ",\n";
+    }
+    os << "    \"source\": " << jsonString(provenance.source);
+    firstField = false;
+  }
+  if (!provenance.generatedBy.empty()) {
+    if (!firstField) {
+      os << ",\n";
+    }
+    os << "    \"generatedBy\": " << jsonString(provenance.generatedBy);
+    firstField = false;
+  }
+  if (!provenance.capturedAt.empty()) {
+    if (!firstField) {
+      os << ",\n";
+    }
+    os << "    \"capturedAt\": " << jsonString(provenance.capturedAt);
+  }
+  os << "\n  },\n";
+}
+
 std::string getScope(mlir::Operation *op) {
   std::string scope = op->getName().getStringRef().str();
   if (auto symbolName = mlir::SymbolTable::getSymbolName(op)) {
@@ -375,6 +451,11 @@ PassLensInstrumentation::PassLensInstrumentation(PassLensOptions options)
 
 PassLensInstrumentation::~PassLensInstrumentation() { writeTrace(); }
 
+void PassLensInstrumentation::setExitCode(int exitCode) {
+  std::lock_guard<std::mutex> lock(impl->mutex);
+  impl->options.exitCode = exitCode;
+}
+
 void PassLensInstrumentation::runBeforePass(mlir::Pass *pass,
                                             mlir::Operation *op) {
   if (!shouldRecordPass(pass))
@@ -450,10 +531,10 @@ void PassLensInstrumentation::runAfterPassFailed(mlir::Pass *pass,
   stage.symbol = it->second.symbol;
   stage.scope = it->second.scope;
   stage.durationMs = elapsedMs(it->second.startedAt);
-  stage.status = "pass_failed";
-  stage.verifier = "failed";
   stage.location = it->second.location;
   stage.diagnostics = collectDiagnostics(pass, op, impl->options);
+  stage.status = inferFailureStatus(pass, op, stage.diagnostics);
+  stage.verifier = stage.status == "verifier_failed" ? "failed" : "ok";
   stage.metricsBefore = std::move(it->second.metricsBefore);
   stage.metricsAfter = collectMetrics(op, irAfter, impl->options);
   stage.irBefore = std::move(it->second.irBefore);
@@ -489,6 +570,59 @@ void PassLensInstrumentation::writeTrace() {
   os << "  \"collectorVersion\": "
      << jsonString(kPassLensCollectorVersion) << ",\n";
   os << "  \"tool\": " << jsonString(impl->options.tool) << ",\n";
+  if (!impl->options.command.empty())
+    os << "  \"command\": " << jsonString(impl->options.command) << ",\n";
+  if (impl->options.provenance && hasProvenanceFields(*impl->options.provenance)) {
+    writeProvenance(os, *impl->options.provenance);
+  }
+  if (impl->options.exitCode.has_value())
+    os << "  \"exitCode\": " << *impl->options.exitCode << ",\n";
+  if (!impl->options.diagnostics.empty())
+    os << "  \"diagnostics\": " << jsonString(impl->options.diagnostics) << ",\n";
+  if (!impl->options.compilerName.empty() ||
+      !impl->options.compilerVersion.empty() ||
+      !impl->options.compilerGitSha.empty()) {
+    os << "  \"compiler\": {\n";
+    bool firstCompilerField = true;
+    if (!impl->options.compilerName.empty()) {
+      os << "    \"name\": " << jsonString(impl->options.compilerName);
+      firstCompilerField = false;
+    }
+    if (!impl->options.compilerVersion.empty()) {
+      if (!firstCompilerField)
+        os << ",\n";
+      os << "    \"version\": " << jsonString(impl->options.compilerVersion);
+      firstCompilerField = false;
+    }
+    if (!impl->options.compilerGitSha.empty()) {
+      if (!firstCompilerField)
+        os << ",\n";
+      os << "    \"gitSha\": " << jsonString(impl->options.compilerGitSha);
+    }
+    os << "\n  },\n";
+  }
+  if (!impl->options.targetBackend.empty() ||
+      !impl->options.targetPlatform.empty() ||
+      !impl->options.targetTriple.empty()) {
+    os << "  \"target\": {\n";
+    bool firstTargetField = true;
+    if (!impl->options.targetBackend.empty()) {
+      os << "    \"backend\": " << jsonString(impl->options.targetBackend);
+      firstTargetField = false;
+    }
+    if (!impl->options.targetPlatform.empty()) {
+      if (!firstTargetField)
+        os << ",\n";
+      os << "    \"platform\": " << jsonString(impl->options.targetPlatform);
+      firstTargetField = false;
+    }
+    if (!impl->options.targetTriple.empty()) {
+      if (!firstTargetField)
+        os << ",\n";
+      os << "    \"triple\": " << jsonString(impl->options.targetTriple);
+    }
+    os << "\n  },\n";
+  }
   os << "  \"capture\": {\n";
   const bool artifactIr =
       impl->options.includeIr && !impl->options.artifactDir.empty();

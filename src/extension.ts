@@ -1,20 +1,17 @@
 import * as fs from 'node:fs/promises';
-import { spawn } from 'node:child_process';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { createAgentContext, createAgentContextMarkdown } from './agentContext';
-import { exportDirectoryReproBundle } from './directoryReproBundle';
 import {
   createCandidateRootCausesMarkdown,
   createGithubIssueDescription,
+  createFirstFailureLocalizationMarkdown,
   createSuspiciousPassesMarkdown,
   explainFirstSignal,
   renderFirstSignalExplanation,
   type FirstSignalKind
 } from './issueSummary';
 import { collectMlirTrace } from './mlirCollector';
-import { createReproBundle } from './reproBundle';
 import {
   createMinimalFailingPrefixReport,
   runPrefixBisect,
@@ -22,23 +19,18 @@ import {
   type PipelineRunResult,
   type PipelineRunner
 } from './rerun';
+import { formatCommand, runProcess, trimOutput } from './process';
+import { sampleTraces } from './sampleTraces';
 import { computeTraceAnomalies } from './trace/anomalies';
-import { hydrateTraceStageArtifacts } from './trace/artifacts';
 import { evaluateTraceQuality, renderTraceQualityMarkdown } from './trace/quality';
 import { evaluateTraceSize, renderTraceSizeMarkdown, type TraceSizeSummary } from './trace/size';
-import { createTraceExplanation } from './traceExplanation';
 import { renderTraceQueryResultMarkdown, runTraceQuery, type TraceQuery } from './traceQuery';
 import { normalizeTrace } from './trace/schema';
-import { summarizeTraceIssues, validateTrace } from './trace/validation';
+import { validateTrace } from './trace/validation';
+import { createTracePanelSessionManager } from './tracePanelSession';
+import { getWebviewHtml } from './tracePanelHtml';
+import { registerTracePanelMessageHandlers } from './tracePanelController';
 import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
-import { parseTracePanelMessage } from './webview/messages';
-
-interface SampleTraceEntry {
-  label: string;
-  description: string;
-  detail: string;
-  file: string;
-}
 
 interface TraceQueryPick extends vscode.QuickPickItem {
   query?: TraceQuery;
@@ -46,58 +38,12 @@ interface TraceQueryPick extends vscode.QuickPickItem {
   summaryKind?: string;
 }
 
-const sampleTraces: SampleTraceEntry[] = [
-  {
-    label: 'Live MLIR PassInstrumentation',
-    description: 'Live structured collector output',
-    detail: 'Real L20 pass-lens-mlir-opt trace with artifact-backed IR for canonicalize,cse.',
-    file: 'mlir-live-pass-instrumentation.json'
-  },
-  {
-    label: 'Toy MLIR pipeline',
-    description: 'Hand-authored, simple IR diff',
-    detail: 'Small trace for checking the basic viewer layout.',
-    file: 'mlir-toy.json'
-  },
-  {
-    label: 'Long lowering pipeline',
-    description: 'Hand-authored, 14 passes',
-    detail: 'Longer pipeline for scanning changed/unchanged passes and slow passes.',
-    file: 'mlir-long-pipeline.json'
-  },
-  {
-    label: 'Verifier failure',
-    description: 'Hand-authored first-signal failure',
-    detail: 'Trace with a verifier failure after a lowering pass.',
-    file: 'mlir-verifier-failure.json'
-  },
-  {
-    label: 'External IR artifacts',
-    description: 'Hand-authored sidecar artifacts',
-    detail: 'Trace that resolves before/after IR and diagnostics from artifact paths.',
-    file: 'mlir-artifacts.json'
-  },
-  {
-    label: 'Triton NPU UB budget overflow',
-    description: 'Hand-authored hardware case study',
-    detail: 'Case study trace where scratch queue planning exceeds UB live-slot and queue-depth budgets.',
-    file: 'triton-npu-ub-budget-overflow.json'
-  },
-  {
-    label: 'Triton NPU strict fallback',
-    description: 'Hand-authored hardware case study',
-    detail: 'Case study trace where a lowering pass introduces fallback and missing tile proof evidence.',
-    file: 'triton-npu-strict-fallback.json'
-  },
-  {
-    label: 'Real Triton NPU dual RMSNorm',
-    description: 'Real artifact capture',
-    detail: 'Real local npuir2ascendc sample generated from fused_dual_residual_rmsnorm_kernel.',
-    file: 'real-triton-npu-dual-rmsnorm.json'
-  }
-];
+const tracePanelSessionManager = createTracePanelSessionManager<LoadedTraceSession>();
 
-let currentTraceSession: { loaded: LoadedTrace; sourceUri: vscode.Uri } | undefined;
+interface LoadedTraceSession {
+  loaded: LoadedTrace;
+  sourceUri: vscode.Uri;
+}
 
 export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
@@ -143,6 +89,9 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
     vscode.commands.registerCommand('passLens.queryCurrentTrace', async () => {
       await queryCurrentTraceCommand();
+    }),
+    vscode.commands.registerCommand('passLens.generateIssueDraft', async () => {
+      await generateIssueDraftCommand();
     }),
     vscode.commands.registerCommand('passLens.runPrefixBisect', async () => {
       await runPrefixBisectCommand(context);
@@ -325,7 +274,9 @@ async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise
     return;
   }
 
-  const defaultPipeline = currentTraceSession?.loaded.trace.pipeline ?? 'builtin.module(func.func(canonicalize,cse))';
+  const activeSessionForDefaults = tracePanelSessionManager.getActiveSession();
+  const defaultPipeline = activeSessionForDefaults?.loaded.trace.pipeline ??
+    'builtin.module(func.func(canonicalize,cse))';
   const pipeline = await vscode.window.showInputBox({
     title: 'MLIR pass pipeline to bisect',
     prompt: 'Pass Lens will rerun textual prefixes of this pipeline with verifier enabled.',
@@ -354,7 +305,10 @@ async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise
         return runPrefixBisect(pipeline.trim(), runner);
       }
     );
-    await showMarkdownDocument(createMinimalFailingPrefixReport(result, currentTraceSession?.loaded.trace));
+    const activeSessionForReport = tracePanelSessionManager.getActiveSession();
+    await showMarkdownDocument(
+      createMinimalFailingPrefixReport(result, activeSessionForReport?.loaded.trace)
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const action = await vscode.window.showErrorMessage(
@@ -434,7 +388,8 @@ async function checkMlirCollectorSetupCommand(context: vscode.ExtensionContext):
 }
 
 async function queryCurrentTraceCommand(): Promise<void> {
-  if (!currentTraceSession) {
+  const currentSession = tracePanelSessionManager.getActiveSession();
+  if (!currentSession) {
     const action = await vscode.window.showWarningMessage(
       'Pass Lens has no current trace to query.',
       'Open Trace File',
@@ -496,6 +451,11 @@ async function queryCurrentTraceCommand(): Promise<void> {
         summaryKind: 'candidateRootCauses'
       },
       {
+        label: 'Generate first failure localization report',
+        detail: 'Get a bounded localization hypothesis with confidence and next checks.',
+        summaryKind: 'firstFailureLocalization'
+      },
+      {
         label: 'Explain first fallback / legality / budget signal',
         detail: 'Choose a signal family and generate a concise evidence summary.',
         summaryKind: 'firstSignal'
@@ -520,7 +480,7 @@ async function queryCurrentTraceCommand(): Promise<void> {
     return;
   }
 
-  const { loaded, sourceUri } = currentTraceSession;
+  const { loaded, sourceUri } = currentSession;
   if (picked.summaryKind) {
     const content = await resolveIssueSummary(picked.summaryKind, loaded, sourceUri);
     if (!content) {
@@ -588,9 +548,56 @@ async function resolveIssueSummary(
     return renderTraceQualityMarkdown(evaluateTraceQuality(loaded.trace));
   }
   if (summaryKind === 'traceSize') {
-    return renderTraceSizeMarkdown(loaded.sizeSummary);
+    const fullTraceSizeSummary = await evaluateTraceSize(loaded.trace, sourceUri.fsPath, {
+      includeArtifactStats: true
+    });
+    loaded.sizeSummary = fullTraceSizeSummary;
+    return renderTraceSizeMarkdown(fullTraceSizeSummary);
+  }
+  if (summaryKind === 'firstFailureLocalization') {
+    return createFirstFailureLocalizationMarkdown(loaded.trace, loaded.issues, loaded.anomalies);
   }
   return undefined;
+}
+
+async function generateIssueDraftCommand(): Promise<void> {
+  const currentSession = tracePanelSessionManager.getActiveSession();
+  if (!currentSession) {
+    const action = await vscode.window.showWarningMessage(
+      'Pass Lens has no current trace. Open a trace first.',
+      'Open Trace File',
+      'Open Sample Trace'
+    );
+    if (action === 'Open Trace File') {
+      await vscode.commands.executeCommand('passLens.openTraceFile');
+    } else if (action === 'Open Sample Trace') {
+      await vscode.commands.executeCommand('passLens.openSampleTrace');
+    }
+    return;
+  }
+
+  const parsed = path.parse(currentSession.sourceUri.fsPath);
+  const defaultUri = vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-issue.md`));
+  const target = await vscode.window.showSaveDialog({
+    defaultUri,
+    filters: {
+      Markdown: ['md'],
+      'All files': ['*']
+    },
+    saveLabel: 'Export Issue Draft',
+    title: 'Export Pass Lens GitHub issue draft'
+  });
+  if (!target) {
+    return;
+  }
+
+  const { trace, issues, anomalies } = currentSession.loaded;
+  const content = createGithubIssueDescription(trace, issues, anomalies, currentSession.sourceUri.fsPath);
+  await fs.writeFile(target.fsPath, content, 'utf8');
+  const open = await vscode.window.showInformationMessage('Pass Lens exported issue draft.', 'Open');
+  if (open === 'Open') {
+    await vscode.window.showTextDocument(target, { preview: false });
+  }
 }
 
 async function showMarkdownDocument(content: string): Promise<void> {
@@ -687,7 +694,7 @@ async function readTrace(uri: vscode.Uri): Promise<LoadedTrace> {
       trace,
       issues: validateTrace(trace),
       anomalies: computeTraceAnomalies(trace),
-      sizeSummary: await evaluateTraceSize(trace, uri.fsPath)
+      sizeSummary: await evaluateTraceSize(trace, uri.fsPath, { includeArtifactStats: false })
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -700,48 +707,12 @@ async function toLoadedTrace(trace: PassTrace, tracePath?: string): Promise<Load
     trace,
     issues: validateTrace(trace),
     anomalies: computeTraceAnomalies(trace),
-    sizeSummary: await evaluateTraceSize(trace, tracePath)
+    sizeSummary: await evaluateTraceSize(trace, tracePath, { includeArtifactStats: false })
   };
-}
-
-function runProcess(command: string, args: string[], cwd?: string): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
-      cwd,
-      windowsHide: true
-    });
-    const stdout: Buffer[] = [];
-    const stderr: Buffer[] = [];
-
-    child.stdout.on('data', (chunk: Buffer) => stdout.push(chunk));
-    child.stderr.on('data', (chunk: Buffer) => stderr.push(chunk));
-    child.on('error', reject);
-    child.on('close', (code) => {
-      resolve({
-        exitCode: code ?? -1,
-        stdout: Buffer.concat(stdout).toString('utf8'),
-        stderr: Buffer.concat(stderr).toString('utf8')
-      });
-    });
-  });
-}
-
-function formatCommand(command: string, args: string[]): string {
-  return [command, ...args].map(quoteArg).join(' ');
-}
-
-function quoteArg(arg: string): string {
-  return /[\s"']/u.test(arg) ? `"${arg.replace(/"/g, '\\"')}"` : arg;
-}
-
-function trimOutput(text: string): string | undefined {
-  const trimmed = text.trim();
-  return trimmed.length > 0 ? trimmed.slice(0, 8000) : undefined;
 }
 
 function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, sourceUri: vscode.Uri): void {
   const { trace, issues, anomalies, sizeSummary } = loaded;
-  currentTraceSession = { loaded, sourceUri };
   const panel = vscode.window.createWebviewPanel(
     'passLens.trace',
     `Pass Lens: ${trace.input ?? sourceUri.path.split('/').pop() ?? 'trace'}`,
@@ -752,330 +723,33 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
     }
   );
 
-  panel.webview.onDidReceiveMessage(async (message: unknown) => {
-    const parsed = parseTracePanelMessage(message);
-    if (!parsed) {
-      return;
+  tracePanelSessionManager.register(panel, { loaded, sourceUri });
+  panel.onDidChangeViewState((event) => {
+    if (event.webviewPanel.active) {
+      tracePanelSessionManager.setActivePanel(event.webviewPanel);
     }
-    if (parsed.type === 'copy') {
-      await vscode.env.clipboard.writeText(parsed.text);
-      vscode.window.showInformationMessage('Pass Lens copied repro command.');
-    }
-    if (parsed.type === 'openTrace') {
-      await vscode.window.showTextDocument(sourceUri, { preview: false });
-    }
-    if (parsed.type === 'exportBundle') {
-      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
-      await exportReproBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
-    }
-    if (parsed.type === 'exportDirectoryBundle') {
-      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
-      await exportReproDirectoryBundle(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
-    }
-    if (parsed.type === 'exportAgentContext') {
-      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
-      await exportAgentContext(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
-    }
-    if (parsed.type === 'exportExplanation') {
-      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
-      await exportTraceExplanation(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
-    }
-    if (parsed.type === 'copyAgentContext') {
-      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
-      const content = createAgentContextJson(sourceUri, trace, issues, anomalies, parsed.selectedStageIndex);
-      await vscode.env.clipboard.writeText(content);
-      vscode.window.showInformationMessage('Pass Lens copied agent context.');
-    }
-    if (parsed.type === 'copyExplanation') {
-      await hydrateSelectedStageForExport(trace, issues, sourceUri, parsed.selectedStageIndex);
-      const content = createTraceExplanation(trace, issues, anomalies, {
-        sourcePath: sourceUri.fsPath,
-        selectedStageIndex: typeof parsed.selectedStageIndex === 'number' ? parsed.selectedStageIndex : undefined
-      });
-      await vscode.env.clipboard.writeText(content);
-      vscode.window.showInformationMessage('Pass Lens copied suspicious pass explanation.');
-    }
-    if (parsed.type === 'openArtifact') {
-      await openArtifact(sourceUri, parsed.path);
-    }
-    if (parsed.type === 'requestStageArtifacts') {
-      const artifactIssues = await hydrateTraceStageArtifacts(trace, sourceUri.fsPath, parsed.stageIndex);
-      appendTraceIssues(issues, artifactIssues);
-      const stage = trace.stages.find((entry) => entry.index === parsed.stageIndex);
-      await panel.webview.postMessage({
-        type: 'stageArtifacts',
-        stageIndex: parsed.stageIndex,
-        stage,
-        issues: artifactIssues
-      });
-    }
+  });
+  const messageHandler = registerTracePanelMessageHandlers(panel, {
+    sourceUri,
+    trace,
+    issues,
+    anomalies
+  });
+  panel.onDidDispose(() => {
+    tracePanelSessionManager.unregister(panel);
+    messageHandler.dispose();
   });
 
   const styleUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.css'));
   const scriptUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'media', 'tracePanel.js'));
-  panel.webview.html = getWebviewHtml(trace, issues, anomalies, sizeSummary, sourceUri.fsPath, styleUri, scriptUri, panel.webview.cspSource);
-}
-
-async function hydrateSelectedStageForExport(
-  trace: PassTrace,
-  issues: TraceIssue[],
-  sourceUri: vscode.Uri,
-  selectedStageIndex: unknown
-): Promise<void> {
-  if (typeof selectedStageIndex !== 'number' || !Number.isFinite(selectedStageIndex)) {
-    return;
-  }
-  const artifactIssues = await hydrateTraceStageArtifacts(trace, sourceUri.fsPath, selectedStageIndex);
-  appendTraceIssues(issues, artifactIssues);
-}
-
-function appendTraceIssues(target: TraceIssue[], additions: TraceIssue[]): void {
-  for (const issue of additions) {
-    const exists = target.some((entry) =>
-      entry.severity === issue.severity &&
-      entry.stageIndex === issue.stageIndex &&
-      entry.field === issue.field &&
-      entry.message === issue.message
-    );
-    if (!exists) {
-      target.push(issue);
-    }
-  }
-}
-
-async function exportReproBundle(
-  sourceUri: vscode.Uri,
-  trace: PassTrace,
-  issues: TraceIssue[],
-  anomalies: MetricAnomaly[],
-  selectedStageIndex: unknown
-): Promise<void> {
-  const parsed = path.parse(sourceUri.fsPath);
-  const defaultUri = vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-repro.md`));
-  const target = await vscode.window.showSaveDialog({
-    defaultUri,
-    filters: {
-      Markdown: ['md'],
-      'All files': ['*']
-    },
-    saveLabel: 'Export Repro Bundle',
-    title: 'Export Pass Lens repro bundle'
-  });
-  if (!target) {
-    return;
-  }
-
-  const content = createReproBundle(trace, issues, anomalies, {
-    sourcePath: sourceUri.fsPath,
-    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
-  });
-  await fs.writeFile(target.fsPath, content, 'utf8');
-  const open = await vscode.window.showInformationMessage('Pass Lens exported repro bundle.', 'Open');
-  if (open === 'Open') {
-    await vscode.window.showTextDocument(target, { preview: false });
-  }
-}
-
-async function exportReproDirectoryBundle(
-  sourceUri: vscode.Uri,
-  trace: PassTrace,
-  issues: TraceIssue[],
-  anomalies: MetricAnomaly[],
-  selectedStageIndex: unknown
-): Promise<void> {
-  const parsed = path.parse(sourceUri.fsPath);
-  const target = await vscode.window.showOpenDialog({
-    canSelectFiles: false,
-    canSelectFolders: true,
-    canSelectMany: false,
-    defaultUri: vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-repro`)),
-    openLabel: 'Export Repro Directory',
-    title: 'Select Pass Lens repro directory'
-  });
-  if (!target?.[0]) {
-    return;
-  }
-
-  await exportDirectoryReproBundle(trace, issues, anomalies, {
-    targetDir: target[0].fsPath,
-    sourceTracePath: sourceUri.fsPath,
-    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
-  });
-  const manifestUri = vscode.Uri.file(path.join(target[0].fsPath, 'manifest.json'));
-  const open = await vscode.window.showInformationMessage('Pass Lens exported repro directory.', 'Open manifest');
-  if (open === 'Open manifest') {
-    await vscode.window.showTextDocument(manifestUri, { preview: false });
-  }
-}
-
-async function exportAgentContext(
-  sourceUri: vscode.Uri,
-  trace: PassTrace,
-  issues: TraceIssue[],
-  anomalies: MetricAnomaly[],
-  selectedStageIndex: unknown
-): Promise<void> {
-  const parsed = path.parse(sourceUri.fsPath);
-  const defaultUri = vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-agent-context.json`));
-  const target = await vscode.window.showSaveDialog({
-    defaultUri,
-    filters: {
-      JSON: ['json'],
-      Markdown: ['md'],
-      'All files': ['*']
-    },
-    saveLabel: 'Export Agent Context',
-    title: 'Export Pass Lens agent context'
-  });
-  if (!target) {
-    return;
-  }
-
-  const content = path.extname(target.fsPath).toLowerCase() === '.md'
-    ? createAgentContextMarkdown(createAgentContextValue(sourceUri, trace, issues, anomalies, selectedStageIndex))
-    : createAgentContextJson(sourceUri, trace, issues, anomalies, selectedStageIndex);
-  await fs.writeFile(target.fsPath, content, 'utf8');
-  const open = await vscode.window.showInformationMessage('Pass Lens exported agent context.', 'Open');
-  if (open === 'Open') {
-    await vscode.window.showTextDocument(target, { preview: false });
-  }
-}
-
-function createAgentContextValue(
-  sourceUri: vscode.Uri,
-  trace: PassTrace,
-  issues: TraceIssue[],
-  anomalies: MetricAnomaly[],
-  selectedStageIndex: unknown
-) {
-  return createAgentContext(trace, issues, anomalies, {
-    sourcePath: sourceUri.fsPath,
-    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
-  });
-}
-
-function createAgentContextJson(
-  sourceUri: vscode.Uri,
-  trace: PassTrace,
-  issues: TraceIssue[],
-  anomalies: MetricAnomaly[],
-  selectedStageIndex: unknown
-): string {
-  return `${JSON.stringify(createAgentContextValue(sourceUri, trace, issues, anomalies, selectedStageIndex), null, 2)}\n`;
-}
-
-async function exportTraceExplanation(
-  sourceUri: vscode.Uri,
-  trace: PassTrace,
-  issues: TraceIssue[],
-  anomalies: MetricAnomaly[],
-  selectedStageIndex: unknown
-): Promise<void> {
-  const parsed = path.parse(sourceUri.fsPath);
-  const defaultUri = vscode.Uri.file(path.join(parsed.dir, `${parsed.name}.pass-lens-explanation.md`));
-  const target = await vscode.window.showSaveDialog({
-    defaultUri,
-    filters: {
-      Markdown: ['md'],
-      'All files': ['*']
-    },
-    saveLabel: 'Export Explanation',
-    title: 'Export Pass Lens suspicious pass explanation'
-  });
-  if (!target) {
-    return;
-  }
-
-  const content = createTraceExplanation(trace, issues, anomalies, {
-    sourcePath: sourceUri.fsPath,
-    selectedStageIndex: typeof selectedStageIndex === 'number' ? selectedStageIndex : undefined
-  });
-  await fs.writeFile(target.fsPath, content, 'utf8');
-  const open = await vscode.window.showInformationMessage('Pass Lens exported suspicious pass explanation.', 'Open');
-  if (open === 'Open') {
-    await vscode.window.showTextDocument(target, { preview: false });
-  }
-}
-
-async function openArtifact(sourceUri: vscode.Uri, artifactPath: string): Promise<void> {
-  const resolvedPath = path.normalize(path.isAbsolute(artifactPath)
-    ? artifactPath
-    : path.resolve(path.dirname(sourceUri.fsPath), artifactPath));
-  if (!await pathExists(resolvedPath)) {
-    vscode.window.showWarningMessage(`Pass Lens artifact does not exist: ${resolvedPath}`);
-    return;
-  }
-  await vscode.window.showTextDocument(vscode.Uri.file(resolvedPath), { preview: false });
-}
-
-function getWebviewHtml(
-  trace: PassTrace,
-  issues: TraceIssue[],
-  anomalies: MetricAnomaly[],
-  sizeSummary: TraceSizeSummary,
-  sourcePath: string,
-  styleUri: vscode.Uri,
-  scriptUri: vscode.Uri,
-  cspSource: string
-): string {
-  const encodedData = JSON.stringify({
+  panel.webview.html = getWebviewHtml({
     trace,
-    traceIssues: issues,
-    traceAnomalies: anomalies,
-    traceIssueSummary: summarizeTraceIssues(issues),
-    traceQuality: evaluateTraceQuality(trace),
-    traceSize: sizeSummary,
-    sourcePath
-  }).replace(/</g, '\\u003c');
-  const title = escapeHtml(trace.input ?? 'Pass Trace');
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src ${escapeHtml(cspSource)} 'unsafe-inline'; script-src ${escapeHtml(cspSource)};">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pass Lens</title>
-  <link rel="stylesheet" href="${escapeHtml(styleUri.toString())}">
-</head>
-<body>
-  <header>
-    <h1>${title}</h1>
-    <div class="meta">
-      <span id="tool"></span>
-      <span id="provenance"></span>
-      <span id="pipeline"></span>
-      <span id="source"></span>
-    </div>
-    <div id="summary" class="summary"></div>
-    <div id="issue-panel" class="issue-panel"></div>
-  </header>
-  <main>
-    <aside>
-      <div class="toolbar">
-        <input id="search" class="search" type="search" placeholder="Filter passes, scopes, metrics">
-        <label class="toggle"><input id="changed-only" type="checkbox"> changed only</label>
-        <span id="stage-count"></span>
-        <span id="changed-count"></span>
-      </div>
-      <div id="overview" class="overview"></div>
-      <div id="timeline"></div>
-    </aside>
-    <section>
-      <div id="details" class="details"></div>
-    </section>
-  </main>
-  <template id="pass-lens-data">${escapeHtml(encodedData)}</template>
-  <script src="${escapeHtml(scriptUri.toString())}"></script>
-</body>
-</html>`;
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+    issues,
+    anomalies,
+    sizeSummary,
+    sourcePath: sourceUri.fsPath,
+    styleUri,
+    scriptUri,
+    cspSource: panel.webview.cspSource
+  });
 }

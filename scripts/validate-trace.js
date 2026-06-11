@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const { normalizeTrace } = require('../out/trace/schema.js');
+const { resolveArtifactPathWithinTraceRoot } = require('../out/trace/artifactPaths.js');
 const { validateTraceStrict } = require('../out/trace/strictValidation.js');
 const { summarizeTraceIssues, validateTrace } = require('../out/trace/validation.js');
 
@@ -190,9 +191,13 @@ function validateArtifactReferences(trace, tracePath) {
     ].filter(Boolean);
 
     for (const artifact of artifacts) {
-      const resolved = resolveArtifactPath(baseDir, artifact.artifactPath);
+      const resolved = resolveArtifactPathWithinTraceRoot(baseDir, artifact.artifactPath);
+      if (!resolved.ok || !resolved.resolvedPath) {
+        issues.push(artifactIssue(stage.index, artifact.field, `${artifact.label} path is invalid: ${artifact.artifactPath} (${resolved.message ?? 'invalid artifact path'})`));
+        continue;
+      }
       try {
-        const stat = fs.statSync(resolved);
+        const stat = fs.statSync(resolved.resolvedPath);
         if (!stat.isFile()) {
           issues.push(artifactIssue(stage.index, artifact.field, `${artifact.label} is not a file: ${artifact.artifactPath}`));
         }
@@ -202,10 +207,6 @@ function validateArtifactReferences(trace, tracePath) {
     }
   }
   return issues;
-}
-
-function resolveArtifactPath(baseDir, artifactPath) {
-  return path.normalize(path.isAbsolute(artifactPath) ? artifactPath : path.resolve(baseDir, artifactPath));
 }
 
 function artifactIssue(stageIndex, field, message) {

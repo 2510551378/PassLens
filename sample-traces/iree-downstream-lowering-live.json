@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "collectorVersion": "0.1.0",
+  "compiler": {
+    "name": "pass-lens-mlir-opt"
+  },
+  "provenance": {
+    "kind": "live-pass-instrumentation",
+    "description": "Collected from real MLIR PassInstrumentation callbacks with artifact IR.",
+    "source": "collectors/mlir-pass-lens/tools/pass-lens-mlir-opt.cpp",
+    "generatedBy": "/home/ahc/PassLens/build/pass-lens-mlir/pass-lens-mlir-opt",
+    "capturedAt": "2026-06-10T15:40:52Z"
+  },
+  "capture": {
+    "ir": "artifact",
+    "metrics": true,
+    "timing": true
+  },
+  "tool": "pass-lens-mlir-opt",
+  "input": "/tmp/pass-lens-iree-smoke/iree-downstream-lowering.mlir",
+  "pipeline": "builtin.module(func.func(canonicalize,cse))",
+  "command": "<redacted-command>",
+  "exitCode": 0,
+  "stages": [
+    {
+      "index": 0,
+      "pass": "Canonicalizer",
+      "argument": "canonicalize",
+      "opName": "func.func",
+      "symbol": "@main",
+      "scope": "func.func @main",
+      "changed": false,
+      "status": "ok",
+      "durationMs": 0.10524,
+      "verifier": "ok",
+      "location": "loc(\"/tmp/pass-lens-iree-smoke/iree-downstream-lowering.mlir\":2:3)",
+      "artifacts": {
+        "beforePath": "iree-downstream-lowering-artifacts/stage-000000.before.mlir",
+        "afterPath": "iree-downstream-lowering-artifacts/stage-000000.after.mlir"
+      },
+      "metricsBefore": {
+        "lines": 4,
+        "ops": 3,
+        "arith.addi": 1,
+        "func.func": 1,
+        "func.return": 1
+      },
+      "metricsAfter": {
+        "lines": 4,
+        "ops": 3,
+        "arith.addi": 1,
+        "func.func": 1,
+        "func.return": 1
+      },
+      "irBefore": "",
+      "irAfter": ""
+    },
+    {
+      "index": 1,
+      "pass": "CSE",
+      "argument": "cse",
+      "opName": "func.func",
+      "symbol": "@main",
+      "scope": "func.func @main",
+      "changed": false,
+      "status": "ok",
+      "durationMs": 0.032215,
+      "verifier": "ok",
+      "location": "loc(\"/tmp/pass-lens-iree-smoke/iree-downstream-lowering.mlir\":2:3)",
+      "artifacts": {
+        "beforePath": "iree-downstream-lowering-artifacts/stage-000001.before.mlir",
+        "afterPath": "iree-downstream-lowering-artifacts/stage-000001.after.mlir"
+      },
+      "metricsBefore": {
+        "lines": 4,
+        "ops": 3,
+        "arith.addi": 1,
+        "func.func": 1,
+        "func.return": 1
+      },
+      "metricsAfter": {
+        "lines": 4,
+        "ops": 3,
+        "arith.addi": 1,
+        "func.func": 1,
+        "func.return": 1
+      },
+      "irBefore": "",
+      "irAfter": ""
+    }
+  ]
+}

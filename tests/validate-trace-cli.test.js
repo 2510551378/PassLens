@@ -102,3 +102,35 @@ test('validate-trace CLI reports missing artifact references when requested', ()
   assert.match(result.stdout, /missing-before\.mlir/);
   assert.match(result.stdout, /artifacts\.afterPath/);
 });
+
+test('validate-trace CLI rejects artifact paths outside the trace directory', () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-cli-artifacts-contained-'));
+  const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-cli-artifacts-outside-'));
+  fs.writeFileSync(path.join(outsideDir, 'before.mlir'), 'module { should_not_probe }', 'utf8');
+  const tracePath = path.join(tempDir, 'trace.json');
+  fs.writeFileSync(tracePath, JSON.stringify({
+    schemaVersion: 1,
+    capture: {
+      ir: 'artifact'
+    },
+    stages: [
+      {
+        index: 0,
+        pass: 'canonicalize',
+        artifacts: {
+          beforePath: path.relative(tempDir, path.join(outsideDir, 'before.mlir'))
+        }
+      }
+    ]
+  }), 'utf8');
+
+  const result = spawnSync(node, [cli, '--strict-only', '--check-artifacts', tracePath], {
+    cwd: process.cwd(),
+    encoding: 'utf8'
+  });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /failed:/);
+  assert.match(result.stdout, /artifacts\.beforePath/);
+  assert.match(result.stdout, /path is invalid/);
+});

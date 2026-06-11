@@ -45,6 +45,7 @@
     "onCommand:passLens.runStructuredMlirTrace",
     "onCommand:passLens.checkMlirCollectorSetup",
     "onCommand:passLens.queryCurrentTrace",
+    "onCommand:passLens.generateIssueDraft",
     "onCommand:passLens.runPrefixBisect"
   ],
   "main": "./out/extension.js",
@@ -73,6 +74,10 @@
       {
         "command": "passLens.queryCurrentTrace",
         "title": "Pass Lens: Query Current Trace"
+      },
+      {
+        "command": "passLens.generateIssueDraft",
+        "title": "Pass Lens: Generate Issue Draft"
       },
       {
         "command": "passLens.runPrefixBisect",
@@ -115,6 +120,9 @@
           "command": "passLens.queryCurrentTrace"
         },
         {
+          "command": "passLens.generateIssueDraft"
+        },
+        {
           "command": "passLens.runPrefixBisect"
         }
       ]
@@ -129,14 +137,31 @@
     "check:mlir-collector": "node scripts/check-mlir-collector.js",
     "smoke:oss-mlir": "npm run compile && node scripts/oss-mlir-corpus-smoke.js",
     "smoke:large-trace": "npm run compile && node scripts/large-trace-smoke.js",
+    "smoke:heir-case-study": "npm run compile && node scripts/heir-case-study-smoke.js",
+    "smoke:iree-case-study": "npm run compile && node scripts/iree-case-study-smoke.js",
+    "smoke:torch-mlir-case-study": "npm run compile && node scripts/torch-mlir-case-study-smoke.js",
+    "smoke:downstream-case-studies": "npm run compile && node scripts/downstream-case-studies-smoke.js",
     "smoke:deepseek-agent": "npm run compile && node scripts/deepseek-agent-smoke.js",
+    "release:check": "node scripts/release-readiness.js",
+    "release:check:strict": "node scripts/release-readiness.js --strict-release",
+    "release:smoke": "npm run validate:trace:all && npm test && npm run release:check",
+    "release:preview:plan": "node scripts/release-preview-plan.js --json",
+    "release:preflight": "npm run release:smoke && npm run package && npm run release:preview:plan -- --output artifacts/release-preview-plan.json",
     "package": "vsce package",
-    "vscode:prepublish": "npm run compile"
+    "release:publish:marketplace": "node scripts/release-publish.js marketplace",
+    "release:publish:marketplace:json": "node scripts/release-publish.js marketplace --dry-run --json",
+    "release:publish:marketplace:execute": "node scripts/release-publish.js marketplace --execute",
+    "release:publish:open-vsx": "node scripts/release-publish.js open-vsx",
+    "release:publish:open-vsx:json": "node scripts/release-publish.js open-vsx --dry-run --json",
+    "release:publish:open-vsx:execute": "node scripts/release-publish.js open-vsx --execute",
+    "vscode:prepublish": "npm run compile",
+    "promote:downstream-sample": "npm run compile && node scripts/promote-downstream-trace-sample.js"
   },
   "devDependencies": {
-    "@vscode/vsce": "^3.9.1",
     "@types/node": "^24.0.0",
     "@types/vscode": "^1.90.0",
+    "@vscode/vsce": "^3.9.1",
+    "ovsx": "^1.0.0",
     "typescript": "^5.9.0"
   }
 }

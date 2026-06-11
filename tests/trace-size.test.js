@@ -36,8 +36,36 @@ test('evaluateTraceSize counts inline IR diagnostics and stages', async () => {
   assert.equal(summary.diagnosticsBytes, Buffer.byteLength('rootdiag', 'utf8'));
   assert.equal(summary.artifactBytes, 0);
   assert.equal(summary.artifactCount, 0);
+  assert.equal(summary.artifactStatsAvailable, false);
   assert.equal(summary.largestInlineStage.stageIndex, 0);
   assert.deepEqual(summary.warnings, []);
+});
+
+test('evaluateTraceSize can skip artifact sizing for fast open path', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-size-fast-'));
+  await fs.mkdir(path.join(root, 'artifacts'), { recursive: true });
+  await fs.writeFile(path.join(root, 'artifacts', 'before.mlir'), 'before artifact', 'utf8');
+
+  const summary = await evaluateTraceSize({
+    schemaVersion: 1,
+    capture: { ir: 'artifact' },
+    stages: [
+      {
+        index: 0,
+        pass: 'lower',
+        artifacts: {
+          beforePath: 'artifacts/before.mlir'
+        }
+      }
+    ]
+  }, path.join(root, 'trace.json'), { includeArtifactStats: false });
+
+  assert.equal(summary.artifactStatsAvailable, false);
+  assert.equal(summary.artifactBytes, 0);
+  assert.equal(summary.artifactCount, 0);
+  assert.equal(summary.largestArtifact, undefined);
+  assert.equal(summary.missingArtifactCount, 0);
+  assert.ok(summary.warnings.some((entry) => entry.id === 'artifact-size-deferred'));
 });
 
 test('evaluateTraceSize stats relative artifacts and reports missing artifacts', async () => {
@@ -68,6 +96,7 @@ test('evaluateTraceSize stats relative artifacts and reports missing artifacts',
   assert.equal(summary.missingArtifactCount, 1);
   assert.equal(summary.largestArtifact.stageIndex, 3);
   assert.equal(summary.largestArtifact.kind, 'after');
+  assert.equal(summary.artifactStatsAvailable, true);
   assert.ok(summary.warnings.some((entry) => entry.id === 'missing-artifact-size-data'));
 });
 
@@ -96,7 +125,32 @@ test('evaluateTraceSize does not double-count hydrated artifact IR as inline pay
   assert.equal(summary.inlineIrBytes, 0);
   assert.equal(summary.artifactBytes, Buffer.byteLength('before artifactafter artifact', 'utf8'));
   assert.equal(summary.totalKnownBytes, summary.artifactBytes);
+  assert.equal(summary.artifactStatsAvailable, true);
   assert.deepEqual(summary.warnings, []);
+});
+
+test('evaluateTraceSize treats escaping artifact paths as missing size data', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-size-contained-'));
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), 'pass-lens-size-outside-'));
+  await fs.writeFile(path.join(outside, 'before.mlir'), 'outside artifact', 'utf8');
+
+  const summary = await evaluateTraceSize({
+    schemaVersion: 1,
+    capture: { ir: 'artifact' },
+    stages: [
+      {
+        index: 0,
+        pass: 'escape',
+        artifacts: {
+          beforePath: path.relative(root, path.join(outside, 'before.mlir'))
+        }
+      }
+    ]
+  }, path.join(root, 'trace.json'));
+
+  assert.equal(summary.artifactCount, 0);
+  assert.equal(summary.missingArtifactCount, 1);
+  assert.ok(summary.warnings.some((entry) => entry.id === 'missing-artifact-size-data'));
 });
 
 test('evaluateTraceSize warns and suggests artifact capture for large inline IR', async () => {

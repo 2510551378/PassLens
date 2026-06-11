@@ -28,6 +28,7 @@ export function normalizeTrace(raw: unknown): PassTrace {
     inputHash: readString(raw.inputHash),
     capture: readCaptureInfo(raw.capture),
     metricProfiles: readMetricProfiles(raw.metricProfiles),
+    extensions: readExtensions(raw.extensions),
     tool: readString(raw.tool),
     input: readString(raw.input),
     pipeline: readString(raw.pipeline),
@@ -65,6 +66,7 @@ export function normalizeStage(raw: unknown, fallbackIndex: number): TraceStage 
     artifacts: readArtifacts(raw.artifacts),
     metricsBefore: readMetrics(raw.metricsBefore),
     metricsAfter: readMetrics(raw.metricsAfter),
+    extensions: readExtensions(raw.extensions),
     irBefore,
     irAfter
   };
@@ -213,6 +215,13 @@ function readArtifacts(raw: unknown): StageArtifacts | undefined {
     afterPath: readString(raw.afterPath),
     diagnosticsPath: readString(raw.diagnosticsPath)
   });
+}
+
+function readExtensions(raw: unknown): Record<string, unknown> | undefined {
+  if (!isRecord(raw)) {
+    return undefined;
+  }
+  return Object.keys(raw).length > 0 ? raw : undefined;
 }
 
 function compactObject<T extends Record<string, unknown>>(object: T): T | undefined {

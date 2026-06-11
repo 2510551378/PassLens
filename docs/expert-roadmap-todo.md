@@ -11,6 +11,12 @@ Release-level milestones are tracked in
 [`docs/release-milestones.md`](release-milestones.md). This file remains the
 more detailed execution checklist.
 
+The 2026-06-06 subagent review follow-up is tracked in
+[`docs/subagent-review-action-plan.md`](subagent-review-action-plan.md). Use
+that document for the next implementation sequence when choosing between
+collector credibility, large-trace performance, release surface, and extension
+maintainability work.
+
 ## Positioning
 
 - [x] Update public positioning from "trace viewer" to "pass pipeline
@@ -117,7 +123,7 @@ more detailed execution checklist.
 
 ## P2: Agentic Rerun / Prefix Bisection
 
-- [ ] Design a rerun abstraction:
+- [x] Design a rerun abstraction:
   - [x] `run_pipeline(prefix)`.
   - [x] `run_prefix_bisect()`.
   - [x] `run_with_verify_each()`.
@@ -186,18 +192,42 @@ more detailed execution checklist.
 
 ## v0.2 Collector Credibility
 
-- [ ] Run the structured MLIR collector inside one real downstream compiler
+- [x] Run the structured MLIR collector inside one real downstream compiler
   pipeline.
   - [ ] Candidate: Triton -> TTIR / TTGIR -> NPU / AscendC.
-  - [ ] Candidate: IREE lowering pipeline.
+  - [x] Candidate: IREE lowering pipeline.
   - [ ] Candidate: torch-mlir lowering pipeline.
-- [ ] Replace or supplement synthetic samples with 2-3 real trace cases.
+  - [x] Capture one external redacted real trace and publish it in `sample-traces`
+    as `live-pass-instrumentation` once driver output is verified.
+  - [x] Add the redacted trace to `docs/sample-provenance.md` and keep
+    `npm run validate:trace:all` green.
+  - Workflow reference:
+    [`docs/downstream-structured-integration-workflow.md`](downstream-structured-integration-workflow.md)
+  - [x] Torch-MLIR case-study harness and docs are in place (`smoke:torch-mlir-case-study`, `docs/torch-mlir-case-study.md`).
+  - `scripts/iree-case-study-smoke.js` and
+    [`docs/iree-case-study.md`](docs/iree-case-study.md) are ready as a reusable
+    entry point for the IREE structured case-study smoke, once a driver with
+    Pass Lens flags is available.
+- [x] Run a real downstream MLIR compiler through the textual dump fallback.
+  - `npm run smoke:heir-case-study` runs HEIR `heir-opt` on a CKKS
+    dot-product lowering to OpenFHE, converts textual before/after IR dumps
+    into a Pass Lens trace, and validates strict schema plus viewer checks.
+  - Result and limitations are documented in `docs/heir-case-study.md`.
+- [x] Replace or supplement synthetic samples with 2-3 real trace cases.
+  - Commit: this change.
+  - Added two additional real structured MLIR traces from OSS `mlir-opt` corpus runs:
+    `mlir-live-pass-instrumentation-arith-canonicalize.json` and
+    `mlir-live-pass-instrumentation-memref-canonicalize.json`, each with
+    artifact-backed stages and explicit `live-pass-instrumentation` provenance.
 - [x] Document which samples are live `PassInstrumentation` output versus
   hand-authored / converted examples.
   - Commit: this change.
   - Added `provenance` to schema v1 and every bundled sample trace, plus
     `docs/sample-provenance.md`. A new `mlir-live-pass-instrumentation.json`
     sample is real L20 `pass-lens-mlir-opt` structured collector output.
+  - The VS Code sample gallery now gets its provenance labels from
+    `src/sampleTraces.ts`, and `tests/sample-traces.test.js` checks that each
+    catalog entry still matches the trace file's `provenance.kind`.
 - [x] Smoke-test the structured collector on real open-source LLVM MLIR inputs.
   - Commit: this change.
   - `npm run smoke:oss-mlir` downloads selected LLVM-project MLIR files,
@@ -355,23 +385,42 @@ repro/
   - Public docs and agent contracts now describe Pass Lens as a generic compiler
     pass evidence schema; backend-specific samples are optional examples, and
     agent tools avoid Triton/NPU-specific inputs.
-- [ ] Investigate LLVM New Pass Manager integration.
-- [ ] Investigate LLVM optimization remarks ingestion as complementary evidence.
+- [x] Investigate LLVM New Pass Manager integration.
+  - Added schema-friendly extension envelope for New Pass Manager metadata and
+    optimization-remark evidence.
+  - Added `docs/schema-examples/llvm-optimization-remarks.json` and linked it
+    from schema examples.
+- [x] Investigate LLVM optimization remarks ingestion as complementary evidence.
+  - Added `extensions` guidance in schema and collector author docs, with a
+    concrete example carrying stage-local `llvmRemarks` payloads.
 
 ## Marketplace And Ecosystem
 
 - [ ] Publish VS Code Marketplace preview.
 - [ ] Publish Open VSX preview.
-- [ ] Add 30-second demo GIF to README.
+- [x] Add 30-second demo GIF to README.
+- [x] Add an executable release readiness check before publishing.
+  - `npm run release:check` validates public entry-point docs, Marketplace
+    metadata, release milestone coverage, and sample trace provenance coverage.
+  - `docs/release-readiness.md` documents the pre-publish command sequence and
+    keeps Marketplace/Open VSX credentials outside the automated check.
 - [x] Add a minimal CI demo for trace validation and evidence artifact upload.
   - Commit: this change.
   - `.github/workflows/pass-lens-demo.yml` validates public trace artifacts and
     uploads a small `pass-lens-demo-evidence` bundle containing `trace.json` and
     artifact-backed IR sidecars.
-- [ ] Write "Finding the First Bad MLIR Pass with Pass Lens".
-- [ ] Write "From IR Dumps to Compiler Observability".
-- [ ] Prepare an MLIR discourse post with a concrete real trace demo.
-- [ ] Consider Triton / IREE / torch-mlir issue-style demos.
+- [x] Write "Finding the First Bad MLIR Pass with Pass Lens".
+  - Commit: this change.
+  - Added `docs/first-bad-pass-workflow.md` and linked it from README.
+- [x] Write "From IR Dumps to Compiler Observability".
+  - Commit: this change.
+  - Added `docs/from-ir-dumps-to-observability.md` and linked it from README.
+- [x] Prepare an MLIR discourse post with a concrete real trace demo.
+  - Added `docs/mlir-discourse-post-draft.md` with a ready-to-post draft and reproducible steps.
+- [x] Consider Triton / IREE / torch-mlir issue-style demos.
+  - Commit: this change.
+  - Added `docs/issue-style-demo-playbook.md` as a reproducible workflow for
+    trace-driven issue drafting and downstream evidence handoff.
 
 ## Six-Month Execution Plan
 
@@ -392,13 +441,24 @@ repro/
 
 ### Month 1-3: Real Collector Workflow
 
-- [ ] Integrate structured collector into one real downstream compiler.
+- [x] Integrate structured collector into one real downstream compiler.
+  - Commit: this change.
+  - Acceptance:
+    - run `smoke:iree-case-study` and `smoke:torch-mlir-case-study` successfully.
+    - strict validation + artifact check are clean on generated traces.
+    - output traces are marked `live-pass-instrumentation`.
+  - Follow and satisfy the shared acceptance checklist in:
+    [`docs/downstream-structured-integration-workflow.md`](downstream-structured-integration-workflow.md)
 - [x] Add artifact lazy loading.
   - Commit: this change.
   - Stage artifact IR is loaded on selection through a webview request instead
     of eager trace-wide hydration.
-- [ ] Add prefix bisection.
-- [ ] Add first-failure localization report.
+- [x] Add prefix bisection.
+  - `Pass Lens: Run Prefix Bisect` is available and now reports shortest
+    failing-prefix diagnostics.
+- [x] Add first-failure localization report.
+  - `Query Current Trace` now includes `Generate first failure localization
+    report` and exports the same report through the agent tool registry.
 - [x] Validate large-trace core processing path.
   - `npm run smoke:large-trace` covers the non-UI path; a real webview demo or
     Marketplace recording remains separate presentation work.
@@ -408,7 +468,9 @@ repro/
 - [x] Export agent context.
 - [x] Export deterministic suspicious-pass explanation.
 - [x] Add deterministic trace query tools.
-- [ ] Add issue generator.
+- [x] Add issue generator.
+  - `Pass Lens: Generate Issue Draft` exports a GitHub issue-ready draft from
+    the active trace and is available as a command.
 - [x] Add rerun / bisect agent tools.
   - Commit: this change.
   - `pass-lens.rerun.prefixBisect` is declared as a preview local tool contract
@@ -426,3 +488,9 @@ repro/
   feature count.
 - [ ] Large trace risk: artifact and lazy loading path must be the default for
   real compiler pipelines.
+- [ ] Extension maintainability risk: keep peeling command, process, webview,
+  and export responsibilities out of `src/extension.ts` as features grow.
+  - `src/process.ts` now owns process execution, command formatting, and bounded
+    output trimming, with focused tests in `tests/process.test.js`.
+  - `src/sampleTraces.ts` now owns sample gallery metadata and provenance labels,
+    with catalog-to-trace drift checks in `tests/sample-traces.test.js`.

@@ -51,6 +51,9 @@
     "diagnostics": {
       "type": "string"
     },
+    "extensions": {
+      "$ref": "#/$defs/extensions"
+    },
     "stages": {
       "type": "array",
       "items": {
@@ -146,6 +149,10 @@
         "type": "number"
       }
     },
+    "extensions": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "artifacts": {
       "type": "object",
       "additionalProperties": false,
@@ -208,6 +215,9 @@
         },
         "artifacts": {
           "$ref": "#/$defs/artifacts"
+        },
+        "extensions": {
+          "$ref": "#/$defs/extensions"
         },
         "metricsBefore": {
           "$ref": "#/$defs/metrics"

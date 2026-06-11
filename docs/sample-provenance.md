@@ -7,6 +7,7 @@ collector run.
 | Sample | Provenance | Notes |
 | --- | --- | --- |
 | `mlir-live-pass-instrumentation.json` | `live-pass-instrumentation` | Real L20 `pass-lens-mlir-opt` structured collector run for `canonicalize,cse`, with artifact-backed IR. |
+| `iree-downstream-lowering-live.json` | `live-pass-instrumentation` | Redacted real IREE-style downstream case study trace from L20 `pass-lens-mlir-opt`, with artifact-backed IR and strict validation pass. |
 | `real-triton-npu-dual-rmsnorm.json` | `real-artifact-capture` | Real local `npuir2ascendc` artifact capture from TTAdapter IR to generated AscendC files; not live PassInstrumentation output. |
 | `mlir-toy.json` | `hand-authored` | Minimal MLIR-style trace for viewer smoke testing. |
 | `mlir-long-pipeline.json` | `hand-authored` | Longer MLIR-style trace for scanning, filtering, and slow-pass UX. |
@@ -14,6 +15,8 @@ collector run.
 | `mlir-artifacts.json` | `hand-authored` | Artifact-backed trace for sidecar IR loading. |
 | `triton-npu-ub-budget-overflow.json` | `hand-authored` | Hardware-backend case study for metric-budget anomaly triage. |
 | `triton-npu-strict-fallback.json` | `hand-authored` | Hardware-backend case study for strict-mode legality failure triage. |
+| `mlir-live-pass-instrumentation-arith-canonicalize.json` | `live-pass-instrumentation` | Real LLVM/MLIR Arith canonicalize pipeline sample with artifact-backed IR (source: LLVM MLIR tests). |
+| `mlir-live-pass-instrumentation-memref-canonicalize.json` | `live-pass-instrumentation` | Real LLVM/MLIR MemRef canonicalize pipeline sample with artifact-backed IR (source: LLVM MLIR tests). |
 
 ## Provenance Kinds
 
