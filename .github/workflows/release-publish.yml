@@ -46,8 +46,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build package and publish plan
+      - name: Build package and publish plan (dry-run mode)
+        if: |
+          github.event.inputs.target == 'both' ||
+          github.event.inputs.target == matrix.target
         run: npm run release:preflight
+
+      - name: Enforce strict release blockers before execute
+        if: |
+          github.event.inputs.execute == 'true' &&
+          (github.event.inputs.target == 'both' || github.event.inputs.target == matrix.target)
+        run: npm run release:check:strict
 
       - name: Skip unrelated target
         if: |

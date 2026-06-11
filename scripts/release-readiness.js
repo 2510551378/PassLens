@@ -252,6 +252,7 @@ function checkPackageMetadata(root, errors, checks) {
   requireField(packageJson, 'scripts.release:smoke', errors, checks);
   requireField(packageJson, 'scripts.release:preview:plan', errors, checks);
   requireField(packageJson, 'scripts.release:preflight', errors, checks);
+  requireField(packageJson, 'scripts.release:preflight:strict', errors, checks);
   requireField(packageJson, 'scripts.release:publish:marketplace', errors, checks);
   requireField(packageJson, 'scripts.release:publish:marketplace:json', errors, checks);
   requireField(packageJson, 'scripts.release:publish:marketplace:execute', errors, checks);

@@ -30,13 +30,18 @@ This command writes a structured summary for `marketplace` and `open-vsx` plans,
 including resolved command path, target VSIX artifact, required env token check, and
 any blockers such as missing publish binaries.
 
-Before publishing a preview:
+Before a dry-run publish attempt:
 
 ```powershell
 cd /path/to/PassLens
-npm run release:check
-npm run release:smoke
-npm run package
+npm run release:preflight
+```
+
+For an actual publish execution (strict gate), run:
+
+```powershell
+cd /path/to/PassLens
+npm run release:preflight:strict
 ```
 
 For the full preflight sequence in one command:
@@ -87,7 +92,7 @@ Keep Marketplace/Open VSX publication and the README demo GIF as explicit
 release blockers until they are completed. This avoids presenting a polished
 codebase without a clear external entry point.
 
-Use strict mode for a release gate:
+Use strict mode for a release gate (CI execute mode also enforces this):
 
 ```powershell
 npm run release:check:strict

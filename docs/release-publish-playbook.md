@@ -7,15 +7,24 @@ distribution.
 
 ## 1) Preflight
 
-Before any publish attempt:
+Before any publish attempt (plan-only or dry-run), run:
 
 ```powershell
 npm run release:preflight
 ```
 
+Before any real publish execution, run the strict gate first:
+
+```powershell
+npm run release:preflight:strict
+```
+
+`release:preflight:strict` is identical to `release:preflight` plus
+`npm run release:check:strict`, so all local blockers are validated before
+`--execute` calls.
+
 Required by `release:preflight`:
 
-- `npm run validate:trace:all`
 - `npm run release:smoke`
 - `npm run package`
 - `npm run release:preview:plan -- --output artifacts/release-preview-plan.json`

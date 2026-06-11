@@ -22,6 +22,7 @@ test('release readiness passes for the repository public entry points', () => {
   assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:smoke'));
   assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:preview:plan'));
   assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:preflight'));
+  assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:preflight:strict'));
   assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:publish:marketplace'));
   assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:publish:marketplace:json'));
   assert.ok(report.checks.some((check) => check.id === 'package:scripts.release:publish:marketplace:execute'));
