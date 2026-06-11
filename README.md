@@ -146,7 +146,7 @@ npm run release:preflight
 
 # quick plan-only checks
 npm run release:preview:plan -- --json
-npm run release:preview:plan -- --output .github/release-preview-plan.json
+npm run release:preview:plan -- -- --output .github/release-preview-plan.json
 ```
 
 For a complete publish sequence (dry-run checks → execute, and post-publish
@@ -155,7 +155,7 @@ verification), use [`docs/release-publish-playbook.md`](docs/release-publish-pla
 You can also emit a single release proof artifact:
 
 ```powershell
-npm run release:proof -- --output artifacts/release-proof.json
+npm run release:proof -- -- --output artifacts/release-proof.json
 ```
 
 The proof payload includes release-check status, publish plan readiness, token

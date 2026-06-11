@@ -145,7 +145,7 @@ npm run release:publish:open-vsx
 也可以输出一份发布 proof 存档：
 
 ```powershell
-npm run release:proof -- --output artifacts/release-proof.json
+npm run release:proof -- -- --output artifacts/release-proof.json
 ```
 
 该文件会记录 release-check、发布计划可执行状态、token 阻塞情况和
