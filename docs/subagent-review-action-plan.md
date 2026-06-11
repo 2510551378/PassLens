@@ -388,7 +388,7 @@ Why this matters:
 
 Minimum implementation:
 
-- Create a shared registry for query/report/export definitions.
+ - [x] Create a shared registry for query/report/export definitions.
 - Generate QuickPick items and agent tool manifest entries from that registry
   where possible.
 

@@ -33,6 +33,7 @@ function main(options) {
   const { target, dryRun, root } = options;
   const plan = buildPublishPlan({ target, root });
   const token = process.env[plan.requiredEnv];
+  const canExecute = Boolean(token);
 
   if (dryRun) {
     const output = {
@@ -40,7 +41,8 @@ function main(options) {
       mode: 'dry-run',
       target,
       requiredEnv: plan.requiredEnv,
-      tokenAvailable: Boolean(token),
+      tokenAvailable: canExecute,
+      canExecute,
       command: plan.command,
       args: [...plan.args],
       vsix: plan.vsix
@@ -86,7 +88,8 @@ function main(options) {
       mode: 'execute',
       target,
       requiredEnv: plan.requiredEnv,
-      tokenAvailable: Boolean(token),
+      tokenAvailable: canExecute,
+      canExecute: canExecute && process.exitCode === 0,
       command: plan.command,
       args: [...plan.args],
       vsix: plan.vsix,
@@ -183,6 +186,11 @@ function resolvePublishCommand(commandName) {
 }
 
 function parseArgs(argv) {
+  const args = Array.isArray(argv) ? [...argv] : [];
+  while (args.length > 0 && args[0] === '--') {
+    args.shift();
+  }
+
   const options = {
     target: undefined,
     dryRun: true,
@@ -191,10 +199,10 @@ function parseArgs(argv) {
     root: process.cwd()
   };
 
-  for (let i = 0; i < argv.length; i += 1) {
-    const arg = argv[i];
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
     if (arg === '--target') {
-      options.target = argv[i + 1];
+      options.target = args[i + 1];
       i += 1;
     } else if (arg === '--dry-run') {
       options.dryRun = true;
@@ -203,12 +211,12 @@ function parseArgs(argv) {
     } else if (arg === '--json') {
       options.json = true;
     } else if (arg === '--output') {
-      options.output = argv[i + 1] ?? options.output;
+      options.output = args[i + 1] ?? options.output;
       i += 1;
     } else if (arg.startsWith('--output=')) {
       options.output = arg.slice('--output='.length);
     } else if (arg === '--root') {
-      options.root = argv[i + 1] ?? options.root;
+      options.root = args[i + 1] ?? options.root;
       i += 1;
     } else if (arg === '--help' || arg === '-h') {
       printUsage();

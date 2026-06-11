@@ -2,6 +2,7 @@
 
 const { spawnSync } = require('node:child_process');
 const path = require('node:path');
+const fs = require('node:fs');
 
 const root = process.cwd();
 
@@ -51,6 +52,8 @@ function parseArgs(argv) {
     forceIree: false,
     forceTorch: false,
     failFast: false,
+    ireeDriver: undefined,
+    torchDriver: undefined,
     minQuality: readPositiveInt(process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY, 0)
   };
 
@@ -62,6 +65,16 @@ function parseArgs(argv) {
     } else if (arg === '--torch') {
       options.forceTorch = true;
       options.all = false;
+    } else if (arg === '--iree-driver') {
+      options.ireeDriver = argv[index + 1] || options.ireeDriver;
+      index += 1;
+    } else if (arg.startsWith('--iree-driver=')) {
+      options.ireeDriver = arg.slice('--iree-driver='.length);
+    } else if (arg === '--torch-driver') {
+      options.torchDriver = argv[index + 1] || options.torchDriver;
+      index += 1;
+    } else if (arg.startsWith('--torch-driver=')) {
+      options.torchDriver = arg.slice('--torch-driver='.length);
     } else if (arg === '--fail-fast') {
       options.failFast = true;
     } else if (arg === '--min-quality') {
@@ -100,47 +113,53 @@ function resolveTargetsWithDiagnostics(options) {
 
   const targets = [];
   for (const candidate of candidates) {
-    if (candidate === 'iree') {
-      const driver = process.env.PASS_LENS_IREE_DRIVER;
-      if (!driver) {
-        skippedTargets.push({
-          key: 'iree',
-          label: 'IREE structured case study',
-          requiredEnv: 'PASS_LENS_IREE_DRIVER',
-          script: 'npm run smoke:iree-case-study',
-          envExample: {
+    const driver = resolveCandidateDriver(candidate, options);
+    if (!driver.ok) {
+      skippedTargets.push({
+        key: candidate,
+        label: candidate === 'iree'
+          ? 'IREE structured case study'
+          : 'Torch-MLIR structured case study',
+        requiredEnv: candidate === 'iree'
+          ? 'PASS_LENS_IREE_DRIVER'
+          : 'PASS_LENS_TORCH_MLIR_DRIVER',
+        requiredCli: candidate === 'iree'
+          ? '--iree-driver'
+          : '--torch-driver',
+        script: candidate === 'iree'
+          ? 'npm run smoke:iree-case-study'
+          : 'npm run smoke:torch-mlir-case-study',
+        reason: driver.reason,
+        envExample: candidate === 'iree'
+          ? {
             powershell: '$env:PASS_LENS_IREE_DRIVER = "C:\\path\\to\\downstream-pass-lens-driver"',
             posix: 'export PASS_LENS_IREE_DRIVER="/path/to/downstream-pass-lens-driver"'
           }
-        });
-        continue;
-      }
+          : {
+            powershell: '$env:PASS_LENS_TORCH_MLIR_DRIVER = "C:\\path\\to\\downstream-pass-lens-driver"',
+            posix: 'export PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-pass-lens-driver"'
+          }
+      });
+      continue;
+    }
+
+    if (candidate === 'iree') {
+      const resolved = driver.resolvedPath;
       targets.push({
         key: 'iree',
         label: 'IREE structured case study',
         script: 'scripts/iree-case-study-smoke.js',
-        requiredEnv: 'PASS_LENS_IREE_DRIVER'
+        requiredEnv: 'PASS_LENS_IREE_DRIVER',
+        driver: resolved
       });
     } else if (candidate === 'torch') {
-      const driver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
-      if (!driver) {
-        skippedTargets.push({
-          key: 'torch',
-          label: 'Torch-MLIR structured case study',
-          requiredEnv: 'PASS_LENS_TORCH_MLIR_DRIVER',
-          script: 'npm run smoke:torch-mlir-case-study',
-          envExample: {
-            powershell: '$env:PASS_LENS_TORCH_MLIR_DRIVER = "C:\\path\\to\\downstream-pass-lens-driver"',
-            posix: 'export PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-pass-lens-driver"'
-          }
-        });
-        continue;
-      }
+      const resolved = driver.resolvedPath;
       targets.push({
         key: 'torch',
         label: 'Torch-MLIR structured case study',
         script: 'scripts/torch-mlir-case-study-smoke.js',
-        requiredEnv: 'PASS_LENS_TORCH_MLIR_DRIVER'
+        requiredEnv: 'PASS_LENS_TORCH_MLIR_DRIVER',
+        driver: resolved
       });
     }
   }
@@ -149,7 +168,8 @@ function resolveTargetsWithDiagnostics(options) {
 }
 
 function runTarget(target, minQuality) {
-  const child = spawnSync(process.execPath, [path.join(root, target.script)], {
+  const args = [path.join(root, target.script), '--min-quality', String(minQuality), '--driver', target.driver];
+  const child = spawnSync(process.execPath, args, {
     cwd: root,
     encoding: 'utf8',
     env: {
@@ -191,7 +211,7 @@ function formatNoTargetError(skippedTargets, options) {
   const header = `No runnable downstream case study target selected.`;
   const missingLines = skippedTargets.length > 0
     ? skippedTargets.map((target) => (
-        `- ${target.label}: set ${target.requiredEnv} and run ${target.script}.`
+        `- ${target.label}: ${target.reason || `set ${target.requiredEnv} and run ${target.script}.`}`
       ))
     : ['- Set PASS_LENS_IREE_DRIVER and/or PASS_LENS_TORCH_MLIR_DRIVER.'];
 
@@ -203,10 +223,15 @@ function formatNoTargetError(skippedTargets, options) {
     '- Then set one env and run:',
     '  # IREE only',
     '  npm run smoke:iree-case-study',
+    '  # or:',
+    '  node scripts/downstream-case-studies-smoke.js --iree --iree-driver /path/to/downstream-driver',
     '  # Torch-MLIR only',
     '  npm run smoke:torch-mlir-case-study',
+    '  # or:',
+    '  node scripts/downstream-case-studies-smoke.js --torch --torch-driver /path/to/downstream-driver',
     '  # Both (auto-detected)',
     '  npm run smoke:downstream-case-studies',
+    '  node scripts/downstream-case-studies-smoke.js --iree-driver /path/to/iree-driver --torch-driver /path/to/torch-mlir-driver',
     '',
     `Requested scope: ${requested.join(', ')}`
   ].join('\n');
@@ -217,9 +242,91 @@ function formatNoTargetError(skippedTargets, options) {
 
 function formatSkippedTargetsWarning(skippedTargets) {
   const lines = skippedTargets.map((target) => (
-    `Skipping ${target.label}: missing ${target.requiredEnv}`
+    `Skipping ${target.label}: ${target.reason}`
   ));
   return `Warning: ${lines.join('; ')}`;
+}
+
+function resolveCandidateDriver(candidate, options) {
+  const env = candidate === 'iree'
+    ? {
+      name: 'PASS_LENS_IREE_DRIVER',
+      value: options.ireeDriver || process.env.PASS_LENS_IREE_DRIVER
+    }
+    : {
+      name: 'PASS_LENS_TORCH_MLIR_DRIVER',
+      value: options.torchDriver || process.env.PASS_LENS_TORCH_MLIR_DRIVER
+    };
+
+  if (!env.value) {
+    return {
+      ok: false,
+      reason: `${env.name} is not set.`
+    };
+  }
+
+  const normalized = String(env.value).trim();
+  if (!normalized) {
+    return {
+      ok: false,
+      reason: `${env.name} is empty.`
+    };
+  }
+
+  const hasPathLike = normalized.includes(path.sep) || normalized.includes(path.posix.sep);
+  if (hasPathLike) {
+    const absolute = path.isAbsolute(normalized)
+      ? normalized
+      : path.resolve(normalized);
+    try {
+      const stat = fs.statSync(absolute);
+      if (!stat.isFile()) {
+        return {
+          ok: false,
+          reason: `${env.name} points to a non-file path: ${absolute}`
+        };
+      }
+      if (process.platform !== 'win32' && (stat.mode & 0o111) === 0) {
+        return {
+          ok: false,
+          reason: `${env.name} is not executable: ${absolute}`
+        };
+      }
+      return { ok: true, resolvedPath: absolute };
+    } catch (error) {
+      return {
+        ok: false,
+        reason: `${env.name} points to invalid path: ${absolute} (${error.message})`
+      };
+    }
+  }
+
+  const pathExts = process.platform === 'win32'
+    ? process.env.PATHEXT?.split(path.delimiter).map((ext) => ext.toLowerCase()) ?? ['.exe', '.cmd', '.bat', '.com']
+    : [''];
+  const searchPaths = process.env.PATH || '';
+  for (const directory of searchPaths.split(path.delimiter)) {
+    for (const extension of pathExts) {
+      const candidatePath = path.join(directory, `${normalized}${extension}`);
+      try {
+        const stat = fs.statSync(candidatePath);
+        if (!stat.isFile()) {
+          continue;
+        }
+        if (process.platform !== 'win32' && (stat.mode & 0o111) === 0) {
+          continue;
+        }
+        return { ok: true, resolvedPath: candidatePath };
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  return {
+    ok: false,
+    reason: `Could not locate executable for ${env.name}: ${normalized}`
+  };
 }
 
 function printUsage() {
@@ -228,6 +335,8 @@ function printUsage() {
 Options:
   --iree       run only IREE structured case study.
   --torch      run only torch-mlir structured case study.
+  --iree-driver <path>   override IREE collector path for this run.
+  --torch-driver <path>  override Torch-MLIR collector path for this run.
   --fail-fast  stop on first failed target.
   --min-quality <score> minimum quality score for each case study.
   -h, --help   show this help.

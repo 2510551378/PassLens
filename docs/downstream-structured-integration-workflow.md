@@ -28,12 +28,34 @@ cd /path/to/PassLens
 npm run smoke:iree-case-study
 ```
 
+Direct CLI run:
+
+```bash
+cd /path/to/PassLens
+node scripts/iree-case-study-smoke.js --driver /path/to/downstream-pass-lens-driver --pipeline builtin.module(func.func(canonicalize))
+```
+
 Torch-MLIR:
 
 ```bash
 export PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-pass-lens-driver"
 cd /path/to/PassLens
 npm run smoke:torch-mlir-case-study
+```
+
+Direct CLI run:
+
+```bash
+cd /path/to/PassLens
+node scripts/torch-mlir-case-study-smoke.js --driver /path/to/downstream-pass-lens-driver --pipeline builtin.module(func.func(canonicalize))
+```
+
+Run both with one command:
+
+```bash
+node scripts/downstream-case-studies-smoke.js \
+  --iree-driver /path/to/iree-pass-lens-driver \
+  --torch-driver /path/to/torch-mlir-pass-lens-driver
 ```
 
 ## Step 3: Validate signal quality gates

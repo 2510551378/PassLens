@@ -7,18 +7,32 @@ distribution.
 
 ## 1) Preflight
 
-Before any publish attempt:
+Before any publish attempt (plan-only or dry-run), run:
 
 ```powershell
 npm run release:preflight
 ```
 
+Before any real publish execution, run the strict gate first:
+
+```powershell
+npm run release:preflight:strict
+npm run release:publish:ready
+```
+
+`release:preflight:strict` is identical to `release:preflight` plus
+`npm run release:check:strict`, so all local blockers are validated before
+`--execute` calls.
+
+`release:publish:ready` checks command resolution and token availability for both
+`vsce` and `ovsx`; it ensures you do not hit a local publish failure after the
+strict checks pass.
+
 Required by `release:preflight`:
 
-- `npm run validate:trace:all`
 - `npm run release:smoke`
 - `npm run package`
-- `npm run release:preview:plan -- --output artifacts/release-preview-plan.json`
+- `npm run release:preview:plan -- -- --output artifacts/release-preview-plan.json`
 
 If any step fails, do not publish.
 
@@ -26,7 +40,7 @@ Use `npm run release:preview:plan` (JSON) to capture a snapshot:
 
 ```powershell
 npm run release:preview:plan -- --json
-npm run release:preview:plan -- --output artifacts/release-preview-plan.json
+npm run release:preview:plan -- -- --output artifacts/release-preview-plan.json
 ```
 
 Inspect the plan fields:
@@ -65,9 +79,10 @@ Dry-run should print:
 For a machine-readable audit record:
 
 ```powershell
-npm run release:preview:plan -- --json --output artifacts/release-preview-plan.json
-npm run release:publish:marketplace:json -- --output artifacts/marketplace-publish-plan.json
-npm run release:publish:open-vsx:json -- --output artifacts/open-vsx-publish-plan.json
+npm run release:proof -- -- --output artifacts/release-proof.json
+npm run release:preview:plan -- --json -- --output artifacts/release-preview-plan.json
+npm run release:publish:marketplace:json -- -- --output artifacts/marketplace-publish-plan.json
+npm run release:publish:open-vsx:json -- -- --output artifacts/open-vsx-publish-plan.json
 ```
 
 These files are useful to keep with release notes and CI artifacts.

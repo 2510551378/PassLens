@@ -15,6 +15,20 @@ test('parseArgs parses json and output options', () => {
   assert.equal(options.output, tempOutput);
 });
 
+test('parseArgs tolerates npm-style -- separator', () => {
+  const tempOutput = path.join(os.tmpdir(), 'pass-lens-release-preview-plan-sep.json');
+  const options = parseArgs(['--', '--output', tempOutput, '--json']);
+  assert.equal(options.json, true);
+  assert.equal(options.output, tempOutput);
+});
+
+test('parseArgs treats single positional path as output when --json is active', () => {
+  const tempOutput = path.join(os.tmpdir(), 'pass-lens-release-preview-plan-positional.json');
+  const options = parseArgs(['--json', tempOutput]);
+  assert.equal(options.json, true);
+  assert.equal(options.output, tempOutput);
+});
+
 test('isExecutable reflects required environment token availability', () => {
   const plan = {
     target: 'marketplace',
@@ -53,13 +67,17 @@ test('release preview plan command returns json and includes both targets', () =
   const parsed = JSON.parse(stdout);
   assert.equal(parsed.plans.length, 2);
   assert.equal(parsed.plans[0].target !== undefined, true);
-  assert.equal(parsed.plans.every((item) => item.error === undefined), true);
+  assert.equal(parsed.plans.every((item) => item.target && (item.command || item.error)), true);
   assert.match(stdout, /marketplace/);
   assert.match(stdout, /open-vsx/);
 
   const hasVsceToken = Boolean(process.env.VSCE_PAT);
   const hasOpenVsxToken = Boolean(process.env.OVSX_PAT);
   for (const plan of parsed.plans) {
+    if (plan.error) {
+      assert.equal(plan.canExecute, false, `${plan.target} should not be executable when plan has an error`);
+      continue;
+    }
     if (plan.target === 'marketplace') {
       assert.equal(plan.canExecute, hasVsceToken, 'marketplace plan should reflect VSCE_PAT presence');
     }

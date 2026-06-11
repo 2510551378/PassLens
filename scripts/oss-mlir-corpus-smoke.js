@@ -195,7 +195,8 @@ async function runInput(entry, inputPath, sourceUrl) {
   ];
   const proc = spawnSync(collector, args, {
     encoding: 'utf8',
-    cwd: traceDirectory
+    cwd: traceDirectory,
+    shell: usesShellLauncher(collector)
   });
   fs.writeFileSync(stdoutPath, proc.stdout || '', 'utf8');
   fs.writeFileSync(stderrPath, proc.stderr || '', 'utf8');
@@ -249,6 +250,14 @@ function parseArgs(argv) {
   }
 
   return options;
+}
+
+function usesShellLauncher(launcherPath) {
+  if (process.platform !== 'win32' || !launcherPath) {
+    return false;
+  }
+  return path.extname(launcherPath).toLowerCase() === '.cmd'
+    || path.extname(launcherPath).toLowerCase() === '.bat';
 }
 
 function validateTraces(tracePaths) {

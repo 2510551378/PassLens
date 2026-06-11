@@ -16,6 +16,8 @@ The check validates:
 - Release milestone coverage for VS Code Marketplace, Open VSX, and demo GIF
   work.
 - Public docs required by new users and collector authors.
+- `CONTRIBUTING.md` contribution rules and sample/collector contribution checks.
+- `docs/release-publication-blockers.md` publication blocker checklist.
 - Bundled sample traces with credible `provenance.kind` coverage.
 - `docs/sample-provenance.md` and `sample-traces/` are kept in sync (every sample
   JSON has a matching provenance record).
@@ -23,20 +25,50 @@ The check validates:
 Before you publish, you can also generate an executable publish plan:
 
 ```powershell
-npm run release:preview:plan -- --output .github/release-preview-plan.json
+npm run release:preview:plan -- -- --output .github/release-preview-plan.json
 ```
 
 This command writes a structured summary for `marketplace` and `open-vsx` plans,
 including resolved command path, target VSIX artifact, required env token check, and
 any blockers such as missing publish binaries.
 
-Before publishing a preview:
+For a single proof payload that ties together the readiness check and both publish
+targets (token-gated/blocked state included), use:
+
+```powershell
+npm run release:proof
+```
+
+This is useful as a release-attached artifact because it captures:
+
+- package metadata used in the release,
+- `release-check` status and warnings,
+- resolved publish plan (command, args, required env, canExecute),
+- whether `pass-lens-<version>.vsix` exists.
+
+If you are ready to run an actual publish, run this stricter gate before execute:
+
+```powershell
+npm run release:publish:ready
+```
+
+`release:publish:ready` fails unless:
+
+- both publish commands resolve,
+- both required token env vars are present.
+
+Before a dry-run publish attempt:
 
 ```powershell
 cd /path/to/PassLens
-npm run release:check
-npm run release:smoke
-npm run package
+npm run release:preflight
+```
+
+For an actual publish execution (strict gate), run:
+
+```powershell
+cd /path/to/PassLens
+npm run release:preflight:strict
 ```
 
 For the full preflight sequence in one command:
@@ -50,6 +82,9 @@ This runs the release smoke checks, packages VSIX, and writes a
 
 For a step-by-step dry-run/execute sequence and post-publish verification checklist,
 follow [`release-publish-playbook.md`](release-publish-playbook.md).
+
+For the explicit external-release blocker tracking checklist, see
+[`release-publication-blockers.md`](release-publication-blockers.md).
 
 CI can also generate and persist the publish plan:
 
@@ -87,7 +122,7 @@ Keep Marketplace/Open VSX publication and the README demo GIF as explicit
 release blockers until they are completed. This avoids presenting a polished
 codebase without a clear external entry point.
 
-Use strict mode for a release gate:
+Use strict mode for a release gate (CI execute mode also enforces this):
 
 ```powershell
 npm run release:check:strict

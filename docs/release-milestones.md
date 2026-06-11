@@ -69,7 +69,7 @@ Success criteria:
 
 - Publish VS Code Marketplace and Open VSX previews.
 - Keep README focused on the 30-second path; move detailed guides into docs.
-- Add a short demo GIF once the real collector workflow is polished.
+- Add a short demo GIF (now linked in README) for quick external onboarding.
 - Maintain GitHub topics, About description, issue templates, and good first
   issues.
 - Prefer real traces and credible provenance over synthetic feature demos.

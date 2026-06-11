@@ -396,8 +396,18 @@ repro/
 
 ## Marketplace And Ecosystem
 
+- [x] Add a `CONTRIBUTING.md` for trace/collector contribution rules.
+  - `CONTRIBUTING.md` now defines trace sample rules, artifact and provenance
+    requirements, collector integration checks, and reporting expectations.
+  - README now links to `CONTRIBUTING.md` and `release:check` verifies it.
+  - `tests/release-readiness.test.js` validates that CONTRIBUTING appears in public
+    onboarding checks.
+
 - [ ] Publish VS Code Marketplace preview.
+  - `docs/release-publication-blockers.md` and `release:publish` playbook show the
+    explicit token/command/verification steps.
 - [ ] Publish Open VSX preview.
+  - Clear both checklist items in `docs/release-publication-blockers.md` before marking complete.
 - [x] Add 30-second demo GIF to README.
 - [x] Add an executable release readiness check before publishing.
   - `npm run release:check` validates public entry-point docs, Marketplace
@@ -427,12 +437,13 @@ repro/
 ### Month 0-1: Credible MVP
 
 - [ ] Publish Marketplace preview.
-- [ ] Add directory-style repro bundle.
+- [x] Add directory-style repro bundle.
 - [x] Add at least 3 trace cases, with provenance labels.
   - Commit: this change.
   - All bundled sample traces now declare `provenance.kind` and
     `provenance.description`; tests enforce this for future samples.
-- [ ] Add demo GIF and workflow-focused README.
+- [x] Add demo GIF and workflow-focused README.
+  - Commit: `0e5cfca`.
 - [x] Add trace quality score.
   - Commit: this change.
   - The webview summary now displays `Trace quality` from
@@ -475,7 +486,12 @@ repro/
   - Commit: this change.
   - `pass-lens.rerun.prefixBisect` is declared as a preview local tool contract
     requiring filesystem and compiler-driver access.
-- [ ] Defer patch suggestion until evidence and rerun tools are mature.
+- [x] Defer patch suggestion until evidence and rerun tools are mature.
+  - `generateCandidateRootCauses` + `buildNextExperiments` emit candidate hypotheses
+    with explicit uncertainty and rerun/verification guardrails.
+  - Candidate root causes, issue drafts, and regression sketches explicitly state:
+    no auto-edit patches from report-only evidence.
+  - `src/agentToolManifest.ts` advertises the same source-edit guardrail.
 
 ## Risks To Revisit
 

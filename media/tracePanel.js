@@ -4,7 +4,6 @@
   const serializedData = dataElement?.content?.textContent ?? dataElement?.textContent ?? '{}';
   const passLensData = JSON.parse(serializedData);
   const { trace, traceIssues, traceAnomalies, traceIssueSummary, traceQuality, traceSize, sourcePath } = passLensData;
-  let selectedIndex = initialSelectedIndex();
   let filterText = '';
   let showChangedOnly = false;
   let showFullDiff = false;
@@ -18,7 +17,16 @@
   const stageImpactCache = new WeakMap(trace.stages.map((stage) => [stage, metricImpact(stage)]));
   const maxMetricImpact = Math.max(1, ...trace.stages.map((stage) => stageImpactCache.get(stage) ?? 0));
   const anomaliesByStage = buildAnomaliesByStage(traceAnomalies);
-  const slowestStageIndex = computeSlowestStageIndex(trace.stages);
+  const debugState = window && typeof window === 'object' ? window.__passLensTracePanelDebug : undefined;
+  let firstFailedIndex = -1;
+  let firstChangedIndex = -1;
+  let slowestStageIndex = -1;
+  let firstAnomalyTraceIndex = -1;
+  let changedIndexes = [];
+  let visibleStageEntriesCacheKey = '';
+  if (debugState && typeof debugState === 'object' && typeof debugState.visibleStageEntriesCalls !== 'number') {
+    debugState.visibleStageEntriesCalls = 0;
+  }
   let latestVisibleStages = [];
   let pendingTimelineRender = false;
   
@@ -28,6 +36,9 @@
   const search = document.getElementById('search');
   const changedOnly = document.getElementById('changed-only');
   const timelineScrollContainer = timeline.closest?.('aside') ?? timeline;
+  let firstSignalIndexValue = -1;
+  rebuildTraceMetadataCache();
+  let selectedIndex = initialSelectedIndex();
   
   document.getElementById('tool').textContent = trace.tool ? 'tool: ' + trace.tool : 'tool: unknown';
   document.getElementById('provenance').textContent = 'origin: ' + provenanceLabel(trace.provenance);
@@ -54,11 +65,13 @@
   
   search.addEventListener('input', () => {
     filterText = search.value.trim().toLowerCase();
+    invalidateVisibleEntries();
     ensureVisibleSelection();
     renderTimeline();
   });
   changedOnly.addEventListener('change', () => {
     showChangedOnly = changedOnly.checked;
+    invalidateVisibleEntries();
     ensureVisibleSelection();
     renderTimeline();
   });
@@ -117,12 +130,10 @@
   }
   
   function initialSelectedIndex() {
-    const failedIndex = trace.stages.findIndex((stage) => isFailedStage(stage));
-    if (failedIndex >= 0) {
-      return failedIndex;
+    if (firstFailedIndex >= 0) {
+      return firstFailedIndex;
     }
-    const firstChanged = trace.stages.findIndex((stage) => stage.changed);
-    return firstChanged >= 0 ? firstChanged : 0;
+    return firstChangedIndex >= 0 ? firstChangedIndex : 0;
   }
   
   function stageAccent(stage) {
@@ -149,11 +160,7 @@
   }
   
   function firstSignalIndex() {
-    const failedIndex = trace.stages.findIndex((stage) => isFailedStage(stage));
-    if (failedIndex >= 0) {
-      return failedIndex;
-    }
-    return trace.stages.findIndex((stage) => stage.changed);
+    return firstSignalIndexValue;
   }
   
   function isFailedStage(stage) {
@@ -167,11 +174,7 @@
   }
   
   function firstAnomalyIndex() {
-    if (!traceAnomalies.length) {
-      return -1;
-    }
-    const stageIndex = traceAnomalies[0].stageIndex;
-    return trace.stages.findIndex((stage) => stage.index === stageIndex);
+    return firstAnomalyTraceIndex;
   }
   
   function anomaliesForStage(stageIndex) {
@@ -179,10 +182,30 @@
   }
 
   function visibleStageEntries() {
-    return trace.stages
-      .map((stage, idx) => ({ stage, idx }))
-      .filter(({ stage }) => !showChangedOnly || stage.changed)
-      .filter(({ stage }) => matchesFilter(stage));
+    const cacheKey = (showChangedOnly ? '1|' : '0|') + filterText;
+    if (cacheKey === visibleStageEntriesCacheKey) {
+      return latestVisibleStages;
+    }
+    if (debugState && typeof debugState === 'object') {
+      debugState.visibleStageEntriesCalls += 1;
+    }
+    const nextVisibleStages = [];
+    for (let i = 0; i < trace.stages.length; i++) {
+      const stage = trace.stages[i];
+      if (showChangedOnly && !stage.changed) {
+        continue;
+      }
+      if (!matchesFilter(stage)) {
+        continue;
+      }
+      nextVisibleStages.push({
+        stage,
+        idx: i
+      });
+    }
+    latestVisibleStages = nextVisibleStages;
+    visibleStageEntriesCacheKey = cacheKey;
+    return nextVisibleStages;
   }
 
   function matchesFilter(stage) {
@@ -220,13 +243,20 @@
   }
   
   function nextChangedIndex(direction) {
-    if (!trace.stages.length) {
+    if (!changedIndexes.length) {
       return -1;
     }
-    for (let step = 1; step <= trace.stages.length; step++) {
-      const index = (selectedIndex + direction * step + trace.stages.length) % trace.stages.length;
-      if (trace.stages[index]?.changed) {
-        return index;
+    if (direction > 0) {
+      for (const index of changedIndexes) {
+        if (index > selectedIndex) {
+          return index;
+        }
+      }
+      return changedIndexes[0];
+    }
+    for (let i = changedIndexes.length - 1; i >= 0; i--) {
+      if (changedIndexes[i] < selectedIndex) {
+        return changedIndexes[i];
       }
     }
     return -1;
@@ -310,11 +340,21 @@
     }
     const index = trace.stages.findIndex((stage) => stage.index === message.stageIndex);
     if (index >= 0 && message.stage) {
+      const beforeStage = trace.stages[index];
       trace.stages[index] = {
         ...trace.stages[index],
         ...message.stage
       };
+      const updatedStage = trace.stages[index];
+      const changedInIndex = beforeStage?.status !== updatedStage.status ||
+        beforeStage?.verifier !== updatedStage.verifier ||
+        beforeStage?.changed !== updatedStage.changed ||
+        beforeStage?.durationMs !== updatedStage.durationMs;
+      if (changedInIndex) {
+        rebuildTraceMetadataCache();
+      }
     }
+    invalidateVisibleEntries();
     renderSummary();
     renderIssuePanel();
     renderTimeline();
@@ -335,16 +375,47 @@
     return byStage;
   }
 
-  function computeSlowestStageIndex(stages) {
-    let bestIndex = -1;
-    let bestDuration = -1;
-    stages.forEach((stage, index) => {
-      if (typeof stage.durationMs === 'number' && stage.durationMs > bestDuration) {
-        bestDuration = stage.durationMs;
-        bestIndex = index;
+  function rebuildTraceMetadataCache() {
+    firstFailedIndex = -1;
+    firstChangedIndex = -1;
+    slowestStageIndex = -1;
+    firstAnomalyTraceIndex = -1;
+    firstSignalIndexValue = -1;
+    changedIndexes = [];
+    let slowestDuration = -1;
+    const stageIndexToPosition = new Map();
+    for (let i = 0; i < trace.stages.length; i++) {
+      const stage = trace.stages[i];
+      stageIndexToPosition.set(stage.index, i);
+      if (typeof stage.durationMs === 'number' && stage.durationMs > slowestDuration) {
+        slowestDuration = stage.durationMs;
+        slowestStageIndex = i;
       }
-    });
-    return bestIndex;
+      if (firstFailedIndex < 0 && isFailedStage(stage)) {
+        firstFailedIndex = i;
+      }
+      if (firstChangedIndex < 0 && stage.changed) {
+        firstChangedIndex = i;
+      }
+      if (stage.changed) {
+        changedIndexes.push(i);
+      }
+    }
+    firstAnomalyTraceIndex = -1;
+    for (const stageIndex of anomaliesByStage.keys()) {
+      const tracePosition = stageIndexToPosition.get(stageIndex);
+      if (typeof tracePosition === 'number') {
+        if (firstAnomalyTraceIndex < 0 || tracePosition < firstAnomalyTraceIndex) {
+          firstAnomalyTraceIndex = tracePosition;
+        }
+      }
+    }
+    firstSignalIndexValue = firstFailedIndex >= 0 ? firstFailedIndex : firstChangedIndex;
+  }
+
+  function invalidateVisibleEntries() {
+    visibleStageEntriesCacheKey = '';
+    latestVisibleStages = [];
   }
 
   function handleKeydown(event) {
@@ -393,6 +464,7 @@
       event.preventDefault();
       changedOnly.checked = !changedOnly.checked;
       showChangedOnly = changedOnly.checked;
+      invalidateVisibleEntries();
       ensureVisibleSelection();
       renderTimeline();
     }
@@ -405,11 +477,9 @@
   }
   
   function renderSummary() {
-    const changed = trace.stages.filter((stage) => stage.changed);
-    const failed = trace.stages.find((stage) => isFailedStage(stage));
-    const slowest = trace.stages
-      .filter((stage) => typeof stage.durationMs === 'number')
-      .sort((a, b) => b.durationMs - a.durationMs)[0];
+    const changed = changedIndexes.map((index) => trace.stages[index]);
+    const failed = firstFailedIndex >= 0 ? trace.stages[firstFailedIndex] : undefined;
+    const slowest = slowestStageIndex >= 0 ? trace.stages[slowestStageIndex] : undefined;
     const firstChanged = changed[0];
     const firstAnomaly = traceAnomalies[0];
     const qualityTone = traceQuality?.score < 70 ? 'warning' : undefined;

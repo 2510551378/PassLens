@@ -10,6 +10,8 @@ const requiredDocs = [
   'docs/release-milestones.md',
   'docs/sample-provenance.md',
   'docs/collector-author-guide.md',
+  'CONTRIBUTING.md',
+  'docs/release-publication-blockers.md',
   'docs/pass-lens.schema.json',
   'docs/images/pass-lens-logo.png',
   'docs/images/pass-lens-hero.png',
@@ -22,6 +24,7 @@ const requiredReadmeNeedles = [
   'Pass Lens: Open Sample Trace',
   'docs/sample-provenance.md',
   'docs/collector-author-guide.md',
+  'CONTRIBUTING.md',
   'docs/release-milestones.md',
   'smoke:heir-case-study'
 ];
@@ -252,12 +255,14 @@ function checkPackageMetadata(root, errors, checks) {
   requireField(packageJson, 'scripts.release:smoke', errors, checks);
   requireField(packageJson, 'scripts.release:preview:plan', errors, checks);
   requireField(packageJson, 'scripts.release:preflight', errors, checks);
+  requireField(packageJson, 'scripts.release:preflight:strict', errors, checks);
   requireField(packageJson, 'scripts.release:publish:marketplace', errors, checks);
   requireField(packageJson, 'scripts.release:publish:marketplace:json', errors, checks);
   requireField(packageJson, 'scripts.release:publish:marketplace:execute', errors, checks);
   requireField(packageJson, 'scripts.release:publish:open-vsx', errors, checks);
   requireField(packageJson, 'scripts.release:publish:open-vsx:json', errors, checks);
   requireField(packageJson, 'scripts.release:publish:open-vsx:execute', errors, checks);
+  requireField(packageJson, 'scripts.release:publish:ready', errors, checks);
   requireField(packageJson, 'scripts.validate:trace:all', errors, checks);
   requireField(packageJson, 'scripts.test', errors, checks);
 

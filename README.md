@@ -19,6 +19,8 @@
   |
   <a href="docs/collector-author-guide.md">Collector Guide</a>
   |
+  <a href="CONTRIBUTING.md">Contributing</a>
+  |
   <a href="docs/sample-provenance.md">Sample Provenance</a>
   |
   <a href="docs/release-milestones.md">Milestones</a>
@@ -36,7 +38,7 @@
 
 ![Pass Lens hero](docs/images/pass-lens-hero.png)
 
-![Pass Lens first bad pass view](docs/images/pass-lens-first-bad-pass.png)
+![Pass Lens first bad pass demo](docs/images/pass-lens-first-bad-pass.gif)
 
 ## Why Pass Lens
 
@@ -130,6 +132,7 @@ npm run release:smoke
 Then publish with an explicit target (default is dry-run):
 
 ```powershell
+npm run release:publish:ready                   # ready-state check (token + command)
 npm run release:publish:marketplace:json       # machine-readable dry-run
 npm run release:publish:marketplace:execute    # real publish
 npm run release:publish:open-vsx:json          # machine-readable dry-run
@@ -144,11 +147,20 @@ npm run release:preflight
 
 # quick plan-only checks
 npm run release:preview:plan -- --json
-npm run release:preview:plan -- --output .github/release-preview-plan.json
+npm run release:preview:plan -- -- --output .github/release-preview-plan.json
 ```
 
 For a complete publish sequence (dry-run checks → execute, and post-publish
 verification), use [`docs/release-publish-playbook.md`](docs/release-publish-playbook.md).
+
+You can also emit a single release proof artifact:
+
+```powershell
+npm run release:proof -- -- --output artifacts/release-proof.json
+```
+
+The proof payload includes release-check status, publish plan readiness, token
+gate state, and VSIX path.
 
 See [`docs/release-readiness.md`](docs/release-readiness.md) for the
 Marketplace / Open VSX checklist.
@@ -167,14 +179,18 @@ npm run smoke:heir-case-study
 npm run smoke:iree-case-study
 npm run smoke:torch-mlir-case-study
 npm run smoke:downstream-case-studies
+
+# Or run the downstream aggregate runner directly with CLI driver overrides:
+node scripts/downstream-case-studies-smoke.js --iree-driver /path/to/iree-driver --torch-driver /path/to/torch-mlir-driver
 ```
 
 Required environment variables:
 
 - `PASS_LENS_MLIR_OPT` (or `PASS_LENS_MLIR_DRIVER`) for `smoke:oss-mlir`
 - `PASS_LENS_OSS_SOURCE_ROOT` to reuse local llvm mlir test files (optional)
-- `PASS_LENS_IREE_DRIVER` / `PASS_LENS_TORCH_MLIR_DRIVER` for downstream
-  scripts
+- `PASS_LENS_IREE_DRIVER` / `PASS_LENS_TORCH_MLIR_DRIVER` for downstream scripts
+- `--iree-driver` / `--torch-driver` on `smoke:downstream-case-studies` to
+  bypass env setup for temporary CI or machine-local scripts.
 - `PASS_LENS_HEIR_ROOT` for `smoke:heir-case-study`
 - `PASS_LENS_IREE_CASE_DIR` and `PASS_LENS_TORCH_MLIR_CASE_DIR` to control output
   directories
@@ -331,11 +347,23 @@ $env:PASS_LENS_IREE_DRIVER="/path/to/downstream-driver"
 npm run smoke:iree-case-study
 ```
 
+Or direct CLI:
+
+```bash
+node scripts/iree-case-study-smoke.js --driver /path/to/downstream-driver --pipeline builtin.module(func.func(canonicalize))
+```
+
 Torch-MLIR:
 
 ```powershell
 $env:PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-driver"
 npm run smoke:torch-mlir-case-study
+```
+
+Or direct CLI:
+
+```bash
+node scripts/torch-mlir-case-study-smoke.js --driver /path/to/downstream-driver --pipeline builtin.module(func.func(canonicalize))
 ```
 
 Or run both available downstream structured case studies in one shot:
@@ -344,6 +372,12 @@ Or run both available downstream structured case studies in one shot:
 $env:PASS_LENS_IREE_DRIVER="/path/to/iree-driver"
 $env:PASS_LENS_TORCH_MLIR_DRIVER="/path/to/torch-mlir-driver"
 npm run smoke:downstream-case-studies
+```
+
+Or run aggregate script with in-command overrides:
+
+```powershell
+node scripts/downstream-case-studies-smoke.js --iree-driver /path/to/iree-driver --torch-driver /path/to/torch-mlir-driver
 ```
 
 The runner validates:
@@ -577,3 +611,4 @@ open-source roadmap.
 ## License
 
 MIT
+

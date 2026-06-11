@@ -38,6 +38,14 @@ test('parseArgs handles min-quality assignment flag', () => {
   assert.equal(options.minQuality, 95);
 });
 
+test('parseArgs handles downstream driver override flags', () => {
+  const options = parseArgs(['--iree', '--iree-driver', '/tmp/iree-driver', '--torch', '--torch-driver', '/tmp/torch-driver']);
+  assert.equal(options.ireeDriver, '/tmp/iree-driver');
+  assert.equal(options.torchDriver, '/tmp/torch-driver');
+  assert.equal(options.forceIree, true);
+  assert.equal(options.forceTorch, true);
+});
+
 test('parseArgs handles invalid min-quality input', () => {
   const options = parseArgs(['--iree', '--min-quality', 'invalid', '--min-quality=88']);
   assert.equal(options.minQuality, 88);
@@ -104,6 +112,101 @@ test('resolveTargetsWithDiagnostics reports missing requirements for forced targ
   }
 });
 
+test('resolveTargetsWithDiagnostics reports invalid explicit driver path', () => {
+  const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+  const previousIreeDriver = process.env.PASS_LENS_IREE_DRIVER;
+  try {
+    delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    delete process.env.PASS_LENS_IREE_DRIVER;
+    const result = resolveTargetsWithDiagnostics(parseArgs([
+      '--iree',
+      '--iree-driver',
+      path.join('does-not-exist', 'driver')
+    ]));
+    assert.equal(result.targets.length, 0);
+    assert.equal(result.skippedTargets.length, 1);
+    assert.match(result.skippedTargets[0].reason, /not found|does-not-exist|invalid path/i);
+  } finally {
+    if (previousTorchDriver === undefined) {
+      delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    } else {
+      process.env.PASS_LENS_TORCH_MLIR_DRIVER = previousTorchDriver;
+    }
+    if (previousIreeDriver === undefined) {
+      delete process.env.PASS_LENS_IREE_DRIVER;
+    } else {
+      process.env.PASS_LENS_IREE_DRIVER = previousIreeDriver;
+    }
+  }
+});
+
+test('resolveTargetsWithDiagnostics rejects non-executable local driver path on unix-like systems', () => {
+  if (process.platform === 'win32') {
+    return;
+  }
+
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-downstream-nonexec-'));
+  const nonExecutable = path.join(root, 'non-exec-driver');
+  fs.writeFileSync(nonExecutable, '#!/bin/sh\necho ok\n', 'utf8');
+  fs.chmodSync(nonExecutable, 0o644);
+
+  const previousIreeDriver = process.env.PASS_LENS_IREE_DRIVER;
+  const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+  try {
+    process.env.PASS_LENS_IREE_DRIVER = nonExecutable;
+    const result = resolveTargetsWithDiagnostics(parseArgs(['--iree']));
+    assert.equal(result.targets.length, 0);
+    assert.equal(result.skippedTargets.length, 1);
+    assert.match(result.skippedTargets[0].reason, /not executable/i);
+  } finally {
+    if (previousIreeDriver === undefined) {
+      delete process.env.PASS_LENS_IREE_DRIVER;
+    } else {
+      process.env.PASS_LENS_IREE_DRIVER = previousIreeDriver;
+    }
+    if (previousTorchDriver === undefined) {
+      delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    } else {
+      process.env.PASS_LENS_TORCH_MLIR_DRIVER = previousTorchDriver;
+    }
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('resolveTargetsWithDiagnostics accepts explicit cli drivers when env vars are missing', () => {
+  const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+  const previousIreeDriver = process.env.PASS_LENS_IREE_DRIVER;
+  const executable = process.execPath;
+  try {
+    delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    delete process.env.PASS_LENS_IREE_DRIVER;
+    const result = resolveTargetsWithDiagnostics(parseArgs([
+      '--iree',
+      '--iree-driver',
+      executable,
+      '--torch',
+      '--torch-driver',
+      executable
+    ]));
+    assert.equal(result.targets.length, 2);
+    assert.equal(result.targets[0].key, 'iree');
+    assert.equal(result.targets[0].driver, executable);
+    assert.equal(result.targets[1].driver, executable);
+    assert.equal(result.skippedTargets.length, 0);
+  } finally {
+    if (previousTorchDriver === undefined) {
+      delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    } else {
+      process.env.PASS_LENS_TORCH_MLIR_DRIVER = previousTorchDriver;
+    }
+    if (previousIreeDriver === undefined) {
+      delete process.env.PASS_LENS_IREE_DRIVER;
+    } else {
+      process.env.PASS_LENS_IREE_DRIVER = previousIreeDriver;
+    }
+  }
+});
+
 test('main emits actionable message when no required downstream driver is available', () => {
   const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
   const previousIreeDriver = process.env.PASS_LENS_IREE_DRIVER;
@@ -131,9 +234,10 @@ test('main emits actionable message when no required downstream driver is availa
 test('resolveTargets selects both when env is present', () => {
   const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
   const previousIreeDriver = process.env.PASS_LENS_IREE_DRIVER;
+  const executable = process.execPath;
   try {
-    process.env.PASS_LENS_TORCH_MLIR_DRIVER = '/tmp/torch-driver';
-    process.env.PASS_LENS_IREE_DRIVER = '/tmp/iree-driver';
+    process.env.PASS_LENS_TORCH_MLIR_DRIVER = executable;
+    process.env.PASS_LENS_IREE_DRIVER = executable;
     const targets = resolveTargets(parseArgs([]));
     assert.equal(targets.length, 2);
     assert.equal(targets[0].key, 'iree');
@@ -149,6 +253,165 @@ test('resolveTargets selects both when env is present', () => {
     } else {
       process.env.PASS_LENS_IREE_DRIVER = previousIreeDriver;
     }
+  }
+});
+
+test('smoke script supports explicit cli driver injection and precedence over env', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'pass-lens-downstream-cli-driver-override-'));
+  const ireeCaseRoot = path.join(root, 'iree');
+  const torchCaseRoot = path.join(root, 'torch');
+  const ireeDriverScript = path.join(root, 'mock-iree-driver-cli.js');
+  const torchDriverScript = path.join(root, 'mock-torch-driver-cli.js');
+
+  try {
+    const mockDriverJs = [
+      "const fs = require('node:fs');",
+      "const path = require('node:path');",
+      '',
+      'const args = process.argv.slice(2);',
+      'let tracePath = \'\';',
+      'let artifactDir = \'\';',
+      '',
+      'for (let i = 0; i < args.length; i += 1) {',
+      '  const arg = args[i];',
+      "  if (arg.startsWith('--pass-lens-trace=')) {",
+      "    tracePath = arg.slice('--pass-lens-trace='.length);",
+      "  } else if (arg.startsWith('--pass-lens-artifact-dir=')) {",
+      "    artifactDir = arg.slice('--pass-lens-artifact-dir='.length);",
+      "  }",
+      '}',
+      'if (!tracePath) {',
+      '  process.exit(1);',
+      '}',
+      '',
+      'const traceDirectory = path.dirname(tracePath);',
+      'const artifactRelDir = artifactDir || \'mock-artifacts\';',
+      'const resolvedArtifactDir = path.isAbsolute(artifactRelDir)',
+      '  ? artifactRelDir',
+      '  : path.join(traceDirectory, artifactRelDir);',
+      'const trace = {',
+      '  schemaVersion: 1,',
+      "  tool: process.argv[0],",
+      "  command: process.argv[0],",
+      "  provenance: { kind: 'live-pass-instrumentation', description: 'cli override mock driver' },",
+      "  capture: { ir: 'artifact', metrics: true, timing: true },",
+      "  input: 'input.mlir',",
+      "  pipeline: 'builtin.module(func.func(canonicalize,cse))',",
+      '  stages: [',
+      '    {',
+      '      index: 0,',
+      "      pass: 'canonicalize',",
+      "      status: 'changed',",
+      '      changed: true,',
+      '      durationMs: 1.0,',
+      "      verifier: 'ok',",
+      "      opName: 'builtin.module',",
+      "      argument: 'canonicalize',",
+      '      metricsBefore: { ops: 7 },',
+      '      metricsAfter: { ops: 9 },',
+      '      artifacts: {',
+      "        beforePath: artifactRelDir + '/stage-000000.before.mlir',",
+      "        afterPath: artifactRelDir + '/stage-000000.after.mlir'",
+      '      }',
+      '    }',
+      '  ]',
+      '};',
+      "fs.mkdirSync(path.dirname(tracePath), { recursive: true });",
+      'if (artifactDir) {',
+      '  fs.mkdirSync(resolvedArtifactDir, { recursive: true });',
+      "  fs.writeFileSync(path.join(resolvedArtifactDir, 'stage-000000.before.mlir'), '(before)', 'utf8');",
+      "  fs.writeFileSync(path.join(resolvedArtifactDir, 'stage-000000.after.mlir'), '(after)', 'utf8');",
+      '}',
+      "fs.writeFileSync(tracePath, JSON.stringify(trace, null, 2), 'utf8');",
+      'process.exit(0);'
+    ].join('\n');
+
+    fs.writeFileSync(ireeDriverScript, mockDriverJs, 'utf8');
+    fs.writeFileSync(torchDriverScript, mockDriverJs, 'utf8');
+
+    const ireeDriver = path.join(root, 'mock-iree-driver-cli.cmd');
+    const torchDriver = path.join(root, 'mock-torch-driver-cli.cmd');
+    if (process.platform === 'win32') {
+      fs.writeFileSync(ireeDriver, `@echo off\r\n"${process.execPath}" "${ireeDriverScript}" %*\r\n`, 'utf8');
+      fs.writeFileSync(torchDriver, `@echo off\r\n"${process.execPath}" "${torchDriverScript}" %*\r\n`, 'utf8');
+    } else {
+      fs.writeFileSync(ireeDriver, `#!/bin/sh\n"${process.execPath}" "${ireeDriverScript}" "$@"\n`, 'utf8');
+      fs.writeFileSync(torchDriver, `#!/bin/sh\n"${process.execPath}" "${torchDriverScript}" "$@"\n`, 'utf8');
+      fs.chmodSync(ireeDriver, 0o755);
+      fs.chmodSync(torchDriver, 0o755);
+    }
+
+    const previousIreeDriver = process.env.PASS_LENS_IREE_DRIVER;
+    const previousTorchDriver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+    const previousIreeCaseDir = process.env.PASS_LENS_IREE_CASE_DIR;
+    const previousTorchCaseDir = process.env.PASS_LENS_TORCH_MLIR_CASE_DIR;
+    const previousIreePipeline = process.env.PASS_LENS_IREE_PIPELINE;
+    const previousTorchPipeline = process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
+    try {
+      process.env.PASS_LENS_IREE_DRIVER = 'C:/should-not-be-used';
+      process.env.PASS_LENS_TORCH_MLIR_DRIVER = 'C:/should-not-be-used';
+      process.env.PASS_LENS_IREE_CASE_DIR = ireeCaseRoot;
+      process.env.PASS_LENS_TORCH_MLIR_CASE_DIR = torchCaseRoot;
+      process.env.PASS_LENS_IREE_PIPELINE = 'builtin.module(func.func(canonicalize))';
+      process.env.PASS_LENS_TORCH_MLIR_PIPELINE = 'builtin.module(func.func(canonicalize))';
+
+      const result = spawnSync(process.execPath, [
+        path.join(process.cwd(), 'scripts', 'downstream-case-studies-smoke.js'),
+        '--iree',
+        '--torch',
+        '--iree-driver',
+        ireeDriver,
+        '--torch-driver',
+        torchDriver
+      ], {
+        cwd: process.cwd(),
+        encoding: 'utf8'
+      });
+
+      assert.equal(result.status, 0, `downstream script failed: ${result.stdout}\n${result.stderr}`);
+
+      const ireeSummaryPath = path.join(ireeCaseRoot, 'summary.json');
+      const torchSummaryPath = path.join(torchCaseRoot, 'summary.json');
+      const ireeSummary = JSON.parse(fs.readFileSync(ireeSummaryPath, 'utf8'));
+      const torchSummary = JSON.parse(fs.readFileSync(torchSummaryPath, 'utf8'));
+      assert.equal(ireeSummary.driver, ireeDriver);
+      assert.equal(torchSummary.driver, torchDriver);
+      assert.equal(ireeSummary.provenanceKind, 'live-pass-instrumentation');
+      assert.equal(torchSummary.provenanceKind, 'live-pass-instrumentation');
+    } finally {
+      if (previousIreeDriver === undefined) {
+        delete process.env.PASS_LENS_IREE_DRIVER;
+      } else {
+        process.env.PASS_LENS_IREE_DRIVER = previousIreeDriver;
+      }
+      if (previousTorchDriver === undefined) {
+        delete process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+      } else {
+        process.env.PASS_LENS_TORCH_MLIR_DRIVER = previousTorchDriver;
+      }
+      if (previousIreeCaseDir === undefined) {
+        delete process.env.PASS_LENS_IREE_CASE_DIR;
+      } else {
+        process.env.PASS_LENS_IREE_CASE_DIR = previousIreeCaseDir;
+      }
+      if (previousTorchCaseDir === undefined) {
+        delete process.env.PASS_LENS_TORCH_MLIR_CASE_DIR;
+      } else {
+        process.env.PASS_LENS_TORCH_MLIR_CASE_DIR = previousTorchCaseDir;
+      }
+      if (previousIreePipeline === undefined) {
+        delete process.env.PASS_LENS_IREE_PIPELINE;
+      } else {
+        process.env.PASS_LENS_IREE_PIPELINE = previousIreePipeline;
+      }
+      if (previousTorchPipeline === undefined) {
+        delete process.env.PASS_LENS_TORCH_MLIR_PIPELINE;
+      } else {
+        process.env.PASS_LENS_TORCH_MLIR_PIPELINE = previousTorchPipeline;
+      }
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });
 

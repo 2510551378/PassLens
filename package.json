@@ -147,6 +147,7 @@
     "release:smoke": "npm run validate:trace:all && npm test && npm run release:check",
     "release:preview:plan": "node scripts/release-preview-plan.js --json",
     "release:preflight": "npm run release:smoke && npm run package && npm run release:preview:plan -- --output artifacts/release-preview-plan.json",
+    "release:preflight:strict": "npm run release:smoke && npm run release:check:strict && npm run package && npm run release:preview:plan -- --output artifacts/release-preview-plan.json",
     "package": "vsce package",
     "release:publish:marketplace": "node scripts/release-publish.js marketplace",
     "release:publish:marketplace:json": "node scripts/release-publish.js marketplace --dry-run --json",
@@ -154,6 +155,8 @@
     "release:publish:open-vsx": "node scripts/release-publish.js open-vsx",
     "release:publish:open-vsx:json": "node scripts/release-publish.js open-vsx --dry-run --json",
     "release:publish:open-vsx:execute": "node scripts/release-publish.js open-vsx --execute",
+    "release:publish:ready": "node scripts/release-proof.js --json --require-tokens",
+    "release:proof": "node scripts/release-proof.js --json",
     "vscode:prepublish": "npm run compile",
     "promote:downstream-sample": "npm run compile && node scripts/promote-downstream-trace-sample.js"
   },
