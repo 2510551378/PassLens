@@ -18,6 +18,12 @@ npm run release:publish:marketplace:json
   - `requiredEnv: VSCE_PAT`,
   - `canExecute: true`.
 
+- [ ] Confirm local publish readiness across both storefront targets:
+
+```powershell
+npm run release:publish:ready
+```
+
 - [ ] Keep `pass-lens-0.1.0.vsix` package available and correct.
 - [ ] Execute preview publish when ready:
 
@@ -42,6 +48,12 @@ npm run release:publish:open-vsx:json
   - resolved `ovsx` publish command,
   - `requiredEnv: OVSX_PAT`,
   - `canExecute: true`.
+
+- [ ] Confirm local publish readiness across both storefront targets:
+
+```powershell
+npm run release:publish:ready
+```
 
 - [ ] Keep `pass-lens-0.1.0.vsix` package available and correct.
 - [ ] Execute preview publish when ready:

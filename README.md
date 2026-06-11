@@ -132,6 +132,7 @@ npm run release:smoke
 Then publish with an explicit target (default is dry-run):
 
 ```powershell
+npm run release:publish:ready                   # ready-state check (token + command)
 npm run release:publish:marketplace:json       # machine-readable dry-run
 npm run release:publish:marketplace:execute    # real publish
 npm run release:publish:open-vsx:json          # machine-readable dry-run

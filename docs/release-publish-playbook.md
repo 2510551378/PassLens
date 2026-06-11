@@ -17,11 +17,16 @@ Before any real publish execution, run the strict gate first:
 
 ```powershell
 npm run release:preflight:strict
+npm run release:publish:ready
 ```
 
 `release:preflight:strict` is identical to `release:preflight` plus
 `npm run release:check:strict`, so all local blockers are validated before
 `--execute` calls.
+
+`release:publish:ready` checks command resolution and token availability for both
+`vsce` and `ovsx`; it ensures you do not hit a local publish failure after the
+strict checks pass.
 
 Required by `release:preflight`:
 

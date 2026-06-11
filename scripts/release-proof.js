@@ -15,7 +15,20 @@ if (require.main === module) {
   try {
     const options = parseArgs(process.argv.slice(2));
     const proof = buildReleaseProof(path.resolve(options.root));
-    outputProof(proof, options);
+    const publishReady = proof.publishPlans.every((plan) => plan.canExecute && !plan.blocked);
+    const readyProof = {
+      ...proof,
+      publishReady
+    };
+
+    if (options.requireTokens && !readyProof.publishReady) {
+      const blockedTargets = proof.publishPlans
+        .filter((plan) => plan.blocked || !plan.canExecute)
+        .map((plan) => plan.target)
+        .join(', ');
+      throw new Error(`Publish readiness check failed: missing prerequisites for ${blockedTargets}`);
+    }
+    outputProof(readyProof, options);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     process.exit(1);
@@ -145,7 +158,8 @@ function parseArgs(argv) {
   const options = {
     root: process.cwd(),
     output: undefined,
-    json: false
+    json: false,
+    requireTokens: false
   };
 
   for (let index = 0; index < args.length; index += 1) {
@@ -160,6 +174,8 @@ function parseArgs(argv) {
       options.output = arg.slice('--output='.length);
     } else if (arg === '--json') {
       options.json = true;
+    } else if (arg === '--require-tokens' || arg === '--strict-tokens') {
+      options.requireTokens = true;
     } else if (arg === '--help' || arg === '-h') {
       printUsage();
       process.exit(0);
@@ -190,6 +206,11 @@ function printUsage() {
 
 Usage:
   node scripts/release-proof.js [--root <path>] [--json] [--output <file>]
+  node scripts/release-proof.js --require-tokens --json
+
+Options:
+  --require-tokens (or --strict-tokens)
+      Fail unless all publish targets have a token and a resolvable command.
 
 This helper collects a machine-readable proof payload for external release preparation.
 By default, it prints a concise summary and includes the same publish readiness

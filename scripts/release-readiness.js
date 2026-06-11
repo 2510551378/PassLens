@@ -262,6 +262,7 @@ function checkPackageMetadata(root, errors, checks) {
   requireField(packageJson, 'scripts.release:publish:open-vsx', errors, checks);
   requireField(packageJson, 'scripts.release:publish:open-vsx:json', errors, checks);
   requireField(packageJson, 'scripts.release:publish:open-vsx:execute', errors, checks);
+  requireField(packageJson, 'scripts.release:publish:ready', errors, checks);
   requireField(packageJson, 'scripts.validate:trace:all', errors, checks);
   requireField(packageJson, 'scripts.test', errors, checks);
 

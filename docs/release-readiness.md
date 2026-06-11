@@ -46,6 +46,17 @@ This is useful as a release-attached artifact because it captures:
 - resolved publish plan (command, args, required env, canExecute),
 - whether `pass-lens-<version>.vsix` exists.
 
+If you are ready to run an actual publish, run this stricter gate before execute:
+
+```powershell
+npm run release:publish:ready
+```
+
+`release:publish:ready` fails unless:
+
+- both publish commands resolve,
+- both required token env vars are present.
+
 Before a dry-run publish attempt:
 
 ```powershell
