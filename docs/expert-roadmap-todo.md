@@ -434,7 +434,7 @@ repro/
 ### Month 0-1: Credible MVP
 
 - [ ] Publish Marketplace preview.
-- [ ] Add directory-style repro bundle.
+- [x] Add directory-style repro bundle.
 - [x] Add at least 3 trace cases, with provenance labels.
   - Commit: this change.
   - All bundled sample traces now declare `provenance.kind` and

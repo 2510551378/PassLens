@@ -20,6 +20,8 @@
   ·
   <a href="docs/collector-author-guide.md">Collector Guide</a>
   ·
+  <a href="CONTRIBUTING.md">Contributing</a>
+  ·
   <a href="docs/sample-provenance.md">Sample Provenance</a>
   ·
   <a href="docs/release-milestones.md">Milestones</a>
