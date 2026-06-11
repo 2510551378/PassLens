@@ -25,6 +25,7 @@ import { computeTraceAnomalies } from './trace/anomalies';
 import { evaluateTraceQuality, renderTraceQualityMarkdown } from './trace/quality';
 import { evaluateTraceSize, renderTraceSizeMarkdown, type TraceSizeSummary } from './trace/size';
 import { renderTraceQueryResultMarkdown, runTraceQuery, type TraceQuery } from './traceQuery';
+import { PASS_LENS_QUERY_PICKERS, type QueryPickerItem, type TraceSummaryKind } from './passLensTools';
 import { normalizeTrace } from './trace/schema';
 import { validateTrace } from './trace/validation';
 import { createTracePanelSessionManager } from './tracePanelSession';
@@ -32,11 +33,7 @@ import { getWebviewHtml } from './tracePanelHtml';
 import { registerTracePanelMessageHandlers } from './tracePanelController';
 import type { MetricAnomaly, PassTrace, TraceIssue } from './types';
 
-interface TraceQueryPick extends vscode.QuickPickItem {
-  query?: TraceQuery;
-  queryKind?: string;
-  summaryKind?: string;
-}
+type TraceQueryPick = vscode.QuickPickItem & QueryPickerItem;
 
 const tracePanelSessionManager = createTracePanelSessionManager<LoadedTraceSession>();
 
@@ -404,73 +401,13 @@ async function queryCurrentTraceCommand(): Promise<void> {
   }
 
   const picked = await vscode.window.showQuickPick<TraceQueryPick>(
-    [
-      {
-        label: 'Find first failure stage',
-        detail: 'First failed status or verifier failure.',
-        query: { kind: 'firstFailure' } satisfies TraceQuery
-      },
-      {
-        label: 'Find first changed stage',
-        detail: 'First stage with changed=true.',
-        query: { kind: 'firstChanged' } satisfies TraceQuery
-      },
-      {
-        label: 'Find first metric jump',
-        detail: 'Ask for a metric name such as fallback.count.',
-        queryKind: 'firstMetricJump'
-      },
-      {
-        label: 'Find stages over a metric budget',
-        detail: 'Ask for a metric name and numeric budget.',
-        queryKind: 'metricBudget'
-      },
-      {
-        label: 'List slowest passes',
-        detail: 'Ask for N and sort timed stages by duration.',
-        queryKind: 'slowest'
-      },
-      {
-        label: 'Search trace text',
-        detail: 'Search pass names, scopes, diagnostics, and IR text.',
-        queryKind: 'search'
-      },
-      {
-        label: 'Generate GitHub issue description',
-        detail: 'Create a trace-grounded issue draft with evidence and guardrails.',
-        summaryKind: 'githubIssue'
-      },
-      {
-        label: 'Summarize top 3 suspicious passes',
-        detail: 'Rank suspicious pass candidates by failures, anomalies, diagnostics, and validation issues.',
-        summaryKind: 'topSuspicious'
-      },
-      {
-        label: 'Generate candidate root causes',
-        detail: 'Frame candidates with evidence, uncertainty, and next experiments before patch suggestions.',
-        summaryKind: 'candidateRootCauses'
-      },
-      {
-        label: 'Generate first failure localization report',
-        detail: 'Get a bounded localization hypothesis with confidence and next checks.',
-        summaryKind: 'firstFailureLocalization'
-      },
-      {
-        label: 'Explain first fallback / legality / budget signal',
-        detail: 'Choose a signal family and generate a concise evidence summary.',
-        summaryKind: 'firstSignal'
-      },
-      {
-        label: 'Generate trace quality report',
-        detail: 'Check collector credibility: pass identity, timing, verifier, artifacts, and indexes.',
-        summaryKind: 'traceQuality'
-      },
-      {
-        label: 'Generate trace size report',
-        detail: 'Summarize inline IR, artifacts, diagnostics, and stage-count payload size.',
-        summaryKind: 'traceSize'
-      }
-    ],
+    PASS_LENS_QUERY_PICKERS.map((entry) => ({
+      label: entry.label,
+      detail: entry.detail,
+      id: entry.id,
+      queryKind: entry.queryKind,
+      summaryKind: entry.summaryKind
+    })),
     {
       title: 'Pass Lens: Query Current Trace',
       placeHolder: 'Choose a deterministic trace query'
@@ -509,7 +446,7 @@ async function queryCurrentTraceCommand(): Promise<void> {
 }
 
 async function resolveIssueSummary(
-  summaryKind: string,
+  summaryKind: TraceSummaryKind,
   loaded: LoadedTrace,
   sourceUri: vscode.Uri
 ): Promise<string | undefined> {
@@ -611,10 +548,12 @@ async function showMarkdownDocument(content: string): Promise<void> {
 async function resolveTraceQuery(
   picked: TraceQueryPick
 ): Promise<TraceQuery | undefined> {
-  if (picked.query) {
-    return picked.query;
+  if (picked.queryKind === 'firstFailure') {
+    return { kind: 'firstFailure' };
   }
-
+  if (picked.queryKind === 'firstChanged') {
+    return { kind: 'firstChanged' };
+  }
   if (picked.queryKind === 'firstMetricJump') {
     const metric = await askRequiredInput('Metric name', 'Example: fallback.count');
     return metric ? { kind: 'firstMetricJump', metric } : undefined;

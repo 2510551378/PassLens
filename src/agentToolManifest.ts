@@ -1,4 +1,5 @@
 import type { PassTrace } from './types';
+import { PASS_LENS_TOOL_IDS } from './passLensTools';
 
 export interface AgentToolManifestOptions {
   sourcePath?: string;
@@ -52,7 +53,7 @@ export function createAgentToolManifest(
     ],
     tools: [
       {
-        id: 'pass-lens.query.planNaturalLanguage',
+        id: PASS_LENS_TOOL_IDS.query.planNaturalLanguage,
         title: 'Plan Natural Language Query',
         category: 'query',
         stability: 'preview',
@@ -64,35 +65,35 @@ export function createAgentToolManifest(
           format: 'json'
         }
       },
-      queryTool('pass-lens.query.firstFailure', 'Find First Failure Stage', 'Find the first stage with failed status or verifier result.', {}),
-      queryTool('pass-lens.query.firstChanged', 'Find First Changed Stage', 'Find the first stage with changed=true.', {}),
-      queryTool('pass-lens.query.firstMetricJump', 'Find First Metric Jump', 'Find the first stage where a named metric changes.', {
+      queryTool(PASS_LENS_TOOL_IDS.query.firstFailure, 'Find First Failure Stage', 'Find the first stage with failed status or verifier result.', {}),
+      queryTool(PASS_LENS_TOOL_IDS.query.firstChanged, 'Find First Changed Stage', 'Find the first stage with changed=true.', {}),
+      queryTool(PASS_LENS_TOOL_IDS.query.firstMetricJump, 'Find First Metric Jump', 'Find the first stage where a named metric changes.', {
         metric: stringSchema('Metric name, for example ops or fallback.count.')
       }),
-      queryTool('pass-lens.query.metricBudget', 'Find Metric Budget Overflow', 'List stages where a named metric exceeds a numeric budget.', {
+      queryTool(PASS_LENS_TOOL_IDS.query.metricBudget, 'Find Metric Budget Overflow', 'List stages where a named metric exceeds a numeric budget.', {
         metric: stringSchema('Metric name, for example ops or memory.bytes.'),
         budget: numberSchema('Exclusive numeric budget threshold.')
       }),
-      queryTool('pass-lens.query.slowest', 'List Slowest Passes', 'List timed stages sorted by duration.', {
+      queryTool(PASS_LENS_TOOL_IDS.query.slowest, 'List Slowest Passes', 'List timed stages sorted by duration.', {
         count: numberSchema('Maximum number of stages to return.')
       }),
-      queryTool('pass-lens.query.search', 'Search Trace Text', 'Search pass names, scopes, diagnostics, and IR text.', {
+      queryTool(PASS_LENS_TOOL_IDS.query.search, 'Search Trace Text', 'Search pass names, scopes, diagnostics, and IR text.', {
         text: stringSchema('Search text.')
       }),
-      reportTool('pass-lens.report.githubIssue', 'Generate GitHub Issue Description', 'Generate a trace-grounded issue draft with evidence and guardrails.'),
-      reportTool('pass-lens.report.topSuspicious', 'Summarize Suspicious Passes', 'Rank suspicious pass candidates by deterministic trace signals.'),
-      reportTool('pass-lens.report.firstSignal', 'Explain First Signal', 'Explain the first fallback, legality, or budget signal.', {
+      reportTool(PASS_LENS_TOOL_IDS.report.githubIssue, 'Generate GitHub Issue Description', 'Generate a trace-grounded issue draft with evidence and guardrails.'),
+      reportTool(PASS_LENS_TOOL_IDS.report.topSuspicious, 'Summarize Suspicious Passes', 'Rank suspicious pass candidates by deterministic trace signals.'),
+      reportTool(PASS_LENS_TOOL_IDS.report.firstSignal, 'Explain First Signal', 'Explain the first fallback, legality, or budget signal.', {
         kind: enumSchema(['fallback', 'legality', 'budget'], 'Signal family.')
       }),
-      reportTool('pass-lens.report.candidateRootCauses', 'Generate Candidate Root Causes', 'Frame candidate root causes with evidence, uncertainty, and next experiments.'),
-      reportTool('pass-lens.report.firstFailureLocalization', 'Generate First Failure Localization Report', 'Generate a bounded first-failure localization hypothesis with confidence and next checks.'),
-      reportTool('pass-lens.report.traceQuality', 'Generate Trace Quality Report', 'Report collector credibility and trace-quality limitations.'),
-      reportTool('pass-lens.report.traceSize', 'Generate Trace Size Report', 'Summarize inline IR, artifacts, diagnostics, and size quick fixes.'),
-      exportTool('pass-lens.export.agentContext', 'Export Agent Context', 'Export bounded JSON context for tool-mediated agents.', 'json', '#/schemas/pass-lens-agent-context'),
-      exportTool('pass-lens.export.reproBundle', 'Export Markdown Repro Bundle', 'Export a Markdown repro bundle with summary, trace evidence, and regression test sketch.', 'markdown'),
-      exportTool('pass-lens.export.directoryReproBundle', 'Export Directory Repro Bundle', 'Export a directory containing trace, artifacts, scripts, manifest, agent context, and agent tools.', 'directory'),
+      reportTool(PASS_LENS_TOOL_IDS.report.candidateRootCauses, 'Generate Candidate Root Causes', 'Frame candidate root causes with evidence, uncertainty, and next experiments.'),
+      reportTool(PASS_LENS_TOOL_IDS.report.firstFailureLocalization, 'Generate First Failure Localization Report', 'Generate a bounded first-failure localization hypothesis with confidence and next checks.'),
+      reportTool(PASS_LENS_TOOL_IDS.report.traceQuality, 'Generate Trace Quality Report', 'Report collector credibility and trace-quality limitations.'),
+      reportTool(PASS_LENS_TOOL_IDS.report.traceSize, 'Generate Trace Size Report', 'Summarize inline IR, artifacts, diagnostics, and size quick fixes.'),
+      exportTool(PASS_LENS_TOOL_IDS.export.agentContext, 'Export Agent Context', 'Export bounded JSON context for tool-mediated agents.', 'json', '#/schemas/pass-lens-agent-context'),
+      exportTool(PASS_LENS_TOOL_IDS.export.reproBundle, 'Export Markdown Repro Bundle', 'Export a Markdown repro bundle with summary, trace evidence, and regression test sketch.', 'markdown'),
+      exportTool(PASS_LENS_TOOL_IDS.export.directoryReproBundle, 'Export Directory Repro Bundle', 'Export a directory containing trace, artifacts, scripts, manifest, agent context, and agent tools.', 'directory'),
       {
-        id: 'pass-lens.rerun.prefixBisect',
+        id: PASS_LENS_TOOL_IDS.rerun.prefixBisect,
         title: 'Run Prefix Bisect',
         category: 'rerun',
         stability: 'preview',

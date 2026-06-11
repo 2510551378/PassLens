@@ -1,5 +1,6 @@
 import type { PassTrace } from './types';
 import type { TraceQuery } from './traceQuery';
+import { PASS_LENS_TOOL_IDS } from './passLensTools';
 
 export type TraceQueryPlanStatus = 'planned' | 'ambiguous' | 'unsupported';
 
@@ -23,12 +24,12 @@ export interface TraceQueryPlanCandidate {
 }
 
 const toolIds: Record<TraceQuery['kind'], string> = {
-  firstFailure: 'pass-lens.query.firstFailure',
-  firstChanged: 'pass-lens.query.firstChanged',
-  firstMetricJump: 'pass-lens.query.firstMetricJump',
-  metricBudget: 'pass-lens.query.metricBudget',
-  slowest: 'pass-lens.query.slowest',
-  search: 'pass-lens.query.search'
+  firstFailure: PASS_LENS_TOOL_IDS.query.firstFailure,
+  firstChanged: PASS_LENS_TOOL_IDS.query.firstChanged,
+  firstMetricJump: PASS_LENS_TOOL_IDS.query.firstMetricJump,
+  metricBudget: PASS_LENS_TOOL_IDS.query.metricBudget,
+  slowest: PASS_LENS_TOOL_IDS.query.slowest,
+  search: PASS_LENS_TOOL_IDS.query.search
 };
 
 export function planTraceQueryFromText(request: string, trace?: PassTrace): TraceQueryPlan {

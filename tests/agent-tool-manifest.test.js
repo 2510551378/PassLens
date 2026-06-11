@@ -4,6 +4,7 @@ const path = require('node:path');
 const test = require('node:test');
 
 const { createAgentToolManifest } = require('../out/agentToolManifest.js');
+const { PASS_LENS_QUERY_PICKERS, PASS_LENS_TOOL_IDS } = require('../out/passLensTools.js');
 
 test('createAgentToolManifest declares generic deterministic agent tools', () => {
   const manifest = createAgentToolManifest({
@@ -50,4 +51,29 @@ test('agent tools schema declares the public contract', () => {
   assert.deepEqual(schema.required, ['schemaVersion', 'kind', 'source', 'guardrails', 'tools']);
   assert.ok(schema.$defs.tool.properties.category.enum.includes('query'));
   assert.ok(schema.$defs.tool.properties.category.enum.includes('rerun'));
+});
+
+test('human-visible query/report registry maps into agent tool manifest', () => {
+  const manifest = createAgentToolManifest({
+    schemaVersion: 1,
+    tool: 'example-compiler',
+    stages: []
+  }, {
+    sourcePath: 'C:\\tmp\\trace.json'
+  });
+  const ids = new Set(manifest.tools.map((tool) => tool.id));
+
+  for (const entry of PASS_LENS_QUERY_PICKERS) {
+    assert.ok(
+      ids.has(entry.id),
+      `manifest should include registry tool id ${entry.id}`
+    );
+  }
+
+  for (const key of Object.values(PASS_LENS_TOOL_IDS.query)) {
+    assert.ok(
+      ids.has(key),
+      `manifest should include query tool id ${key}`
+    );
+  }
 });

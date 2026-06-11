@@ -5,6 +5,7 @@ const {
   planTraceQueryFromText,
   traceQueryToToolCall
 } = require('../out/traceQueryPlanner.js');
+const { PASS_LENS_TOOL_IDS } = require('../out/passLensTools.js');
 
 function makeTrace() {
   return {
@@ -47,7 +48,7 @@ test('natural-language planner maps failure requests to firstFailure', () => {
   const english = planTraceQueryFromText('Where does the first verifier failure happen?', makeTrace());
   assert.equal(english.status, 'planned');
   assert.deepEqual(english.query, { kind: 'firstFailure' });
-  assert.equal(english.toolId, 'pass-lens.query.firstFailure');
+  assert.equal(english.toolId, PASS_LENS_TOOL_IDS.query.firstFailure);
   assert.deepEqual(english.arguments, {});
 
   const chinese = planTraceQueryFromText('帮我找第一个失败的 pass', makeTrace());
@@ -62,7 +63,7 @@ test('natural-language planner maps metric jump and budget requests', () => {
     kind: 'firstMetricJump',
     metric: 'fallback.count'
   });
-  assert.equal(jump.toolId, 'pass-lens.query.firstMetricJump');
+  assert.equal(jump.toolId, PASS_LENS_TOOL_IDS.query.firstMetricJump);
   assert.deepEqual(jump.arguments, {
     metric: 'fallback.count'
   });
@@ -113,7 +114,7 @@ test('traceQueryToToolCall returns deterministic tool arguments', () => {
     metric: 'ubBytes',
     budget: 256
   }), {
-    toolId: 'pass-lens.query.metricBudget',
+    toolId: PASS_LENS_TOOL_IDS.query.metricBudget,
     arguments: {
       metric: 'ubBytes',
       budget: 256
