@@ -3,6 +3,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
 import {
+  getDefaultMlirPipeline,
+  pickMlirInputFile,
+  pickMlirPipeline,
+  pickTraceFile
+} from './extensionInputs';
+import {
   createCandidateRootCausesMarkdown,
   createGithubIssueDescription,
   createFirstFailureLocalizationMarkdown,
@@ -58,22 +64,13 @@ export function activate(context: vscode.ExtensionContext): void {
       openTracePanel(context, loaded, sampleUri);
     }),
     vscode.commands.registerCommand('passLens.openTraceFile', async () => {
-      const selected = await vscode.window.showOpenDialog({
-        canSelectFiles: true,
-        canSelectFolders: false,
-        canSelectMany: false,
-        filters: {
-          'Pass Lens trace': ['json'],
-          'All files': ['*']
-        },
-        title: 'Open Pass Lens trace'
-      });
-      if (!selected?.[0]) {
+      const selected = await pickTraceFile('Open Pass Lens trace');
+      if (!selected) {
         return;
       }
 
-      const loaded = await readTrace(selected[0]);
-      openTracePanel(context, loaded, selected[0]);
+      const loaded = await readTrace(selected);
+      openTracePanel(context, loaded, selected);
     }),
     vscode.commands.registerCommand('passLens.runMlirOptTrace', async () => {
       await runMlirOptTraceCommand(context);
@@ -101,35 +98,24 @@ export function deactivate(): void {
 }
 
 async function runMlirOptTraceCommand(context: vscode.ExtensionContext): Promise<void> {
-  const selected = await vscode.window.showOpenDialog({
-    canSelectFiles: true,
-    canSelectFolders: false,
-    canSelectMany: false,
-    filters: {
-      'MLIR files': ['mlir'],
-      'All files': ['*']
-    },
-    title: 'Select MLIR input'
-  });
-  if (!selected?.[0]) {
+  const selected = await pickMlirInputFile('Select MLIR input');
+  if (!selected) {
     return;
   }
 
-  const pipeline = await vscode.window.showInputBox({
-    title: 'MLIR pass pipeline',
-    prompt: 'Example: builtin.module(func.func(canonicalize,cse))',
-    value: 'builtin.module(func.func(canonicalize,cse))',
-    ignoreFocusOut: true,
-    validateInput: (value) => value.trim().length > 0 ? undefined : 'Pipeline is required.'
-  });
+  const pipeline = await pickMlirPipeline(
+    'MLIR pass pipeline',
+    'Example: builtin.module(func.func(canonicalize,cse))',
+    getDefaultMlirPipeline()
+  );
   if (!pipeline) {
     return;
   }
 
   const configuration = vscode.workspace.getConfiguration('passLens');
   const mlirOptPath = configuration.get<string>('mlirOptPath') || 'mlir-opt';
-  const inputPath = selected[0].fsPath;
-  const outputUri = getDefaultTraceUri(selected[0]);
+  const inputPath = selected.fsPath;
+  const outputUri = getDefaultTraceUri(selected);
 
   try {
     const trace = await vscode.window.withProgress(
@@ -167,35 +153,24 @@ async function runMlirOptTraceCommand(context: vscode.ExtensionContext): Promise
 }
 
 async function runStructuredMlirTraceCommand(context: vscode.ExtensionContext): Promise<void> {
-  const selected = await vscode.window.showOpenDialog({
-    canSelectFiles: true,
-    canSelectFolders: false,
-    canSelectMany: false,
-    filters: {
-      'MLIR files': ['mlir'],
-      'All files': ['*']
-    },
-    title: 'Select MLIR input for structured Pass Lens trace'
-  });
-  if (!selected?.[0]) {
+  const selected = await pickMlirInputFile('Select MLIR input for structured Pass Lens trace');
+  if (!selected) {
     return;
   }
 
-  const pipeline = await vscode.window.showInputBox({
-    title: 'MLIR pass pipeline',
-    prompt: 'Example: builtin.module(func.func(canonicalize,cse))',
-    value: 'builtin.module(func.func(canonicalize,cse))',
-    ignoreFocusOut: true,
-    validateInput: (value) => value.trim().length > 0 ? undefined : 'Pipeline is required.'
-  });
+  const pipeline = await pickMlirPipeline(
+    'MLIR pass pipeline',
+    'Example: builtin.module(func.func(canonicalize,cse))',
+    getDefaultMlirPipeline()
+  );
   if (!pipeline) {
     return;
   }
 
   const configuration = vscode.workspace.getConfiguration('passLens');
   const driverPath = configuration.get<string>('mlirDriverPath') || 'pass-lens-mlir-opt';
-  const inputPath = selected[0].fsPath;
-  const traceUri = getDefaultTraceUri(selected[0]);
+  const inputPath = selected.fsPath;
+  const traceUri = getDefaultTraceUri(selected);
   const outputPath = path.join(os.tmpdir(), `pass-lens-${Date.now()}-${Math.random().toString(16).slice(2)}.mlir`);
   const args = [
     inputPath,
@@ -257,37 +232,26 @@ async function runStructuredMlirTraceCommand(context: vscode.ExtensionContext): 
 }
 
 async function runPrefixBisectCommand(context: vscode.ExtensionContext): Promise<void> {
-  const selected = await vscode.window.showOpenDialog({
-    canSelectFiles: true,
-    canSelectFolders: false,
-    canSelectMany: false,
-    filters: {
-      'MLIR files': ['mlir'],
-      'All files': ['*']
-    },
-    title: 'Select MLIR input for prefix bisection'
-  });
-  if (!selected?.[0]) {
+  const selected = await pickMlirInputFile('Select MLIR input for prefix bisection');
+  if (!selected) {
     return;
   }
 
   const activeSessionForDefaults = tracePanelSessionManager.getActiveSession();
   const defaultPipeline = activeSessionForDefaults?.loaded.trace.pipeline ??
     'builtin.module(func.func(canonicalize,cse))';
-  const pipeline = await vscode.window.showInputBox({
-    title: 'MLIR pass pipeline to bisect',
-    prompt: 'Pass Lens will rerun textual prefixes of this pipeline with verifier enabled.',
-    value: defaultPipeline,
-    ignoreFocusOut: true,
-    validateInput: (value) => value.trim().length > 0 ? undefined : 'Pipeline is required.'
-  });
+  const pipeline = await pickMlirPipeline(
+    'MLIR pass pipeline to bisect',
+    'Pass Lens will rerun textual prefixes of this pipeline with verifier enabled.',
+    defaultPipeline
+  );
   if (!pipeline) {
     return;
   }
 
   const configuration = vscode.workspace.getConfiguration('passLens');
   const driverPath = configuration.get<string>('mlirDriverPath') || 'pass-lens-mlir-opt';
-  const inputPath = selected[0].fsPath;
+  const inputPath = selected.fsPath;
   const runner = createMlirPrefixRunner(driverPath, inputPath, path.dirname(inputPath));
 
   try {
@@ -654,7 +618,7 @@ function openTracePanel(context: vscode.ExtensionContext, loaded: LoadedTrace, s
   const { trace, issues, anomalies, sizeSummary } = loaded;
   const panel = vscode.window.createWebviewPanel(
     'passLens.trace',
-    `Pass Lens: ${trace.input ?? sourceUri.path.split('/').pop() ?? 'trace'}`,
+    `Pass Lens: ${trace.input ?? path.basename(sourceUri.fsPath) ?? 'trace'}`,
     vscode.ViewColumn.Beside,
     {
       enableScripts: true,
