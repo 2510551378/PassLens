@@ -432,7 +432,8 @@ repro/
   - Commit: this change.
   - All bundled sample traces now declare `provenance.kind` and
     `provenance.description`; tests enforce this for future samples.
-- [ ] Add demo GIF and workflow-focused README.
+- [x] Add demo GIF and workflow-focused README.
+  - Commit: `0e5cfca`.
 - [x] Add trace quality score.
   - Commit: this change.
   - The webview summary now displays `Trace quality` from
