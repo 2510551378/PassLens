@@ -5,6 +5,8 @@ build/
 *.pass-lens.json
 .pass-lens-large-trace-smoke/
 .pass-lens-heir-case-study/
+.pass-lens-iree-case-study/
+.pass-lens-torch-mlir-case-study/
 *.log
 .DS_Store
 Thumbs.db
