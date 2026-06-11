@@ -33,6 +33,7 @@ function main(options) {
   const { target, dryRun, root } = options;
   const plan = buildPublishPlan({ target, root });
   const token = process.env[plan.requiredEnv];
+  const canExecute = Boolean(token);
 
   if (dryRun) {
     const output = {
@@ -40,7 +41,8 @@ function main(options) {
       mode: 'dry-run',
       target,
       requiredEnv: plan.requiredEnv,
-      tokenAvailable: Boolean(token),
+      tokenAvailable: canExecute,
+      canExecute,
       command: plan.command,
       args: [...plan.args],
       vsix: plan.vsix
@@ -86,7 +88,8 @@ function main(options) {
       mode: 'execute',
       target,
       requiredEnv: plan.requiredEnv,
-      tokenAvailable: Boolean(token),
+      tokenAvailable: canExecute,
+      canExecute: canExecute && process.exitCode === 0,
       command: plan.command,
       args: [...plan.args],
       vsix: plan.vsix,

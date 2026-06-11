@@ -121,11 +121,12 @@ test('release publish dry-run supports json output', () => {
 
     assert.equal(result.status, 0, result.stderr || result.stdout);
     const payloadText = fs.readFileSync(outputPath, 'utf8');
-    const payload = JSON.parse(payloadText);
+  const payload = JSON.parse(payloadText);
     assert.equal(payload.mode, 'dry-run');
     assert.equal(payload.target, 'marketplace');
     assert.equal(payload.requiredEnv, 'VSCE_PAT');
     assert.equal(payload.tokenAvailable, true);
+    assert.equal(payload.canExecute, true);
     assert.equal(payload.ok, true);
     assert.equal(payload.vsix, path.join(tempDir, 'pass-lens-0.0.1.vsix'));
     assert.ok(Array.isArray(payload.args));
@@ -175,7 +176,7 @@ test('release publish supports dry-run and execute token gating', () => {
     assert.equal(dryRun.status, 0, dryRun.stderr || dryRun.stdout);
     assert.match(dryRun.stderr + dryRun.stdout, /\[dry-run\] release publish plan/);
 
-    const execute = spawnSync(process.execPath, [
+  const execute = spawnSync(process.execPath, [
       path.join(process.cwd(), 'scripts', 'release-publish.js'),
       'open-vsx',
       '--root',
@@ -191,6 +192,28 @@ test('release publish supports dry-run and execute token gating', () => {
     });
     assert.equal(execute.status, 1, execute.stderr || execute.stdout);
     assert.match(execute.stderr + execute.stdout, /Missing OVSX_PAT/);
+
+    const dryRunMissingToken = spawnSync(process.execPath, [
+      path.join(process.cwd(), 'scripts', 'release-publish.js'),
+      'marketplace',
+      '--root',
+      tempDir,
+      '--json',
+      '--output',
+      path.join(tempDir, 'marketplace-missing-token.json')
+    ], {
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        PATH: `${pathDir}${path.delimiter}${process.env.PATH ?? ''}`
+      }
+    });
+    assert.equal(dryRunMissingToken.status, 0, dryRunMissingToken.stderr || dryRunMissingToken.stdout);
+    const missingPayload = JSON.parse(
+      fs.readFileSync(path.join(tempDir, 'marketplace-missing-token.json'), 'utf8')
+    );
+    assert.equal(missingPayload.canExecute, false);
+    assert.equal(missingPayload.tokenAvailable, false);
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
     fs.rmSync(pathDir, { recursive: true, force: true });
