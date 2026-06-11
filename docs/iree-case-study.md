@@ -56,6 +56,12 @@ $env:PASS_LENS_IREE_DRIVER = "/path/to/downstream-pass-lens-driver"   # or just 
 npm run smoke:iree-case-study
 ```
 
+Or run directly:
+
+```bash
+node scripts/iree-case-study-smoke.js --driver /path/to/downstream-pass-lens-driver
+```
+
 ### Minimal real-driver verification
 
 For external contributors, the following is the required minimum signal before

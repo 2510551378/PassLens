@@ -21,6 +21,12 @@ export PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-pass-lens-driver"
 npm run smoke:torch-mlir-case-study
 ```
 
+Or run directly:
+
+```bash
+node scripts/torch-mlir-case-study-smoke.js --driver /path/to/downstream-pass-lens-driver
+```
+
 For a complete acceptance workflow checklist and optional redacted sample publication
 steps, see [`docs/downstream-structured-integration-workflow.md`](downstream-structured-integration-workflow.md).
 

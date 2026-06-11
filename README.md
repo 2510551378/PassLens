@@ -167,14 +167,18 @@ npm run smoke:heir-case-study
 npm run smoke:iree-case-study
 npm run smoke:torch-mlir-case-study
 npm run smoke:downstream-case-studies
+
+# Or run the downstream aggregate runner directly with CLI driver overrides:
+node scripts/downstream-case-studies-smoke.js --iree-driver /path/to/iree-driver --torch-driver /path/to/torch-mlir-driver
 ```
 
 Required environment variables:
 
 - `PASS_LENS_MLIR_OPT` (or `PASS_LENS_MLIR_DRIVER`) for `smoke:oss-mlir`
 - `PASS_LENS_OSS_SOURCE_ROOT` to reuse local llvm mlir test files (optional)
-- `PASS_LENS_IREE_DRIVER` / `PASS_LENS_TORCH_MLIR_DRIVER` for downstream
-  scripts
+- `PASS_LENS_IREE_DRIVER` / `PASS_LENS_TORCH_MLIR_DRIVER` for downstream scripts
+- `--iree-driver` / `--torch-driver` on `smoke:downstream-case-studies` to
+  bypass env setup for temporary CI or machine-local scripts.
 - `PASS_LENS_HEIR_ROOT` for `smoke:heir-case-study`
 - `PASS_LENS_IREE_CASE_DIR` and `PASS_LENS_TORCH_MLIR_CASE_DIR` to control output
   directories
@@ -331,11 +335,23 @@ $env:PASS_LENS_IREE_DRIVER="/path/to/downstream-driver"
 npm run smoke:iree-case-study
 ```
 
+Or direct CLI:
+
+```bash
+node scripts/iree-case-study-smoke.js --driver /path/to/downstream-driver --pipeline builtin.module(func.func(canonicalize))
+```
+
 Torch-MLIR:
 
 ```powershell
 $env:PASS_LENS_TORCH_MLIR_DRIVER="/path/to/downstream-driver"
 npm run smoke:torch-mlir-case-study
+```
+
+Or direct CLI:
+
+```bash
+node scripts/torch-mlir-case-study-smoke.js --driver /path/to/downstream-driver --pipeline builtin.module(func.func(canonicalize))
 ```
 
 Or run both available downstream structured case studies in one shot:
@@ -344,6 +360,12 @@ Or run both available downstream structured case studies in one shot:
 $env:PASS_LENS_IREE_DRIVER="/path/to/iree-driver"
 $env:PASS_LENS_TORCH_MLIR_DRIVER="/path/to/torch-mlir-driver"
 npm run smoke:downstream-case-studies
+```
+
+Or run aggregate script with in-command overrides:
+
+```powershell
+node scripts/downstream-case-studies-smoke.js --iree-driver /path/to/iree-driver --torch-driver /path/to/torch-mlir-driver
 ```
 
 The runner validates:

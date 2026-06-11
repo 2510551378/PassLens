@@ -51,6 +51,8 @@ function parseArgs(argv) {
     forceIree: false,
     forceTorch: false,
     failFast: false,
+    ireeDriver: undefined,
+    torchDriver: undefined,
     minQuality: readPositiveInt(process.env.PASS_LENS_CASE_STUDY_MIN_QUALITY, 0)
   };
 
@@ -62,6 +64,16 @@ function parseArgs(argv) {
     } else if (arg === '--torch') {
       options.forceTorch = true;
       options.all = false;
+    } else if (arg === '--iree-driver') {
+      options.ireeDriver = argv[index + 1] || options.ireeDriver;
+      index += 1;
+    } else if (arg.startsWith('--iree-driver=')) {
+      options.ireeDriver = arg.slice('--iree-driver='.length);
+    } else if (arg === '--torch-driver') {
+      options.torchDriver = argv[index + 1] || options.torchDriver;
+      index += 1;
+    } else if (arg.startsWith('--torch-driver=')) {
+      options.torchDriver = arg.slice('--torch-driver='.length);
     } else if (arg === '--fail-fast') {
       options.failFast = true;
     } else if (arg === '--min-quality') {
@@ -101,12 +113,13 @@ function resolveTargetsWithDiagnostics(options) {
   const targets = [];
   for (const candidate of candidates) {
     if (candidate === 'iree') {
-      const driver = process.env.PASS_LENS_IREE_DRIVER;
+      const driver = options.ireeDriver || process.env.PASS_LENS_IREE_DRIVER;
       if (!driver) {
         skippedTargets.push({
           key: 'iree',
           label: 'IREE structured case study',
           requiredEnv: 'PASS_LENS_IREE_DRIVER',
+          requiredCli: '--iree-driver',
           script: 'npm run smoke:iree-case-study',
           envExample: {
             powershell: '$env:PASS_LENS_IREE_DRIVER = "C:\\path\\to\\downstream-pass-lens-driver"',
@@ -119,15 +132,17 @@ function resolveTargetsWithDiagnostics(options) {
         key: 'iree',
         label: 'IREE structured case study',
         script: 'scripts/iree-case-study-smoke.js',
-        requiredEnv: 'PASS_LENS_IREE_DRIVER'
+        requiredEnv: 'PASS_LENS_IREE_DRIVER',
+        driver
       });
     } else if (candidate === 'torch') {
-      const driver = process.env.PASS_LENS_TORCH_MLIR_DRIVER;
+      const driver = options.torchDriver || process.env.PASS_LENS_TORCH_MLIR_DRIVER;
       if (!driver) {
         skippedTargets.push({
           key: 'torch',
           label: 'Torch-MLIR structured case study',
           requiredEnv: 'PASS_LENS_TORCH_MLIR_DRIVER',
+          requiredCli: '--torch-driver',
           script: 'npm run smoke:torch-mlir-case-study',
           envExample: {
             powershell: '$env:PASS_LENS_TORCH_MLIR_DRIVER = "C:\\path\\to\\downstream-pass-lens-driver"',
@@ -140,7 +155,8 @@ function resolveTargetsWithDiagnostics(options) {
         key: 'torch',
         label: 'Torch-MLIR structured case study',
         script: 'scripts/torch-mlir-case-study-smoke.js',
-        requiredEnv: 'PASS_LENS_TORCH_MLIR_DRIVER'
+        requiredEnv: 'PASS_LENS_TORCH_MLIR_DRIVER',
+        driver
       });
     }
   }
@@ -149,7 +165,8 @@ function resolveTargetsWithDiagnostics(options) {
 }
 
 function runTarget(target, minQuality) {
-  const child = spawnSync(process.execPath, [path.join(root, target.script)], {
+  const args = [path.join(root, target.script), '--min-quality', String(minQuality), '--driver', target.driver];
+  const child = spawnSync(process.execPath, args, {
     cwd: root,
     encoding: 'utf8',
     env: {
@@ -203,10 +220,15 @@ function formatNoTargetError(skippedTargets, options) {
     '- Then set one env and run:',
     '  # IREE only',
     '  npm run smoke:iree-case-study',
+    '  # or:',
+    '  node scripts/downstream-case-studies-smoke.js --iree --iree-driver /path/to/downstream-driver',
     '  # Torch-MLIR only',
     '  npm run smoke:torch-mlir-case-study',
+    '  # or:',
+    '  node scripts/downstream-case-studies-smoke.js --torch --torch-driver /path/to/downstream-driver',
     '  # Both (auto-detected)',
     '  npm run smoke:downstream-case-studies',
+    '  node scripts/downstream-case-studies-smoke.js --iree-driver /path/to/iree-driver --torch-driver /path/to/torch-mlir-driver',
     '',
     `Requested scope: ${requested.join(', ')}`
   ].join('\n');
@@ -228,6 +250,8 @@ function printUsage() {
 Options:
   --iree       run only IREE structured case study.
   --torch      run only torch-mlir structured case study.
+  --iree-driver <path>   override IREE collector path for this run.
+  --torch-driver <path>  override Torch-MLIR collector path for this run.
   --fail-fast  stop on first failed target.
   --min-quality <score> minimum quality score for each case study.
   -h, --help   show this help.
