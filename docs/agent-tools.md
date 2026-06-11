@@ -75,17 +75,17 @@ single deterministic Pass Lens tool, then validates the returned JSON locally.
 
 ```powershell
 $env:DEEPSEEK_API_PASS_LENS = [Environment]::GetEnvironmentVariable("DEEPSEEK_API_PASS_LENS", "User")
-npm run smoke:deepseek-agent -- --model deepseek-v4-flash
-npm run smoke:deepseek-agent -- --model deepseek-v4-pro
+npm run smoke:deepseek-agent -- -- --model deepseek-v4-flash --thinking disabled
+npm run smoke:deepseek-agent -- -- --model deepseek-v4-pro --thinking disabled
 ```
 
 The script does not print the API key. A successful run prints a compact JSON
 object containing `selectedToolId`, validated arguments, cited evidence IDs, and
 the next action proposed by the model.
 
-Validated on 2026-06-04:
+Validated on 2026-06-11:
 
-- `deepseek-v4-flash` selected `pass-lens.query.firstFailure` with no arguments
-  and cited `stages[2].status`.
-- `deepseek-v4-pro` selected `pass-lens.query.firstFailure` with no arguments
-  and cited `stages[2].status`.
+- `deepseek-v4-flash` selected `pass-lens.query.firstFailure` with no arguments and
+  cited `stages[2].status` and `stages[2].verifier`.
+- `deepseek-v4-pro` selected `pass-lens.query.firstFailure` with no arguments and
+  cited `stages[2].status` and `stages[2].verifier`.
