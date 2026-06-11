@@ -36,7 +36,7 @@
 
 ![Pass Lens hero](docs/images/pass-lens-hero.png)
 
-![Pass Lens first bad pass view](docs/images/pass-lens-first-bad-pass.png)
+![Pass Lens first bad pass demo](docs/images/pass-lens-first-bad-pass.gif)
 
 ## Why Pass Lens
 

@@ -39,6 +39,9 @@ npm run test
 ```powershell
 $env:PASS_LENS_IREE_DRIVER = "path\to\iree-pass-lens-driver"
 npm run smoke:iree-case-study
+
+# Or run directly:
+node scripts/iree-case-study-smoke.js --driver "path\to\iree-pass-lens-driver" --pipeline "builtin.module(func.func(canonicalize))"
 ```
 
 ### torch-mlir
@@ -46,14 +49,18 @@ npm run smoke:iree-case-study
 ```powershell
 $env:PASS_LENS_TORCH_MLIR_DRIVER = "path\to\torch-mlir-pass-lens-driver"
 npm run smoke:torch-mlir-case-study
+
+# Or run directly:
+node scripts/torch-mlir-case-study-smoke.js --driver "path\to\torch-mlir-pass-lens-driver" --pipeline "builtin.module(func.func(canonicalize))"
 ```
 
-### Triton (or custom pipeline)
+### Custom pipeline (e.g., Triton)
 
-If your Triton tooling has a structured Pass Lens mode:
+If your Triton tooling has structured Pass Lens output, run it through your own
+downstream collector command in the same pattern as above:
 
 ```powershell
-node scripts/downstream-case-study-smoke.js --driver "path\to\triton-driver" --driver-arg ...
+node path\to\your-triton-downstream-script --trace-out .\artifacts\triton.trace.json
 ```
 
 Acceptance:
@@ -86,8 +93,8 @@ In VS Code:
 
 Use query/report paths:
 
-- `Pass Lens: Query Current Trace` → `Generate GitHub issue description`
-- `Pass Lens: Query Current Trace` → `Generate top suspicious passes`
+- `Pass Lens: Query Current Trace` then `Generate GitHub issue description`
+- `Pass Lens: Query Current Trace` then `Generate top suspicious passes`
 - `Pass Lens: Export Directory Repro Bundle`
 
 For a minimal issue draft:
